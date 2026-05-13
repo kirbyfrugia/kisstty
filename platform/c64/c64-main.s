@@ -1,7 +1,3 @@
-; Programming resources
-;   [Assembly language programming for the atari computers](https://www.atariarchives.org/alp/index.php)
-;   [Chapter 9](https://www.atariarchives.org/alp/chapter_9.php)
-
 .SETCPU "6502"
 .INCLUDE "c64.inc"
 
