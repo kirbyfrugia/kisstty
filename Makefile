@@ -85,7 +85,7 @@ all: atari c64 apple2
 clean: ; rm -rf $(BLDDIR)
 
 run-atari: $(ATARI_XEX)
-	atari800 -xl -nobasic -rdevice $(ATARI_XEX)
+	atari800 -nobasic -rdevice -run $(ATARI_XEX)
 
 run-c64: $(C64_PRG)
 	x64sc -autostartprgmode 1 -autostart $(C64_PRG)
