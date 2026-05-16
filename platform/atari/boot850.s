@@ -65,7 +65,8 @@ boot850:
   sta DBYTLO
   lda #>POLL_BYTES
   sta DBYTHI
-  lda #$06
+  ;lda #$06
+  lda #$1f
   sta DTIMLO
   lda #POLL_FORCE_AUX1
   sta DAUX1

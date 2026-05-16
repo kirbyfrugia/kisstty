@@ -1,96 +1,197 @@
 # =============================================================================
-# kiss6502 - cross-platform 6502 KISS TNC client
-# Targets: atari, c64, apple2, run-atari, run-c64, run-apple2
+# kiss8b - cross-platform 6502 KISS TNC client
 # Tools:   ca65 + ld65 from cc65 package
 #
-# Pre-req on CachyOS/Arch:   paru -S cc65-git atari800 vice applecommander
+# pre-req on CachyOS/Arch:
+#   paru -S cc65-git atari800 vice applecommander dir2atr
+#
+#   Note: you might need to recompile atari800 with --enable-riodevice, e.g.:
+#     configure --enable-riodevice
 # =============================================================================
 
-CA65        = ca65
-LD65        = ld65
-AC          = applecommander-ac
-ACX         = applecommander-acx
-SRCDIR      = platform
-BLDDIR      = build
-CC65_SHARE ?= /usr/share/cc65
-CA65INC     = $(CC65_SHARE)/asminc
-CA65FLAGS   = --listing
-
-ATARI_DIR  = $(SRCDIR)/atari
-ATARI_XEX  = $(BLDDIR)/atari/kiss6502.xex
-ATARI_CFG  = $(CC65_SHARE)/cfg/atari-asm-xex.cfg
-ATARI_OBJS = $(BLDDIR)/atari/atari-main.o \
-             $(BLDDIR)/atari/boot850.o
+CA65           = ca65
+LD65           = ld65
+AC             = applecommander-ac
+ACX            = applecommander-acx
+SRCDIR         = platform
+BLDDIR         = build
+3RDPARTYDIR    = 3rdparty
+CC65_SHARE    ?= /usr/share/cc65
+CA65INC        = $(CC65_SHARE)/asminc
+CA65FLAGS      =
+CA65FLAGS_DBG  = -D DEBUG
 
 # =============================================================================
 # ATARI
 # =============================================================================
-atari: $(ATARI_XEX)
-$(BLDDIR)/atari: ; mkdir -p $@
+ATARI_DIR       = $(SRCDIR)/atari
+ATARI_3RDPARTY  = $(3RDPARTYDIR)/atari
+ATARI_CFG       = $(SRCDIR)/atari/config/atari-asm-xex-release.cfg
+ATARI_CFG_DBG   = $(SRCDIR)/atari/config/atari-asm-xex-debug.cfg
+ATARI_SRCS      = atari-main.s \
+		  boot850.s
 
-$(BLDDIR)/atari/atari-main.o: $(ATARI_DIR)/atari-main.s | $(BLDDIR)/atari
-	$(CA65) --target atari -I $(CA65INC) $(CA65FLAGS) $(BLDDIR)/atari/atari-main.lst -o $@ $<
+ATARI_BLDDIR  = $(BLDDIR)/atari/release
+ATARI_ATR_DIR = $(ATARI_BLDDIR)/atr
+ATARI_XEX     = $(ATARI_BLDDIR)/kiss8b.xex
+ATARI_MAP     = $(ATARI_BLDDIR)/kiss8b.map
+ATARI_ATR     = $(ATARI_BLDDIR)/kiss8b.atr
+ATARI_OBJS    = $(patsubst %.s,$(ATARI_BLDDIR)/%.o,$(ATARI_SRCS))
 
-$(BLDDIR)/atari/boot850.o: $(ATARI_DIR)/boot850.s | $(BLDDIR)/atari
-	$(CA65) --target atari -I $(CA65INC) $(CA65FLAGS) $(BLDDIR)/atari/boot850.lst -o $@ $<
+ATARI_BLDDIR_DBG  = $(BLDDIR)/atari/debug
+ATARI_ATR_DIR_DBG = $(ATARI_BLDDIR_DBG)/atr
+ATARI_XEX_DBG     = $(ATARI_BLDDIR_DBG)/kiss8b.xex
+ATARI_MAP_DBG     = $(ATARI_BLDDIR_DBG)/kiss8b.map
+ATARI_ATR_DBG     = $(ATARI_BLDDIR_DBG)/kiss8b.atr
+ATARI_OBJS_DBG    = $(patsubst %.s,$(ATARI_BLDDIR_DBG)/%.o,$(ATARI_SRCS))
+
+atari: $(ATARI_ATR)
+atari-debug: $(ATARI_ATR_DBG)
+
+$(ATARI_BLDDIR) $(ATARI_ATR_DIR) $(ATARI_BLDDIR_DBG) $(ATARI_ATR_DIR_DBG):
+	mkdir -p $@
+
+$(ATARI_BLDDIR)/%.o: $(ATARI_DIR)/%.s | $(ATARI_BLDDIR)
+	$(CA65) --target atari -I $(CA65INC) $(CA65FLAGS) \
+	    --listing $(ATARI_BLDDIR)/$*.lst -o $@ $<
+
+$(ATARI_BLDDIR_DBG)/%.o: $(ATARI_DIR)/%.s | $(ATARI_BLDDIR_DBG)
+	$(CA65) --target atari -I $(CA65INC) $(CA65FLAGS_DBG) \
+	    --listing $(ATARI_BLDDIR_DBG)/$*.lst -o $@ $<
 
 $(ATARI_XEX): $(ATARI_OBJS)
-	$(LD65) -C $(ATARI_CFG) -o $@ $^
+	$(LD65) -C $(ATARI_CFG) -m $(ATARI_MAP) -o $@ $^
+
+$(ATARI_XEX_DBG): $(ATARI_OBJS_DBG)
+	$(LD65) -C $(ATARI_CFG_DBG) -m $(ATARI_MAP_DBG) -o $@ $^
+
+$(ATARI_ATR): $(ATARI_XEX) | $(ATARI_ATR_DIR)
+	cp $(ATARI_XEX) $(ATARI_ATR_DIR)/autorun.sys
+	dir2atr -S -b PicoBoot406 $@ $(ATARI_ATR_DIR)
+
+$(ATARI_ATR_DBG): $(ATARI_XEX_DBG) | $(ATARI_ATR_DIR_DBG)
+	cat $(ATARI_3RDPARTY)/bug65.com $(ATARI_XEX_DBG) > $(ATARI_ATR_DIR_DBG)/autorun.sys
+	cp $(ATARI_3RDPARTY)/dos20/dos.sys $(ATARI_ATR_DIR_DBG)
+	#cp $(ATARI_3RDPARTY)/bug65.com $(ATARI_ATR_DIR_DBG)/autorun.sys
+	#cp $(ATARI_XEX_DBG) $(ATARI_ATR_DIR_DBG)
+	dir2atr -S -b Dos20 $@ $(ATARI_ATR_DIR_DBG)
+
+run-atari: $(ATARI_ATR)
+	atari800 -atari -nobasic -rdevice $(ATARI_ATR)
+
+debug-atari: $(ATARI_ATR_DBG)
+	atari800 -atari -nobasic -rdevice $(ATARI_ATR_DBG)
 
 # =============================================================================
 # C64
 # =============================================================================
 C64_DIR  = $(SRCDIR)/c64
-C64_PRG  = $(BLDDIR)/c64/kiss6502.prg
 C64_CFG  = $(CC65_SHARE)/cfg/c64-asm.cfg
-C64_OBJS = $(BLDDIR)/c64/c64-main.o
+C64_SRCS = c64-main.s
+
+C64_BLDDIR = $(BLDDIR)/c64/release
+C64_PRG    = $(C64_BLDDIR)/kiss8b.prg
+C64_OBJS   = $(patsubst %.s,$(C64_BLDDIR)/%.o,$(C64_SRCS))
+
+C64_BLDDIR_DBG = $(BLDDIR)/c64/debug
+C64_PRG_DBG    = $(C64_BLDDIR_DBG)/kiss8b.prg
+C64_OBJS_DBG   = $(patsubst %.s,$(C64_BLDDIR_DBG)/%.o,$(C64_SRCS))
 
 c64: $(C64_PRG)
-$(BLDDIR)/c64: ; mkdir -p $@
+c64-debug: $(C64_PRG_DBG)
 
-$(BLDDIR)/c64/c64-main.o: $(C64_DIR)/c64-main.s | $(BLDDIR)/c64
-	$(CA65) --target c64 -I $(CA65INC) $(CA65FLAGS) $(BLDDIR)/c64/c64-main.lst -o $@ $<
+$(C64_BLDDIR) $(C64_BLDDIR_DBG):
+	mkdir -p $@
+
+$(C64_BLDDIR)/%.o: $(C64_DIR)/%.s | $(C64_BLDDIR)
+	$(CA65) --target c64 -I $(CA65INC) $(CA65FLAGS) \
+	    --listing $(C64_BLDDIR)/$*.lst -o $@ $<
+
+$(C64_BLDDIR_DBG)/%.o: $(C64_DIR)/%.s | $(C64_BLDDIR_DBG)
+	$(CA65) --target c64 -I $(CA65INC) $(CA65FLAGS_DBG) \
+	    --listing $(C64_BLDDIR_DBG)/$*.lst -o $@ $<
 
 $(C64_PRG): $(C64_OBJS)
 	$(LD65) -C $(C64_CFG) -o $@ $^
 
-# =============================================================================
-# Apple II
-# =============================================================================
-APPLE2_DIR         = $(SRCDIR)/apple2
-APPLE2_BIN         = $(BLDDIR)/apple2/kiss6502.bin
-APPLE2_DSK         = $(BLDDIR)/apple2/kiss6502.dsk
-APPLE2_CFG         = $(CC65_SHARE)/cfg/apple2-asm.cfg
-APPLE2_MASTER_DSK  = /usr/local/share/linapple/Master.dsk
-APPLE2_OBJS        = $(BLDDIR)/apple2/apple2-main.o
-
-apple2: $(APPLE2_BIN) $(APPLE2_DSK)
-$(BLDDIR)/apple2: ; mkdir -p $@
-
-$(BLDDIR)/apple2/apple2-main.o: $(APPLE2_DIR)/apple2-main.s | $(BLDDIR)/apple2
-	$(CA65) --target apple2 -I $(CA65INC) $(CA65FLAGS) $(BLDDIR)/apple2/apple2-main.lst -o $@ $<
-
-$(APPLE2_BIN): $(APPLE2_OBJS)
-	$(LD65) -C $(APPLE2_CFG) -o $@ $^
-
-$(APPLE2_DSK): $(APPLE2_BIN)
-	cp $(APPLE2_MASTER_DSK) $(APPLE2_DSK)
-	chmod 644 $(APPLE2_DSK)
-	$(AC) -d $(APPLE2_DSK) HELLO
-	$(AC) -p $(APPLE2_DSK) KISS6502 B 0x0803 < $(APPLE2_BIN)
-	printf '10 PRINT CHR$$(4);"BRUN KISS6502"\r' | $(ACX) import --basic --stdin --name=HELLO -d $(APPLE2_DSK)
-
-# =============================================================================
-all: atari c64 apple2
-clean: ; rm -rf $(BLDDIR)
-
-run-atari: $(ATARI_XEX)
-	atari800 -nobasic -rdevice -run $(ATARI_XEX)
+$(C64_PRG_DBG): $(C64_OBJS_DBG)
+	$(LD65) -C $(C64_CFG) -o $@ $^
 
 run-c64: $(C64_PRG)
 	x64sc -autostartprgmode 1 -autostart $(C64_PRG)
 
+debug-c64: $(C64_PRG_DBG)
+	x64sc -autostartprgmode 1 -autostart $(C64_PRG_DBG)
+
+# =============================================================================
+# Apple II
+# =============================================================================
+APPLE2_DIR        = $(SRCDIR)/apple2
+APPLE2_CFG        = $(CC65_SHARE)/cfg/apple2-asm.cfg
+APPLE2_MASTER_DSK = /usr/local/share/linapple/Master.dsk
+APPLE2_SRCS       = apple2-main.s
+
+APPLE2_BLDDIR = $(BLDDIR)/apple2/release
+APPLE2_BIN    = $(APPLE2_BLDDIR)/kiss8b.bin
+APPLE2_DSK    = $(APPLE2_BLDDIR)/kiss8b.dsk
+APPLE2_OBJS   = $(patsubst %.s,$(APPLE2_BLDDIR)/%.o,$(APPLE2_SRCS))
+
+APPLE2_BLDDIR_DBG = $(BLDDIR)/apple2/debug
+APPLE2_BIN_DBG    = $(APPLE2_BLDDIR_DBG)/kiss8b.bin
+APPLE2_DSK_DBG    = $(APPLE2_BLDDIR_DBG)/kiss8b.dsk
+APPLE2_OBJS_DBG   = $(patsubst %.s,$(APPLE2_BLDDIR_DBG)/%.o,$(APPLE2_SRCS))
+
+apple2: $(APPLE2_DSK)
+apple2-debug: $(APPLE2_DSK_DBG)
+
+$(APPLE2_BLDDIR) $(APPLE2_BLDDIR_DBG):
+	mkdir -p $@
+
+$(APPLE2_BLDDIR)/%.o: $(APPLE2_DIR)/%.s | $(APPLE2_BLDDIR)
+	$(CA65) --target apple2 -I $(CA65INC) $(CA65FLAGS) \
+	    --listing $(APPLE2_BLDDIR)/$*.lst -o $@ $<
+
+$(APPLE2_BLDDIR_DBG)/%.o: $(APPLE2_DIR)/%.s | $(APPLE2_BLDDIR_DBG)
+	$(CA65) --target apple2 -I $(CA65INC) $(CA65FLAGS_DBG) \
+	    --listing $(APPLE2_BLDDIR_DBG)/$*.lst -o $@ $<
+
+$(APPLE2_BIN): $(APPLE2_OBJS)
+	$(LD65) -C $(APPLE2_CFG) -o $@ $^
+
+$(APPLE2_BIN_DBG): $(APPLE2_OBJS_DBG)
+	$(LD65) -C $(APPLE2_CFG) -o $@ $^
+
+$(APPLE2_DSK): $(APPLE2_BIN)
+	cp $(APPLE2_MASTER_DSK) $@
+	chmod 644 $@
+	$(AC) -d $@ HELLO
+	$(AC) -p $@ KISS6502 B 0x0803 < $(APPLE2_BIN)
+	printf '10 PRINT CHR$$(4);"BRUN KISS6502"\r' | $(ACX) import --basic --stdin --name=HELLO -d $@
+
+$(APPLE2_DSK_DBG): $(APPLE2_BIN_DBG)
+	cp $(APPLE2_MASTER_DSK) $@
+	chmod 644 $@
+	$(AC) -d $@ HELLO
+	$(AC) -p $@ KISS6502 B 0x0803 < $(APPLE2_BIN_DBG)
+	printf '10 PRINT CHR$$(4);"BRUN KISS6502"\r' | $(ACX) import --basic --stdin --name=HELLO -d $@
+
 run-apple2: $(APPLE2_DSK)
 	linapple --d1 $(APPLE2_DSK) --autoboot
 
-.PHONY: all atari c64 apple2 clean run-atari run-c64 run-apple2
+debug-apple2: $(APPLE2_DSK_DBG)
+	linapple --d1 $(APPLE2_DSK_DBG) --autoboot
+
+# =============================================================================
+# Top-level
+# =============================================================================
+all: atari c64 apple2
+all-debug: atari-debug c64-debug apple2-debug
+
+clean:
+	rm -rf $(BLDDIR)
+
+.PHONY: all all-debug \
+	atari atari-debug run-atari debug-atari \
+	c64 c64-debug run-c64 debug-c64 \
+	apple2 apple2-debug run-apple2 debug-apple2 \
+	clean

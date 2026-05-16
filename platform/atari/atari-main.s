@@ -10,8 +10,13 @@
 
 .SEGMENT "CODE"
 
-.EXPORT start
+.ifdef DEBUG
+  .EXPORT start := $9800
+.else
+  .EXPORT start
 start:
+.endif
+
   jsr boot850
   bcs @no850
   lda #<str_850loaded
