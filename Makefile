@@ -181,9 +181,6 @@ run-apple2: $(APPLE2_DSK)
 debug-apple2: $(APPLE2_DSK_DBG)
 	linapple --d1 $(APPLE2_DSK_DBG) --autoboot
 
-# =============================================================================
-# Top-level
-# =============================================================================
 all: atari c64 apple2
 all-debug: atari-debug c64-debug apple2-debug
 

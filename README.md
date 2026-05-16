@@ -12,11 +12,11 @@ I'm just getting started on it.
 
 ## Debugging
 
-Check out build/atari/kiss6502.map, which should show you the memory location of all symbols.
-
-# Resources:
+## Resources:
+TODO: move stuff from source files to here.
 * asdf
 
 # Acknowledgement / Use of open source
+TODO: properly recognize the contributions of these folks...
 * bug65.com - thanks to...
 * atari
