@@ -6,64 +6,119 @@
 
 .SETCPU "6502"
 .INCLUDE "atari.inc"
+
+MAX_INPUT_LEN = 114
+
+
 .IMPORT boot850
 
 .SEGMENT "CODE"
 
-.ifdef DEBUG
-  .EXPORT start := $9800
-.else
-  .EXPORT start
+.macro print_str str_data
+  ldx #0
+  lda #<str_data
+  sta ICBAL,x
+  lda #>str_data
+  sta ICBAH,x
+
+  lda #$ff
+  sta ICBLL,x
+  lda #0
+  sta ICBLH,x
+
+  lda #PUTREC
+  sta ICCOM,x
+  jsr CIOV
+.endmacro
+
+.macro print_bytes str_data, str_data_end
+  ldx #0
+  lda #<str_data
+  sta ICBAL,x
+  lda #>str_data
+  sta ICBAH,x
+
+  lda #<(str_data_end-str_data)
+  sta ICBLL,x
+  lda #>(str_data_end-str_data)
+  sta ICBLH,x
+
+  lda #11
+  sta ICCOM,x
+  jsr CIOV
+.endmacro
+
+.EXPORT start
 start:
-.endif
+  print_str str_supported_commands
+  print_str str_commands
+@loop:
+  ; ask for input
+  print_bytes str_get_command, str_get_command_end
 
-  jsr boot850
-  bcs @no850
-  lda #<str_850loaded
-  sta ICBAL
-  lda #>str_850loaded
-  sta ICBAH
+  ; read user input
+  ldx #0
+  lda #<user_input_buf
+  sta ICBAL,x
+  lda #>user_input_buf
+  sta ICBAH,x
 
-  lda #<(str_850loaded_end-str_850loaded)
-  sta ICBLL
-  lda #>(str_850loaded_end-str_850loaded)
-  sta ICBLH
+  lda #<MAX_INPUT_LEN
+  sta ICBLL,x
+  lda #>MAX_INPUT_LEN
+  sta ICBLH,x
 
-  lda #PUTREC
-  sta ICCOM
-
-  ldx #$00
+  lda #GETREC
+  sta ICCOM,x
   jsr CIOV
-  jmp @await_input
 
-@no850:
-  lda #<str_error_no850
-  sta ICBAL
-  lda #>str_error_no850
-  sta ICBAH
-
-  lda #<(str_error_no850_end-str_error_no850)
-  sta ICBLL
-  lda #>(str_error_no850_end-str_error_no850)
-  sta ICBLH
-
+  ; echo back user command
+  ldx #0
   lda #PUTREC
-  sta ICCOM
-
-  ldx #$00
+  sta ICCOM,x
   jsr CIOV
- 
-@await_input:
-  lda CH
-  cmp #$FF
-  beq @await_input
+
+  lda user_input_buf 
+  cmp #'B'
+  beq @ui_b
+  bne @ui_invalid
+@ui_b:
+  jsr cmd_load850
+  jmp @ui_done
+@ui_invalid:
+  print_str str_invalid_command
+  print_str str_supported_commands
+  print_str str_commands
+@ui_done:
+  jmp @loop
+
+print_commands:
+  print_str str_commands
   rts
 
-str_error_no850:
-  .byte "No 850 found. Press a key."
-str_error_no850_end:
+cmd_load850:
+  jsr boot850
+  bcs @no850
 
-str_850loaded:
-  .byte "850 handler loaded. Press a key."
-str_850loaded_end:
+  print_str str_850loaded
+  jmp @cmd_load850d
+@no850:
+  print_str str_850error
+@cmd_load850d:
+  rts
 
+str_850error: .byte "850 not found", $9b
+str_850loaded: .byte "850 handler loaded", $9b
+str_supported_commands: .byte "Supported Commands:", $9b
+str_commands: .byte " [B] Load 850 ", $9b
+str_invalid_command: .byte "Invalid input", $9b
+str_get_command:
+  .byte "cmd: "
+str_get_command_end:
+
+user_input_buf: .res 256
+
+.ifdef DEBUG
+.SEGMENT "BUG65_CODE"
+.incbin "3rdparty/atari/bug65.com", 6
+.endif

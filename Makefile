@@ -18,8 +18,8 @@ BLDDIR         = build
 3RDPARTYDIR    = 3rdparty
 CC65_SHARE    ?= /usr/share/cc65
 CA65INC        = $(CC65_SHARE)/asminc
-CA65FLAGS      =
-CA65FLAGS_DBG  = -D DEBUG
+CA65FLAGS      = -g
+CA65FLAGS_DBG  = -D DEBUG -g
 
 # =============================================================================
 # ATARI
@@ -31,19 +31,21 @@ ATARI_CFG_DBG   = $(SRCDIR)/atari/config/atari-asm-xex-debug.cfg
 ATARI_SRCS      = atari-main.s \
 		  boot850.s
 
-ATARI_BLDDIR  = $(BLDDIR)/atari/release
-ATARI_ATR_DIR = $(ATARI_BLDDIR)/atr
-ATARI_XEX     = $(ATARI_BLDDIR)/kiss8b.xex
-ATARI_MAP     = $(ATARI_BLDDIR)/kiss8b.map
-ATARI_ATR     = $(ATARI_BLDDIR)/kiss8b.atr
-ATARI_OBJS    = $(patsubst %.s,$(ATARI_BLDDIR)/%.o,$(ATARI_SRCS))
+ATARI_BLDDIR   = $(BLDDIR)/atari/release
+ATARI_ATR_DIR  = $(ATARI_BLDDIR)/atr
+ATARI_XEX      = $(ATARI_BLDDIR)/kiss8b.xex
+ATARI_MAP      = $(ATARI_BLDDIR)/kiss8b.map
+ATARI_VICE_SYM = $(ATARI_BLDDIR)/kiss8b-vice-symbols.txt
+ATARI_ATR      = $(ATARI_BLDDIR)/kiss8b.atr
+ATARI_OBJS     = $(patsubst %.s,$(ATARI_BLDDIR)/%.o,$(ATARI_SRCS))
 
-ATARI_BLDDIR_DBG  = $(BLDDIR)/atari/debug
-ATARI_ATR_DIR_DBG = $(ATARI_BLDDIR_DBG)/atr
-ATARI_XEX_DBG     = $(ATARI_BLDDIR_DBG)/kiss8b.xex
-ATARI_MAP_DBG     = $(ATARI_BLDDIR_DBG)/kiss8b.map
-ATARI_ATR_DBG     = $(ATARI_BLDDIR_DBG)/kiss8b.atr
-ATARI_OBJS_DBG    = $(patsubst %.s,$(ATARI_BLDDIR_DBG)/%.o,$(ATARI_SRCS))
+ATARI_BLDDIR_DBG   = $(BLDDIR)/atari/debug
+ATARI_ATR_DIR_DBG  = $(ATARI_BLDDIR_DBG)/atr
+ATARI_XEX_DBG      = $(ATARI_BLDDIR_DBG)/kiss8b.xex
+ATARI_MAP_DBG      = $(ATARI_BLDDIR_DBG)/kiss8b.map
+ATARI_VICE_SYM_DBG = $(ATARI_BLDDIR_DBG)/kiss8b-vice-symbols.txt
+ATARI_ATR_DBG      = $(ATARI_BLDDIR_DBG)/kiss8b.atr
+ATARI_OBJS_DBG     = $(patsubst %.s,$(ATARI_BLDDIR_DBG)/%.o,$(ATARI_SRCS))
 
 atari: $(ATARI_ATR)
 atari-debug: $(ATARI_ATR_DBG)
@@ -60,20 +62,27 @@ $(ATARI_BLDDIR_DBG)/%.o: $(ATARI_DIR)/%.s | $(ATARI_BLDDIR_DBG)
 	    --listing $(ATARI_BLDDIR_DBG)/$*.lst -o $@ $<
 
 $(ATARI_XEX): $(ATARI_OBJS)
-	$(LD65) -C $(ATARI_CFG) -m $(ATARI_MAP) -o $@ $^
+	$(LD65) -vm -Ln $(ATARI_VICE_SYM) -C $(ATARI_CFG) -m $(ATARI_MAP) -o $@ $^
 
 $(ATARI_XEX_DBG): $(ATARI_OBJS_DBG)
-	$(LD65) -C $(ATARI_CFG_DBG) -m $(ATARI_MAP_DBG) -o $@ $^
+	$(LD65) -vm -Ln $(ATARI_VICE_SYM_DBG) -C $(ATARI_CFG_DBG) -m $(ATARI_MAP_DBG) -o $@ $^
 
 $(ATARI_ATR): $(ATARI_XEX) | $(ATARI_ATR_DIR)
 	cp $(ATARI_XEX) $(ATARI_ATR_DIR)/autorun.sys
-	dir2atr -S -b PicoBoot406 $@ $(ATARI_ATR_DIR)
+	cp $(ATARI_3RDPARTY)/dos20/dos.sys $(ATARI_ATR_DIR)
+	dir2atr -S -b Dos20 $@ $(ATARI_ATR_DIR)
+	#dir2atr -S -b PicoBoot406 $@ $(ATARI_ATR_DIR)
 
 $(ATARI_ATR_DBG): $(ATARI_XEX_DBG) | $(ATARI_ATR_DIR_DBG)
-	cat $(ATARI_3RDPARTY)/bug65.com $(ATARI_XEX_DBG) > $(ATARI_ATR_DIR_DBG)/autorun.sys
+	#cat $(ATARI_3RDPARTY)/bug65.com $(ATARI_XEX_DBG) > $(ATARI_ATR_DIR_DBG)/autorun.sys
+	#dir2atr -S -b Dos20 $@ $(ATARI_ATR_DIR_DBG)
+	#cat $(ATARI_3RDPARTY)/bug65.com $(ATARI_XEX_DBG) > $(ATARI_ATR_DIR_DBG)/autorun.sys
+	#cat $(ATARI_XEX_DBG) $(ATARI_3RDPARTY)/bug65.com > $(ATARI_ATR_DIR_DBG)/autorun.sys
+	#cp $(ATARI_3RDPARTY)/bug65.com $(ATARI_ATR_DIR_DBG)
+	cp $(ATARI_XEX_DBG) $(ATARI_ATR_DIR_DBG)/autorun.sys
+	#dir2atr -S -a -b MyPicoDos406N $@ $(ATARI_ATR_DIR_DBG)
 	cp $(ATARI_3RDPARTY)/dos20/dos.sys $(ATARI_ATR_DIR_DBG)
-	#cp $(ATARI_3RDPARTY)/bug65.com $(ATARI_ATR_DIR_DBG)/autorun.sys
-	#cp $(ATARI_XEX_DBG) $(ATARI_ATR_DIR_DBG)
+	cp $(ATARI_3RDPARTY)/dos20/dup.sys $(ATARI_ATR_DIR_DBG)
 	dir2atr -S -b Dos20 $@ $(ATARI_ATR_DIR_DBG)
 
 run-atari: $(ATARI_ATR)
