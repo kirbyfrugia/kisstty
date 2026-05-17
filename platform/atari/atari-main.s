@@ -10,6 +10,7 @@
 MAX_INPUT_LEN = 114
 
 
+.IMPORT wakeup850
 .IMPORT boot850
 
 .SEGMENT "CODE"
@@ -81,9 +82,14 @@ start:
   lda user_input_buf 
   cmp #'B'
   beq @ui_b
+  cmp #'W'
+  beq @ui_w
   bne @ui_invalid
 @ui_b:
   jsr cmd_load850
+  jmp @ui_done
+@ui_w:
+  jsr wakeup850
   jmp @ui_done
 @ui_invalid:
   print_str str_invalid_command
@@ -110,7 +116,7 @@ cmd_load850:
 str_850error: .byte "850 not found", $9b
 str_850loaded: .byte "850 handler loaded", $9b
 str_supported_commands: .byte "Supported Commands:", $9b
-str_commands: .byte " [B] Load 850 ", $9b
+str_commands: .byte " [B] Load 850 [W] Wakeup 850", $9b
 str_invalid_command: .byte "Invalid input", $9b
 str_get_command:
   .byte "cmd: "

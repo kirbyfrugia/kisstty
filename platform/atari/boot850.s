@@ -44,35 +44,15 @@ HATABS_SIZE    = HATABS_ENTRIES * 3
 
 .SEGMENT "CODE"
 
+.EXPORT wakeup850
 .EXPORT boot850
-
-boot850:
-  ; check the Handler Address Table (HATABS) to see if
-  ; there is an R device in the table already.
-  ; There are up to 8 devices, each one takes up 3 bytes
-  ldx #0
-b850_check_installed:
-  lda HATABS,x
-  cmp #'R'
-  beq b850_in_hatabs
-  inx
-  inx
-  inx
-  cpx #HATABS_SIZE
-  bcc b850_check_installed
-  jmp b850_wakeup
-
-b850_in_hatabs:
-  jmp b850_installed
-
-  ; If here, no R: handler loaded yet, so poll for an Atari 850
 
 ; I was having issues getting the real 850 to respond. Apparently
 ; it powers up in a locked state ignoring $50 commands
 ; until it sees D1: activity on the SIO bus. This dummy status
 ; command forces D1 to respond with an ACK, thus unlocking 
 ; it's R: listener so that my poll will succeed.
-b850_wakeup:
+wakeup850:
   lda #DUMMY_DDEVIC
   sta DDEVIC
   lda #DUMMY_DUNIT
@@ -99,10 +79,25 @@ b850_wakeup:
   ; we don't care about the response. The 850 sees
   ; the command either way
   jsr SIOV
+  rts
 
-; Now we can poll for the 850
+boot850:
+  ; check the Handler Address Table (HATABS) to see if
+  ; there is an R device in the table already.
+  ; There are up to 8 devices, each one takes up 3 bytes
+  ldx #0
+b850_check_installed:
+  lda HATABS,x
+  cmp #'R'
+  beq b850_installed
+  inx
+  inx
+  inx
+  cpx #HATABS_SIZE
+  bcc b850_check_installed
+
+  ; If here, no R: handler loaded yet, so poll for an Atari 850
 b850_poll:
-
   ldy #$05       ; Outer loop
 b850_delay_outer:
   ldx #$FF       ; Inner loop
