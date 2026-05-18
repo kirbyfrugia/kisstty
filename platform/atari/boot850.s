@@ -28,8 +28,9 @@ DUMMY_DSTATS = %01000000 ; Bit 6 - receive data
 DUMMY_DTIMLO = $07       ; Time to wait for the response
 DUMMY_DBUF   = $0660     ; Location to store the response
 
-;POLL_DDEVIC    = $50       ; Device ID for 850 RS232 port
-POLL_DDEVIC    = $4f       ; Device ID for 850 RS232 port
+POLL_DDEVIC    = $50       ; Device ID for 850 RS232 port
+;POLL_DDEVIC    = $4f       ; Device ID for 850 RS232 port
+;POLL_DDEVIC    = $00       ; Device ID for 850 RS232 port
 POLL_DUNIT     = $01       ; Device number 1
 POLL_DCOMND    = $3f       ; Poll command to see if devices have handlers to load
 POLL_DAUX1     = $01       ; Forces the device to always respond
@@ -38,6 +39,17 @@ POLL_DBYT      = 12        ; Num bytes in 850 response
 POLL_DSTATS    = %01000000 ; Bit 6 - receive data
 POLL_DTIMLO    = $1f       ; Time to wait for the 850 to respond in seconds
 POLL_DBUF      = $0664     ; Poll response from 850 to retrieve loader (known safe location)
+
+DIRECT_DDEVIC    = $50       ; Device ID for 850 RS232 port
+DIRECT_DUNIT     = $01       ; Device number 1
+DIRECT_DCOMND    = $21       ; Poll command to see if devices have handlers to load
+DIRECT_DAUX1     = $00       ; Forces the device to always respond
+DIRECT_DAUX2     = $00       ; Unused
+DIRECT_DBYT      = $0156     ; Num bytes in 850 response
+DIRECT_DSTATS    = %01000000 ; Bit 6 - receive data
+DIRECT_DTIMLO    = $1f       ; Time to wait for the 850 to respond in seconds
+DIRECT_DBUF      = $0664     ; Poll response from 850 to retrieve loader (known safe location)
+
 BOOTER_ENTRY   = $0506     ; Booter/relocator load address and entry point, hardcoded in DOS II's AUTORUN.sys
 HATABS_ENTRIES = 8
 HATABS_SIZE    = HATABS_ENTRIES * 3
@@ -45,7 +57,10 @@ HATABS_SIZE    = HATABS_ENTRIES * 3
 .SEGMENT "CODE"
 
 .EXPORT wakeup850
-.EXPORT boot850
+.EXPORT check850
+.EXPORT boot850_poll
+.EXPORT boot850_direct
+.EXPORT boot850_poll_device
 
 ; I was having issues getting the real 850 to respond. Apparently
 ; it powers up in a locked state ignoring $50 commands
@@ -81,38 +96,34 @@ wakeup850:
   jsr SIOV
   rts
 
-boot850:
+check850:
   ; check the Handler Address Table (HATABS) to see if
   ; there is an R device in the table already.
   ; There are up to 8 devices, each one takes up 3 bytes
   ldx #0
-b850_check_installed:
+@check_installed:
   lda HATABS,x
   cmp #'R'
-  beq b850_installed
+  beq @installed
   inx
   inx
   inx
   cpx #HATABS_SIZE
-  bcc b850_check_installed
+  bcc @check_installed
+  sec ; failure
+  rts
+@installed:
+  clc ; success
+  rts
+@error:
 
-  ; If here, no R: handler loaded yet, so poll for an Atari 850
-b850_poll:
-  ldy #$05       ; Outer loop
-b850_delay_outer:
-  ldx #$FF       ; Inner loop
-b850_delay_inner:
-  dex 
-  bne b850_delay_inner
-  dey
-  bne b850_delay_outer
-  ldx #$FF
-b850_delay_loop:
-  dex 
-  bne b850_delay_loop
+boot850_poll:
+  lda #1
+  sta poll_counter
 
-b850_delay_done:
-  lda #POLL_DDEVIC
+@loop:
+  ;lda #POLL_DDEVIC
+  lda boot850_poll_device
   sta DDEVIC
   lda #POLL_DUNIT
   sta DUNIT
@@ -140,30 +151,73 @@ b850_delay_done:
   ; This is the exact command the 850 will listen to
   ; to load its handler.
   jsr SIOV
-dbg1:
-  bmi b850_error
+  bpl @poll_succeeded
+  lda poll_counter
+  sec
+  sbc #1
+  beq @error
+  sta poll_counter
+  bne @loop
 
+@poll_succeeded:
   ; Copy the 12 bytes from the 850 poll response
   ; into the HW Device Control Block (DCB). This
   ; is the command to load the booter.
   ldx #POLL_DBYT-1
-b850_copy:
+@copy:
   lda POLL_DBUF,x
   sta DDEVIC,x
   dex
-  bpl b850_copy
+  bpl @copy
 
   jsr SIOV
-  bmi b850_error
+  bmi @error
 
   ; execute the booter provided by the 850's ROM
   jsr BOOTER_ENTRY
-
-b850_installed:
+@installed:
   clc ; success
   rts
-
-b850_error:
+@error:
   sec ; failure
   rts
 
+boot850_direct:
+  ;lda #DIRECT_DDEVIC
+  lda boot850_poll_device
+  sta DDEVIC
+  lda #DIRECT_DUNIT
+  sta DUNIT
+  lda #DIRECT_DCOMND
+  sta DCOMND
+  lda #DIRECT_DSTATS
+  sta DSTATS
+  lda #<DIRECT_DBUF
+  sta DBUFLO
+  lda #>DIRECT_DBUF
+  sta DBUFHI
+  lda #<DIRECT_DBYT
+  sta DBYTLO
+  lda #>DIRECT_DBYT
+  sta DBYTHI
+  lda #DIRECT_DTIMLO
+  sta DTIMLO
+  lda #DIRECT_DAUX1
+  sta DAUX1
+  lda #DIRECT_DAUX2
+  sta DAUX2
+
+  jsr SIOV
+  bmi @error
+
+  ; execute the booter provided by the 850's ROM
+  jsr BOOTER_ENTRY
+@installed:
+  clc ; success
+  rts
+@error:
+  sec ; failure
+  rts
+
+poll_counter: .byte 26
+boot850_poll_device: .byte 0
