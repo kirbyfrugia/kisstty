@@ -21,34 +21,34 @@
 DUMMY_DDEVIC = $31       ; Device ID for Disk 1
 DUMMY_DUNIT  = $01       ; Device number 1
 DUMMY_DCOMND = $53       ; Status command
+DUMMY_DSTATS = %01000000 ; Bit 6 - receive data
+DUMMY_DBUF   = $0660     ; Location to store the response
+DUMMY_DTIMLO = $07       ; Time to wait for the response
+DUMMY_DBYT   = 4         ; Num bytes in disk response
 DUMMY_DAUX1  = $00       ; Unused
 DUMMY_DAUX2  = $00       ; Unused
-DUMMY_DBYT   = 4         ; Num bytes in disk response
-DUMMY_DSTATS = %01000000 ; Bit 6 - receive data
-DUMMY_DTIMLO = $07       ; Time to wait for the response
-DUMMY_DBUF   = $0660     ; Location to store the response
 
 POLL_DDEVIC    = $50       ; Device ID for 850 RS232 port
 ;POLL_DDEVIC    = $4f       ; Device ID for 850 RS232 port
 ;POLL_DDEVIC    = $00       ; Device ID for 850 RS232 port
 POLL_DUNIT     = $01       ; Device number 1
 POLL_DCOMND    = $3f       ; Poll command to see if devices have handlers to load
+POLL_DSTATS    = %01000000 ; Bit 6 - receive data
+POLL_DBUF      = $0664     ; Poll response from 850 to retrieve loader (known safe location)
+POLL_DTIMLO    = $02       ; Time to wait for the 850 to respond in seconds
+POLL_DBYT      = 12        ; Num bytes in 850 response
 POLL_DAUX1     = $01       ; Forces the device to always respond
 POLL_DAUX2     = $00       ; Unused
-POLL_DBYT      = 12        ; Num bytes in 850 response
-POLL_DSTATS    = %01000000 ; Bit 6 - receive data
-POLL_DTIMLO    = $1f       ; Time to wait for the 850 to respond in seconds
-POLL_DBUF      = $0664     ; Poll response from 850 to retrieve loader (known safe location)
 
 DIRECT_DDEVIC    = $50       ; Device ID for 850 RS232 port
 DIRECT_DUNIT     = $01       ; Device number 1
 DIRECT_DCOMND    = $21       ; Poll command to see if devices have handlers to load
+DIRECT_DSTATS    = %01000000 ; Bit 6 - receive data
+DIRECT_DBUF      = $0500     ; Poll response from 850 to retrieve loader (known safe location)
+DIRECT_DTIMLO    = $02       ; Time to wait for the 850 to respond in seconds
+DIRECT_DBYT      = $0155     ; Num bytes in 850 response
 DIRECT_DAUX1     = $00       ; Forces the device to always respond
 DIRECT_DAUX2     = $00       ; Unused
-DIRECT_DBYT      = $0156     ; Num bytes in 850 response
-DIRECT_DSTATS    = %01000000 ; Bit 6 - receive data
-DIRECT_DTIMLO    = $1f       ; Time to wait for the 850 to respond in seconds
-DIRECT_DBUF      = $0664     ; Poll response from 850 to retrieve loader (known safe location)
 
 BOOTER_ENTRY   = $0506     ; Booter/relocator load address and entry point, hardcoded in DOS II's AUTORUN.sys
 HATABS_ENTRIES = 8
