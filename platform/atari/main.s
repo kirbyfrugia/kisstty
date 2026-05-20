@@ -1,6 +1,6 @@
 .SETCPU "6502"
 .INCLUDE "atari.inc"
-.INCLUDE "atari-macros.inc"
+.INCLUDE "macros.inc"
 
 MAX_INPUT_LEN = 114
 WOZMON = $9800

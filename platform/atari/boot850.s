@@ -11,7 +11,7 @@
 
 .SETCPU "6502"
 .INCLUDE "atari.inc"
-.INCLUDE "atari-macros.inc"
+.INCLUDE "macros.inc"
 
 POLL_DDEVIC    = $50       ; Device ID for 850 RS232 port
 POLL_DUNIT     = $01       ; Device number 1

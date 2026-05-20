@@ -1,4 +1,3 @@
-; atari-wozmon.s
 ; WozMon for Atari 8-bit, ca65 port for kiss6502
 ;
 ; Original: The WOZ Monitor for the Apple 1, Steve Wozniak, 1976
@@ -55,10 +54,12 @@
 ;
 ; Exit WozMon (jmp to main app at $4000):
 ; X
-
+.ifdef DEBUG
 .SETCPU "6502"
 .INCLUDE "atari.inc"
-.INCLUDE "atari-macros.inc"
+.INCLUDE "macros.inc"
+
+.IMPORT start
 
 ; ---------------------------------------------------------------------------
 ; Zero page — Atari BASIC ZP area $CB-$FA, safe to use outside BASIC
@@ -196,7 +197,7 @@ wozmon_nextitem:
   beq wozmon_run                ; run user program
   cmp #'X'+$80                  ; X?
   bne wozmon_cont               ; no, then continue
-  jmp $4000
+  jmp start
 
 wozmon_cont:
   stx L                         ; 0 -> L
@@ -318,3 +319,4 @@ wozmon_echo:
   pla                           ; restore Y from stack
   tay                           ; and transfer to Y register
   rts                           ; return
+.endif

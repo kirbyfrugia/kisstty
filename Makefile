@@ -28,10 +28,10 @@ ATARI_DIR       = $(SRCDIR)/atari
 ATARI_3RDPARTY  = $(3RDPARTYDIR)/atari
 ATARI_CFG       = $(SRCDIR)/atari/config/atari-asm-xex-release.cfg
 ATARI_CFG_DBG   = $(SRCDIR)/atari/config/atari-asm-xex-debug.cfg
-ATARI_SRCS      = atari-main.s \
+ATARI_SRCS      = main.s \
 		  boot850.s \
-		  atari-utils.s \
-		  atari-wozmon.s
+		  utils.s \
+		  wozmon.s
 
 ATARI_BLDDIR   = $(BLDDIR)/atari/release
 ATARI_ATR_DIR  = $(ATARI_BLDDIR)/atr
