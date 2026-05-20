@@ -1,0 +1,768 @@
+                                * = $0700
+0700   20 43 0C                 JSR L0C43
+0703   BD 9C 0D                 LDA $0D9C,X
+0706   10 03                    BPL L070B
+0708   A0 96                    LDY #$96
+070A   60                       RTS
+070B   A5 2A      L070B         LDA $2A
+070D   A8                       TAY
+070E   29 0C                    AND #$0C
+0710   D0 03                    BNE L0715
+0712   A0 84                    LDY #$84
+0714   60                       RTS
+0715   98         L0715         TYA
+0716   09 80                    ORA #$80
+0718   9D 9C 0D                 STA $0D9C,X
+071B   A9 00                    LDA #$00
+071D   9D 94 0D                 STA $0D94,X
+0720   9D 98 0D                 STA $0D98,X
+0723   A0 01                    LDY #$01
+0725   60                       RTS
+0726   20 43 0C                 JSR L0C43
+0729   EC BD 0D                 CPX $0DBD
+072C   F0 0C                    BEQ L073A
+072E   BD 94 0D                 LDA $0D94,X
+0731   F0 2C                    BEQ L075F
+0733   20 B4 0B                 JSR L0BB4
+0736   A0 80                    LDY #$80
+0738   D0 2A                    BNE L0764
+073A   AD BC 0D   L073A         LDA $0DBC
+073D   F0 FB                    BEQ L073A
+073F   78                       SEI
+0740   AD BA 0D                 LDA $0DBA
+0743   8D 16 02                 STA $0216
+0746   AD BB 0D                 LDA $0DBB
+0749   8D 17 02                 STA $0217
+074C   A2 05                    LDX #$05
+074E   BD B4 0D   L074E         LDA $0DB4,X
+0751   9D 0A 02                 STA $020A,X
+0754   CA                       DEX
+0755   10 F7                    BPL L074E
+0757   58                       CLI
+0758   AD BD 0D                 LDA $0DBD
+075B   8E BD 0D                 STX $0DBD
+075E   AA                       TAX
+075F   A0 00      L075F         LDY #$00
+0761   8C 0A 03                 STY $030A
+0764   A9 00      L0764         LDA #$00
+0766   9D 9C 0D                 STA $0D9C,X
+0769   A9 57                    LDA #$57
+076B   4C 5B 0C                 JMP L0C5B
+076E   BC 41 03                 LDY $0341,X
+0771   C0 05                    CPY #$05
+0773   90 03                    BCC L0778
+0775   A0 82                    LDY #$82
+0777   60                       RTS
+0778   8D BE 0D   L0778         STA $0DBE
+077B   B9 9C 0D                 LDA $0D9C,Y
+077E   29 08                    AND #$08
+0780   D0 03                    BNE L0785
+0782   A0 87                    LDY #$87
+0784   60                       RTS
+0785   98         L0785         TYA
+0786   AA                       TAX
+0787   86 21                    STX $21
+0789   BD A0 0D                 LDA $0DA0,X
+078C   29 30                    AND #$30
+078E   A8                       TAY
+078F   F0 04                    BEQ L0795
+0791   C9 20                    CMP #$20
+0793   B0 36                    BCS L07CB
+0795   AD BE 0D   L0795         LDA $0DBE
+0798   C9 9B                    CMP #$9B
+079A   D0 19                    BNE L07B5
+079C   BD A0 0D                 LDA $0DA0,X
+079F   29 40                    AND #$40
+07A1   F0 0E                    BEQ L07B1
+07A3   A9 0D                    LDA #$0D
+07A5   20 C8 07                 JSR L07C8
+07A8   10 01                    BPL L07AB
+07AA   60                       RTS
+07AB   A6 21      L07AB         LDX $21
+07AD   A9 0A                    LDA #$0A
+07AF   D0 17                    BNE L07C8
+07B1   A9 0D      L07B1         LDA #$0D
+07B3   D0 13                    BNE L07C8
+07B5   C0 10      L07B5         CPY #$10
+07B7   F0 04                    BEQ L07BD
+07B9   29 7F                    AND #$7F
+07BB   10 0B                    BPL L07C8
+07BD   C9 20      L07BD         CMP #$20
+07BF   90 04                    BCC L07C5
+07C1   C9 7D                    CMP #$7D
+07C3   90 03                    BCC L07C8
+07C5   A0 01      L07C5         LDY #$01
+07C7   60                       RTS
+07C8   8D BE 0D   L07C8         STA $0DBE
+07CB   BD A0 0D   L07CB         LDA $0DA0,X
+07CE   29 03                    AND #$03
+07D0   F0 1E                    BEQ L07F0
+07D2   C9 03                    CMP #$03
+07D4   F0 0E                    BEQ L07E4
+07D6   A8                       TAY
+07D7   20 F0 0B                 JSR L0BF0
+07DA   20 D2 0B                 JSR L0BD2
+07DD   98                       TYA
+07DE   29 02                    AND #$02
+07E0   F0 0C                    BEQ L07EE
+07E2   90 0C                    BCC L07F0
+07E4   AD BE 0D   L07E4         LDA $0DBE
+07E7   09 80                    ORA #$80
+07E9   8D BE 0D                 STA $0DBE
+07EC   30 02                    BMI L07F0
+07EE   90 F4      L07EE         BCC L07E4
+07F0   A6 21      L07F0         LDX $21
+07F2   EC BD 0D                 CPX $0DBD
+07F5   F0 2D                    BEQ L0824
+07F7   20 02 0C                 JSR L0C02
+07FA   7D 94 0D                 ADC $0D94,X
+07FD   A8                       TAY
+07FE   AD BE 0D                 LDA $0DBE
+0801   99 11 0D                 STA $0D11,Y
+0804   FE 94 0D                 INC $0D94,X
+0807   C9 0D                    CMP #$0D
+0809   F0 0A                    BEQ L0815
+080B   A9 20                    LDA #$20
+080D   DD 94 0D                 CMP $0D94,X
+0810   F0 03                    BEQ L0815
+0812   A0 01                    LDY #$01
+0814   60                       RTS
+0815   20 B4 0B   L0815         JSR L0BB4
+0818   A0 80                    LDY #$80
+081A   A9 00                    LDA #$00
+081C   9D 94 0D                 STA $0D94,X
+081F   A9 57                    LDA #$57
+0821   4C 5B 0C                 JMP L0C5B
+0824   AD B3 0D   L0824         LDA $0DB3
+0827   C9 1F                    CMP #$1F
+0829   B0 F9                    BCS L0824
+082B   20 02 0C                 JSR L0C02
+082E   78                       SEI
+082F   7D 94 0D                 ADC $0D94,X
+0832   A8                       TAY
+0833   AD BE 0D                 LDA $0DBE
+0836   99 11 0D                 STA $0D11,Y
+0839   BC 94 0D                 LDY $0D94,X
+083C   20 F9 0B                 JSR L0BF9
+083F   9D 94 0D                 STA $0D94,X
+0842   EE B3 0D                 INC $0DB3
+0845   A5 10                    LDA $10
+0847   BC A0 0D                 LDY $0DA0,X
+084A   30 04                    BMI L0850
+084C   09 18                    ORA #$18
+084E   D0 02                    BNE L0852
+0850   09 08      L0850         ORA #$08
+0852   85 10      L0852         STA $10
+0854   8D 0E D2                 STA $D20E
+0857   A0 00                    LDY #$00
+0859   8C BC 0D                 STY $0DBC
+085C   58                       CLI
+085D   C8                       INY
+085E   60                       RTS
+085F   20 43 0C                 JSR L0C43
+0862   BD 9C 0D                 LDA $0D9C,X
+0865   29 04                    AND #$04
+0867   D0 03                    BNE L086C
+0869   A0 83                    LDY #$83
+086B   60                       RTS
+086C   EC BD 0D   L086C         CPX $0DBD
+086F   F0 03                    BEQ L0874
+0871   A0 9A                    LDY #$9A
+0873   60                       RTS
+0874   A0 04      L0874         LDY #$04
+0876   A2 06                    LDX #$06
+0878   58         L0878         CLI
+0879   78                       SEI
+087A   20 15 0C                 JSR L0C15
+087D   F0 F9                    BEQ L0878
+087F   A5 2C                    LDA $2C
+0881   48                       PHA
+0882   A5 2D                    LDA $2D
+0884   48                       PHA
+0885   AD AF 0D                 LDA $0DAF
+0888   85 2C                    STA $2C
+088A   AD B0 0D                 LDA $0DB0
+088D   85 2D                    STA $2D
+088F   A0 00                    LDY #$00
+0891   B1 2C                    LDA ($2C),Y
+0893   8D BE 0D                 STA $0DBE
+0896   68                       PLA
+0897   85 2D                    STA $2D
+0899   68                       PLA
+089A   85 2C                    STA $2C
+089C   38                       SEC
+089D   AD B1 0D                 LDA $0DB1
+08A0   E9 01                    SBC #$01
+08A2   8D B1 0D                 STA $0DB1
+08A5   B0 03                    BCS L08AA
+08A7   CE B2 0D                 DEC $0DB2
+08AA   A2 02      L08AA         LDX #$02
+08AC   20 25 0C                 JSR L0C25
+08AF   58                       CLI
+08B0   A6 21                    LDX $21
+08B2   BD A0 0D                 LDA $0DA0,X
+08B5   4A                       LSR A
+08B6   4A                       LSR A
+08B7   29 03                    AND #$03
+08B9   F0 23                    BEQ L08DE
+08BB   C9 03                    CMP #$03
+08BD   F0 1C                    BEQ L08DB
+08BF   A8                       TAY
+08C0   AD BE 0D                 LDA $0DBE
+08C3   20 D2 0B                 JSR L0BD2
+08C6   98                       TYA
+08C7   29 02                    AND #$02
+08C9   F0 0E                    BEQ L08D9
+08CB   90 0E                    BCC L08DB
+08CD   A6 21      L08CD         LDX $21
+08CF   A9 20                    LDA #$20
+08D1   1D 98 0D                 ORA $0D98,X
+08D4   9D 98 0D                 STA $0D98,X
+08D7   D0 02                    BNE L08DB
+08D9   90 F2      L08D9         BCC L08CD
+08DB   20 F0 0B   L08DB         JSR L0BF0
+08DE   A6 21      L08DE         LDX $21
+08E0   BD A0 0D                 LDA $0DA0,X
+08E3   29 30                    AND #$30
+08E5   C9 20                    CMP #$20
+08E7   90 06                    BCC L08EF
+08E9   AD BE 0D                 LDA $0DBE
+08EC   A0 01                    LDY #$01
+08EE   60                       RTS
+08EF   A8         L08EF         TAY
+08F0   20 F0 0B                 JSR L0BF0
+08F3   C9 0D                    CMP #$0D
+08F5   D0 04                    BNE L08FB
+08F7   A9 9B                    LDA #$9B
+08F9   D0 0F                    BNE L090A
+08FB   C0 00      L08FB         CPY #$00
+08FD   F0 0B                    BEQ L090A
+08FF   C9 20                    CMP #$20
+0901   90 04                    BCC L0907
+0903   C9 7D                    CMP #$7D
+0905   90 03                    BCC L090A
+0907   BD A4 0D   L0907         LDA $0DA4,X
+090A   A0 01      L090A         LDY #$01
+090C   60                       RTS
+090D   20 43 0C                 JSR L0C43
+0910   BD 98 0D                 LDA $0D98,X
+0913   8D EA 02                 STA $02EA
+0916   8D BE 0D                 STA $0DBE
+0919   A9 00                    LDA #$00
+091B   9D 98 0D                 STA $0D98,X
+091E   EC BD 0D                 CPX $0DBD
+0921   F0 27                    BEQ L094A
+0923   A9 EA      L0923         LDA #$EA
+0925   8D 04 03                 STA $0304
+0928   A9 02                    LDA #$02
+092A   8D 05 03                 STA $0305
+092D   A9 02                    LDA #$02
+092F   8D 08 03                 STA $0308
+0932   A9 00                    LDA #$00
+0934   8D 09 03                 STA $0309
+0937   A0 40                    LDY #$40
+0939   A9 53                    LDA #$53
+093B   20 5B 0C                 JSR L0C5B
+093E   AD BE 0D                 LDA $0DBE
+0941   0D EA 02                 ORA $02EA
+0944   8D EA 02                 STA $02EA
+0947   C0 00                    CPY #$00
+0949   60                       RTS
+094A   A0 03      L094A         LDY #$03
+094C   B9 B0 0D   L094C         LDA $0DB0,Y
+094F   99 EA 02                 STA $02EA,Y
+0952   88                       DEY
+0953   D0 F7                    BNE L094C
+0955   C8                       INY
+0956   60                       RTS
+0957   20 43 0C                 JSR L0C43
+095A   A5 22                    LDA $22
+095C   29 0F                    AND #$0F
+095E   C9 09                    CMP #$09
+0960   B0 0D                    BCS L096F
+0962   A8                       TAY
+0963   4A                       LSR A
+0964   B0 09                    BCS L096F
+0966   B9 82 0C                 LDA $0C82,Y
+0969   48                       PHA
+096A   B9 81 0C                 LDA $0C81,Y
+096D   48                       PHA
+096E   60                       RTS
+096F   A0 84      L096F         LDY #$84
+0971   60                       RTS
+0972   BD 9C 0D                 LDA $0D9C,X
+0975   30 03                    BMI L097A
+0977   A0 85                    LDY #$85
+0979   60                       RTS
+097A   2C BD 0D   L097A         BIT $0DBD
+097D   70 03                    BVS L0982
+097F   A0 99                    LDY #$99
+0981   60                       RTS
+0982   4A         L0982         LSR A
+0983   B0 03                    BCS L0988
+0985   A0 97                    LDY #$97
+0987   60                       RTS
+0988   4A         L0988         LSR A
+0989   4A                       LSR A
+098A   90 4F                    BCC L09DB
+098C   A5 2A                    LDA $2A
+098E   F0 20                    BEQ L09B0
+0990   A5 28                    LDA $28
+0992   05 29                    ORA $29
+0994   F0 1A                    BEQ L09B0
+0996   18                       CLC
+0997   A5 24                    LDA $24
+0999   8D AB 0D                 STA $0DAB
+099C   65 28                    ADC $28
+099E   8D A9 0D                 STA $0DA9
+09A1   A5 25                    LDA $25
+09A3   8D AC 0D                 STA $0DAC
+09A6   65 29                    ADC $29
+09A8   8D AA 0D                 STA $0DAA
+09AB   90 23                    BCC L09D0
+09AD   A0 98                    LDY #$98
+09AF   60                       RTS
+09B0   20 02 0C   L09B0         JSR L0C02
+09B3   69 91                    ADC #$91
+09B5   8D AB 0D                 STA $0DAB
+09B8   A9 0C                    LDA #$0C
+09BA   69 00                    ADC #$00
+09BC   8D AC 0D                 STA $0DAC
+09BF   18                       CLC
+09C0   AD AB 0D                 LDA $0DAB
+09C3   69 1F                    ADC #$1F
+09C5   8D A9 0D                 STA $0DA9
+09C8   AD AC 0D                 LDA $0DAC
+09CB   69 00                    ADC #$00
+09CD   8D AA 0D                 STA $0DAA
+09D0   A0 06      L09D0         LDY #$06
+09D2   20 36 0C   L09D2         JSR L0C36
+09D5   88                       DEY
+09D6   88                       DEY
+09D7   C0 02                    CPY #$02
+09D9   D0 F7                    BNE L09D2
+09DB   A6 21      L09DB         LDX $21
+09DD   BD 9C 0D                 LDA $0D9C,X
+09E0   29 08                    AND #$08
+09E2   F0 08                    BEQ L09EC
+09E4   A9 00                    LDA #$00
+09E6   9D 94 0D                 STA $0D94,X
+09E9   9D 90 0D                 STA $0D90,X
+09EC   8D 09 03   L09EC         STA $0309
+09EF   A9 B4                    LDA #$B4
+09F1   8D 04 03                 STA $0304
+09F4   A9 0D                    LDA #$0D
+09F6   8D 05 03                 STA $0305
+09F9   BD 9C 0D                 LDA $0D9C,X
+09FC   8D 0A 03                 STA $030A
+09FF   A9 09                    LDA #$09
+0A01   8D 08 03                 STA $0308
+0A04   A0 40                    LDY #$40
+0A06   A9 58                    LDA #$58
+0A08   20 5B 0C                 JSR L0C5B
+0A0B   10 01                    BPL L0A0E
+0A0D   60                       RTS
+0A0E   78         L0A0E         SEI
+0A0F   A9 73                    LDA #$73
+0A11   8D 0F D2                 STA $D20F
+0A14   AD BC 0D                 LDA $0DBC
+0A17   8D 08 D2                 STA $D208
+0A1A   A0 07                    LDY #$07
+0A1C   B9 B4 0D   L0A1C         LDA $0DB4,Y
+0A1F   99 00 D2                 STA $D200,Y
+0A22   88                       DEY
+0A23   10 F7                    BPL L0A1C
+0A25   A2 05                    LDX #$05
+0A27   BD 0A 02   L0A27         LDA $020A,X
+0A2A   9D B4 0D                 STA $0DB4,X
+0A2D   BD 8B 0C                 LDA $0C8B,X
+0A30   9D 0A 02                 STA $020A,X
+0A33   CA                       DEX
+0A34   10 F1                    BPL L0A27
+0A36   AD 16 02                 LDA $0216
+0A39   8D BA 0D                 STA $0DBA
+0A3C   A9 FE                    LDA #$FE
+0A3E   8D 16 02                 STA $0216
+0A41   AD 17 02                 LDA $0217
+0A44   8D BB 0D                 STA $0DBB
+0A47   A9 0A                    LDA #$0A
+0A49   8D 17 02                 STA $0217
+0A4C   A9 00                    LDA #$00
+0A4E   A0 02                    LDY #$02
+0A50   99 B1 0D   L0A50         STA $0DB1,Y
+0A53   88                       DEY
+0A54   10 FA                    BPL L0A50
+0A56   A6 21                    LDX $21
+0A58   BD 9C 0D                 LDA $0D9C,X
+0A5B   29 04                    AND #$04
+0A5D   F0 09                    BEQ L0A68
+0A5F   A5 10                    LDA $10
+0A61   09 20                    ORA #$20
+0A63   8D 0E D2                 STA $D20E
+0A66   85 10                    STA $10
+0A68   8E BD 0D   L0A68         STX $0DBD
+0A6B   8E BC 0D                 STX $0DBC
+0A6E   58                       CLI
+0A6F   D0 36                    BNE L0AA7
+0A71   BD 9C 0D                 LDA $0D9C,X
+0A74   30 03                    BMI L0A79
+0A76   A0 85                    LDY #$85
+0A78   60                       RTS
+0A79   29 08      L0A79         AND #$08
+0A7B   D0 03                    BNE L0A80
+0A7D   A0 87                    LDY #$87
+0A7F   60                       RTS
+0A80   BD 94 0D   L0A80         LDA $0D94,X
+0A83   F0 22                    BEQ L0AA7
+0A85   20 15 08                 JSR L0815
+0A88   D0 1F                    BNE L0AA9
+0A8A   A0 7F                    LDY #$7F
+0A8C   20 DD 0B                 JSR L0BDD
+0A8F   A9 42                    LDA #$42
+0A91   20 4F 0C                 JSR L0C4F
+0A94   D0 13                    BNE L0AA9
+0A96   A9 41                    LDA #$41
+0A98   20 4F 0C                 JSR L0C4F
+0A9B   D0 0C                    BNE L0AA9
+0A9D   A0 80                    LDY #$80
+0A9F   20 DD 0B                 JSR L0BDD
+0AA2   A5 2B                    LDA $2B
+0AA4   9D A4 0D                 STA $0DA4,X
+0AA7   A0 01      L0AA7         LDY #$01
+0AA9   A6 21      L0AA9         LDX $21
+0AAB   BD 9C 0D                 LDA $0D9C,X
+0AAE   85 2A                    STA $2A
+0AB0   C0 00                    CPY #$00
+0AB2   60                       RTS
+0AB3   A9 00                    LDA #$00
+0AB5   A2 00                    LDX #$00
+0AB7   DD 1A 03   L0AB7         CMP $031A,X
+0ABA   F0 08                    BEQ L0AC4
+0ABC   E8                       INX
+0ABD   E8                       INX
+0ABE   E8                       INX
+0ABF   E0 20                    CPX #$20
+0AC1   90 F4                    BCC L0AB7
+0AC3   60                       RTS
+0AC4   A9 52      L0AC4         LDA #$52
+0AC6   8D BD 0D                 STA $0DBD
+0AC9   9D 1A 03                 STA $031A,X
+0ACC   A9 71                    LDA #$71
+0ACE   9D 1B 03                 STA $031B,X
+0AD1   A9 0C                    LDA #$0C
+0AD3   9D 1C 03                 STA $031C,X
+0AD6   18                       CLC
+0AD7   AD E7 02                 LDA $02E7
+0ADA   69 C0                    ADC #$C0
+0ADC   8D E7 02                 STA $02E7
+0ADF   AD E8 02                 LDA $02E8
+0AE2   69 06                    ADC #$06
+0AE4   8D E8 02                 STA $02E8
+0AE7   A2 04                    LDX #$04
+0AE9   A9 00                    LDA #$00
+0AEB   9D 9C 0D   L0AEB         STA $0D9C,X
+0AEE   CA                       DEX
+0AEF   D0 FA                    BNE L0AEB
+0AF1   E8                       INX
+0AF2   20 23 09                 JSR L0923
+0AF5   18                       CLC
+0AF6   A5 08                    LDA $08
+0AF8   D0 01                    BNE L0AFB
+0AFA   60                       RTS
+0AFB   4C 17 08   L0AFB         JMP L0817
+0AFE   2C 0E D2                 BIT $D20E
+0B01   10 03                    BPL L0B06
+0B03   6C BA 0D                 JMP ($0DBA)
+0B06   48         L0B06         PHA
+0B07   A9 7F                    LDA #$7F
+0B09   8D 0E D2                 STA $D20E
+0B0C   A5 10                    LDA $10
+0B0E   8D 0E D2                 STA $D20E
+0B11   68                       PLA
+0B12   40                       RTI
+0B13   D8                       CLD
+0B14   8A                       TXA
+0B15   48                       PHA
+0B16   98                       TYA
+0B17   48                       PHA
+0B18   A5 2C                    LDA $2C
+0B1A   48                       PHA
+0B1B   A5 2D                    LDA $2D
+0B1D   48                       PHA
+0B1E   AD AD 0D                 LDA $0DAD
+0B21   85 2C                    STA $2C
+0B23   AD AE 0D                 LDA $0DAE
+0B26   85 2D                    STA $2D
+0B28   AD 0D D2                 LDA $D20D
+0B2B   A0 00                    LDY #$00
+0B2D   91 2C                    STA ($2C),Y
+0B2F   AD 0F D2                 LDA $D20F
+0B32   8D 0A D2                 STA $D20A
+0B35   49 FF                    EOR #$FF
+0B37   29 C0                    AND #$C0
+0B39   AE BD 0D                 LDX $0DBD
+0B3C   1D 98 0D                 ORA $0D98,X
+0B3F   9D 98 0D                 STA $0D98,X
+0B42   68                       PLA
+0B43   85 2D                    STA $2D
+0B45   68                       PLA
+0B46   85 2C                    STA $2C
+0B48   A2 00                    LDX #$00
+0B4A   20 25 0C                 JSR L0C25
+0B4D   A0 04                    LDY #$04
+0B4F   A2 06                    LDX #$06
+0B51   20 15 0C                 JSR L0C15
+0B54   D0 12                    BNE L0B68
+0B56   A2 02                    LDX #$02
+0B58   20 25 0C                 JSR L0C25
+0B5B   AE BD 0D                 LDX $0DBD
+0B5E   BD 98 0D                 LDA $0D98,X
+0B61   09 10                    ORA #$10
+0B63   9D 98 0D                 STA $0D98,X
+0B66   D0 05                    BNE L0B6D
+0B68   A2 04      L0B68         LDX #$04
+0B6A   20 0C 0C                 JSR L0C0C
+0B6D   68         L0B6D         PLA
+0B6E   A8                       TAY
+0B6F   68                       PLA
+0B70   AA                       TAX
+0B71   68                       PLA
+0B72   40                       RTI
+0B73   D8                       CLD
+0B74   8A                       TXA
+0B75   48                       PHA
+0B76   98                       TYA
+0B77   48                       PHA
+0B78   AE BD 0D                 LDX $0DBD
+0B7B   BD 94 0D                 LDA $0D94,X
+0B7E   DD 90 0D                 CMP $0D90,X
+0B81   D0 0F                    BNE L0B92
+0B83   8E BC 0D                 STX $0DBC
+0B86   A5 10                    LDA $10
+0B88   29 E7                    AND #$E7
+0B8A   85 10                    STA $10
+0B8C   8D 0E D2                 STA $D20E
+0B8F   18                       CLC
+0B90   90 DB                    BCC L0B6D
+0B92   20 02 0C   L0B92         JSR L0C02
+0B95   7D 90 0D                 ADC $0D90,X
+0B98   A8                       TAY
+0B99   B9 11 0D                 LDA $0D11,Y
+0B9C   8D 0D D2                 STA $D20D
+0B9F   BC 90 0D                 LDY $0D90,X
+0BA2   20 F9 0B                 JSR L0BF9
+0BA5   9D 90 0D                 STA $0D90,X
+0BA8   CE B3 0D                 DEC $0DB3
+0BAB   AD 0E D2   L0BAB         LDA $D20E
+0BAE   29 08                    AND #$08
+0BB0   F0 F9                    BEQ L0BAB
+0BB2   D0 B9                    BNE L0B6D
+0BB4   20 02 0C   L0BB4         JSR L0C02
+0BB7   69 11                    ADC #$11
+0BB9   8D 04 03                 STA $0304
+0BBC   A9 00                    LDA #$00
+0BBE   8D 09 03                 STA $0309
+0BC1   69 0D                    ADC #$0D
+0BC3   8D 05 03                 STA $0305
+0BC6   BD 94 0D                 LDA $0D94,X
+0BC9   8D 0A 03                 STA $030A
+0BCC   A9 40                    LDA #$40
+0BCE   8D 08 03                 STA $0308
+0BD1   60                       RTS
+0BD2   A2 00      L0BD2         LDX #$00
+0BD4   4A         L0BD4         LSR A
+0BD5   90 01                    BCC L0BD8
+0BD7   E8                       INX
+0BD8   D0 FA      L0BD8         BNE L0BD4
+0BDA   8A                       TXA
+0BDB   4A                       LSR A
+0BDC   60                       RTS
+0BDD   98         L0BDD         TYA
+0BDE   3D A0 0D                 AND $0DA0,X
+0BE1   9D A0 0D                 STA $0DA0,X
+0BE4   98                       TYA
+0BE5   49 FF                    EOR #$FF
+0BE7   25 2A                    AND $2A
+0BE9   1D A0 0D                 ORA $0DA0,X
+0BEC   9D A0 0D                 STA $0DA0,X
+0BEF   60                       RTS
+0BF0   AD BE 0D   L0BF0         LDA $0DBE
+0BF3   29 7F                    AND #$7F
+0BF5   8D BE 0D                 STA $0DBE
+0BF8   60                       RTS
+0BF9   C8         L0BF9         INY
+0BFA   98                       TYA
+0BFB   C9 20                    CMP #$20
+0BFD   90 02                    BCC L0C01
+0BFF   A9 00                    LDA #$00
+0C01   60         L0C01         RTS
+0C02   8A         L0C02         TXA
+0C03   38                       SEC
+0C04   E9 01                    SBC #$01
+0C06   0A                       ASL A
+0C07   0A                       ASL A
+0C08   0A                       ASL A
+0C09   0A                       ASL A
+0C0A   0A                       ASL A
+0C0B   60                       RTS
+0C0C   FE AD 0D   L0C0C         INC $0DAD,X
+0C0F   D0 03                    BNE L0C14
+0C11   FE AE 0D                 INC $0DAE,X
+0C14   60         L0C14         RTS
+0C15   B9 AA 0D   L0C15         LDA $0DAA,Y
+0C18   DD AA 0D                 CMP $0DAA,X
+0C1B   F0 01                    BEQ L0C1E
+0C1D   60                       RTS
+0C1E   B9 A9 0D   L0C1E         LDA $0DA9,Y
+0C21   DD A9 0D                 CMP $0DA9,X
+0C24   60                       RTS
+0C25   20 0C 0C   L0C25         JSR L0C0C
+0C28   8A                       TXA
+0C29   18                       CLC
+0C2A   69 04                    ADC #$04
+0C2C   A8                       TAY
+0C2D   A2 00                    LDX #$00
+0C2F   20 15 0C                 JSR L0C15
+0C32   F0 0E                    BEQ L0C42
+0C34   90 0C                    BCC L0C42
+0C36   AD AB 0D   L0C36         LDA $0DAB
+0C39   99 A9 0D                 STA $0DA9,Y
+0C3C   AD AC 0D                 LDA $0DAC
+0C3F   99 AA 0D                 STA $0DAA,Y
+0C42   60         L0C42         RTS
+0C43   A6 21      L0C43         LDX $21
+0C45   E0 05                    CPX #$05
+0C47   B0 01                    BCS L0C4A
+0C49   60                       RTS
+0C4A   68         L0C4A         PLA
+0C4B   68                       PLA
+0C4C   A0 82                    LDY #$82
+0C4E   60                       RTS
+0C4F   A4 2A      L0C4F         LDY $2A
+0C51   8C 0A 03                 STY $030A
+0C54   A4 2B                    LDY $2B
+0C56   8C 0B 03                 STY $030B
+0C59   A0 00                    LDY #$00
+0C5B   8D 02 03   L0C5B         STA $0302
+0C5E   8E 01 03                 STX $0301
+0C61   8C 03 03                 STY $0303
+0C64   A0 50                    LDY #$50
+0C66   8C 00 03                 STY $0300
+0C69   A0 08                    LDY #$08
+0C6B   8C 06 03                 STY $0306
+0C6E   4C 59 E4                 JMP $E459
+0C71   FF                       ???               ;%11111111
+0C72   06 25                    ASL $25
+0C74   07                       ???               ;%00000111
+0C75   5E 08 6D                 LSR $6D08,X
+0C78   07                       ???               ;%00000111
+0C79   0C                       ???               ;%00001100
+0C7A   09 56                    ORA #$56
+0C7C   09 4C                    ORA #$4C
+0C7E   B3                       ???               ;%10110011
+0C7F   0A                       ASL A
+0C80   00                       BRK
+0C81   70 0A                    BVS L0C8D
+0C83   95 0A                    STA $0A,X
+0C85   89                       ???               ;%10001001
+0C86   0A                       ASL A
+0C87   9C                       ???               ;%10011100
+0C88   0A                       ASL A
+0C89   71 09                    ADC ($09),Y
+0C8B   13                       ???               ;%00010011
+0C8C   0B                       ???               ;%00001011
+0C8D   73         L0C8D         ???               ;%01110011 's'
+0C8E   0B                       ???               ;%00001011
+0C8F   73                       ???               ;%01110011 's'
+0C90   0B                       ???               ;%00001011
+0C91   00                       BRK
+                                .END
+
+;auto-generated symbols and labels
+ L0C43        $0C43
+ L070B        $070B
+ L0715        $0715
+ L073A        $073A
+ L075F        $075F
+ L0BB4        $0BB4
+ L0764        $0764
+ L074E        $074E
+ L0C5B        $0C5B
+ L0778        $0778
+ L0785        $0785
+ L0795        $0795
+ L07CB        $07CB
+ L07B5        $07B5
+ L07B1        $07B1
+ L07C8        $07C8
+ L07AB        $07AB
+ L07BD        $07BD
+ L07C5        $07C5
+ L07F0        $07F0
+ L07E4        $07E4
+ L0BF0        $0BF0
+ L0BD2        $0BD2
+ L07EE        $07EE
+ L0824        $0824
+ L0C02        $0C02
+ L0815        $0815
+ L0BF9        $0BF9
+ L0850        $0850
+ L0852        $0852
+ L086C        $086C
+ L0874        $0874
+ L0C15        $0C15
+ L0878        $0878
+ L08AA        $08AA
+ L0C25        $0C25
+ L08DE        $08DE
+ L08DB        $08DB
+ L08D9        $08D9
+ L08CD        $08CD
+ L08EF        $08EF
+ L08FB        $08FB
+ L090A        $090A
+ L0907        $0907
+ L094A        $094A
+ L094C        $094C
+ L096F        $096F
+ L097A        $097A
+ L0982        $0982
+ L0988        $0988
+ L09DB        $09DB
+ L09B0        $09B0
+ L09D0        $09D0
+ L0C36        $0C36
+ L09D2        $09D2
+ L09EC        $09EC
+ L0A0E        $0A0E
+ L0A1C        $0A1C
+ L0A27        $0A27
+ L0A50        $0A50
+ L0A68        $0A68
+ L0AA7        $0AA7
+ L0A79        $0A79
+ L0A80        $0A80
+ L0AA9        $0AA9
+ L0BDD        $0BDD
+ L0C4F        $0C4F
+ L0AC4        $0AC4
+ L0AB7        $0AB7
+ L0AEB        $0AEB
+ L0923        $0923
+ L0AFB        $0AFB
+ L0817        $0817
+ L0B06        $0B06
+ L0B68        $0B68
+ L0B6D        $0B6D
+ L0C0C        $0C0C
+ L0B92        $0B92
+ L0BAB        $0BAB
+ L0BD8        $0BD8
+ L0BD4        $0BD4
+ L0C01        $0C01
+ L0C14        $0C14
+ L0C1E        $0C1E
+ L0C42        $0C42
+ L0C4A        $0C4A
+ L0C8D        $0C8D

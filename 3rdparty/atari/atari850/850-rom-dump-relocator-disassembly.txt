@@ -1,0 +1,197 @@
+                                * = $0506
+0506   A9 50                    LDA #$50
+0508   8D 00 03                 STA $0300
+050B   AD E7 02                 LDA $02E7
+050E   8D 04 03                 STA $0304
+0511   AD E8 02                 LDA $02E8
+0514   8D 05 03                 STA $0305
+0517   A9 91                    LDA #$91
+0519   8D 08 03                 STA $0308
+051C   A9 05                    LDA #$05
+051E   8D 09 03                 STA $0309
+0521   8D 06 03                 STA $0306
+0524   A9 01                    LDA #$01
+0526   8D 01 03                 STA $0301
+0529   A9 40                    LDA #$40
+052B   8D 03 03                 STA $0303
+052E   A9 26                    LDA #$26
+0530   8D 02 03                 STA $0302
+0533   20 59 E4                 JSR $E459
+0536   10 02                    BPL L053A
+0538   38                       SEC
+0539   60                       RTS
+053A   A2 84      L053A         LDX #$84
+053C   18         L053C         CLC
+053D   BD A7 05                 LDA $05A7,X
+0540   6D E7 02                 ADC $02E7
+0543   9D A7 05                 STA $05A7,X
+0546   BD A8 05                 LDA $05A8,X
+0549   6D E8 02                 ADC $02E8
+054C   9D A8 05                 STA $05A8,X
+054F   CA                       DEX
+0550   CA                       DEX
+0551   D0 E9                    BNE L053C
+0553   A0 00                    LDY #$00
+0555   8C 55 06                 STY $0655
+0558   20 40 06                 JSR L0640
+055B   B1 80      L055B         LDA ($80),Y
+055D   AA                       TAX
+055E   C8                       INY
+055F   B1 80                    LDA ($80),Y
+0561   48                       PHA
+0562   BD B2 05                 LDA $05B2,X
+0565   91 80                    STA ($80),Y
+0567   88                       DEY
+0568   BD B1 05                 LDA $05B1,X
+056B   91 80                    STA ($80),Y
+056D   68                       PLA
+056E   20 2D 06                 JSR L062D
+0571   D0 E8                    BNE L055B
+0573   A2 02                    LDX #$02
+0575   20 40 06                 JSR L0640
+0578   B1 80      L0578         LDA ($80),Y
+057A   AA                       TAX
+057B   BD B1 05                 LDA $05B1,X
+057E   91 80                    STA ($80),Y
+0580   AE 55 06                 LDX $0655
+0583   EE 55 06                 INC $0655
+0586   BD 4B 06                 LDA $064B,X
+0589   20 2D 06                 JSR L062D
+058C   D0 EA                    BNE L0578
+058E   A2 04                    LDX #$04
+0590   20 40 06                 JSR L0640
+0593   A5 0C                    LDA $0C
+0595   91 80                    STA ($80),Y
+0597   C8                       INY
+0598   A5 0D                    LDA $0D
+059A   91 80                    STA ($80),Y
+059C   AD 27 06                 LDA L0627
+059F   85 0C                    STA $0C
+05A1   AD 28 06                 LDA $0628
+05A4   85 0D                    STA $0D
+05A6   A2 0C                    LDX #$0C
+05A8   4C E9 0A                 JMP $0AE9
+05AB   0D BB 0D                 ORA $0DBB
+05AE   B4 0D                    LDY $0D,X
+05B0   B3                       ???               ;%10110011
+05B1   0D 5B 0C                 ORA $0C5B
+05B4   BE 0D A0                 LDX $A00D,Y
+05B7   0D C8 07                 ORA $07C8
+05BA   F0 0B                    BEQ L05C7
+05BC   D2                       ???               ;%11010010
+05BD   0B                       ???               ;%00001011
+05BE   02                       ???               ;%00000010
+05BF   0C                       ???               ;%00001100
+05C0   11 0D                    ORA ($0D),Y
+05C2   F9 0B 15                 SBC $150B,Y
+05C5   0C                       ???               ;%00001100
+05C6   AF                       ???               ;%10101111
+05C7   0D B0 0D   L05C7         ORA $0DB0
+05CA   B1 0D                    LDA ($0D),Y
+05CC   B2                       ???               ;%10110010
+05CD   0D 25 0C                 ORA $0C25
+05D0   A4 0D                    LDY $0D
+05D2   B0 0D                    BCS L05E1
+05D4   82                       ???               ;%10000010
+05D5   0C                       ???               ;%00001100
+05D6   81 0C                    STA ($0C,X)
+05D8   AB                       ???               ;%10101011
+05D9   0D A9 0D                 ORA $0DA9
+05DC   AC 0D AA                 LDY $AA0D
+05DF   0D 36 0C                 ORA $0C36
+05E2   90 0D                    BCC L05F1
+05E4   BC 0D 8B                 LDY $8B0D,X
+05E7   0C                       ???               ;%00001100
+05E8   15 0B                    ORA $0B,X
+05EA   DD 0B 4F                 CMP $4F0B,X
+05ED   0C                       ???               ;%00001100
+05EE   23                       ???               ;%00100011 '#'
+05EF   09 71                    ORA #$71
+05F1   0C         L05F1         ???               ;%00001100
+05F2   13                       ???               ;%00010011
+05F3   0B                       ???               ;%00001011
+05F4   AD 0D AE                 LDA $AE0D
+05F7   0D 0C 0C                 ORA $0C0C
+05FA   FF                       ???               ;%11111111
+05FB   06 25                    ASL $25
+05FD   07                       ???               ;%00000111
+05FE   5E 08 6D                 LSR $6D08,X
+0601   07                       ???               ;%00000111
+0602   0C                       ???               ;%00001100
+0603   09 56                    ORA #$56
+0605   09 70                    ORA #$70
+0607   0A                       ASL A
+0608   95 0A                    STA $0A,X
+060A   89                       ???               ;%10001001
+060B   0A                       ASL A
+060C   9C                       ???               ;%10011100
+060D   0A                       ASL A
+060E   71 09                    ADC ($09),Y
+0610   73                       ???               ;%01110011 's'
+0611   0B                       ???               ;%00001011
+0612   B3                       ???               ;%10110011
+0613   0A                       ASL A
+0614   91 0C                    STA ($0C),Y
+0616   FE 0A 8D                 INC $8D0A,X
+0619   56 06                    LSR $06,X
+061B   38                       SEC
+061C   A5 80                    LDA $80
+061E   ED 56 06                 SBC $0656
+0621   85 80                    STA $80
+0623   B0 02                    BCS L0627
+0625   C6 81                    DEC $81
+0627   AD 56 06   L0627         LDA $0656
+062A   60                       RTS
+062B   BD AB 05                 LDA $05AB,X
+062E   85 80                    STA $80
+0630   BD AC 05                 LDA $05AC,X
+0633   85 81                    STA $81
+0635   60                       RTS
+0636   0A                       ASL A
+0637   E6 05                    INC $05
+0639   85 0B                    STA $0B
+063B   48                       PHA
+063C   05 37                    ORA $37
+063E   05 00                    ORA $00
+0640   0A         L0640         ASL A
+0641   00                       BRK
+0642   00                       BRK
+0643   00                       BRK
+0644   00                       BRK
+0645   00                       BRK
+0646   00                       BRK
+0647   00                       BRK
+0648   00                       BRK
+0649   00                       BRK
+064A   00                       BRK
+064B   50 01                    BVC L064E
+064D   21 40                    AND ($40,X)
+064F   00                       BRK
+0650   05 02                    ORA $02
+0652   00                       BRK
+0653   55 01                    EOR $01,X
+0655   00                       BRK
+0656   00                       BRK
+0657   00                       BRK
+0658   00                       BRK
+0659   00                       BRK
+065A   00                       BRK
+065B   00                       BRK
+065C   00                       BRK
+065D   00                       BRK
+065E   00                       BRK
+065F   00                       BRK
+                                .END
+
+;auto-generated symbols and labels
+ L053A        $053A
+ L053C        $053C
+ L0640        $0640
+ L062D        $062D
+ L055B        $055B
+ L0578        $0578
+ L05C7        $05C7
+ L05E1        $05E1
+ L05F1        $05F1
+ L0627        $0627
+ L064E        $064E

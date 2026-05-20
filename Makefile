@@ -29,7 +29,9 @@ ATARI_3RDPARTY  = $(3RDPARTYDIR)/atari
 ATARI_CFG       = $(SRCDIR)/atari/config/atari-asm-xex-release.cfg
 ATARI_CFG_DBG   = $(SRCDIR)/atari/config/atari-asm-xex-debug.cfg
 ATARI_SRCS      = atari-main.s \
-		  boot850.s
+		  boot850.s \
+		  atari-utils.s \
+		  atari-wozmon.s
 
 ATARI_BLDDIR   = $(BLDDIR)/atari/release
 ATARI_ATR_DIR  = $(ATARI_BLDDIR)/atr
@@ -69,27 +71,20 @@ $(ATARI_XEX_DBG): $(ATARI_OBJS_DBG)
 
 $(ATARI_ATR): $(ATARI_XEX) | $(ATARI_ATR_DIR)
         #Dos20 version
-	#cp $(ATARI_XEX) $(ATARI_ATR_DIR)/autorun.sys
+	##cp $(ATARI_XEX) $(ATARI_ATR_DIR)/autorun.sys
+	#cp $(ATARI_XEX) $(ATARI_ATR_DIR)
 	#cp $(ATARI_3RDPARTY)/dos20/dos.sys $(ATARI_ATR_DIR)
+	#cp $(ATARI_3RDPARTY)/dos20/dup.sys $(ATARI_ATR_DIR)
 	#dir2atr -S -b Dos20 $@ $(ATARI_ATR_DIR)
-        #PicoDos version
 
+        #PicoDos version
 	cp $(ATARI_XEX) $(ATARI_ATR_DIR)/autorun.sys
-	#cp $(ATARI_3RDPARTY)/dos20/dos.sys $(ATARI_ATR_DIR)
-	#dir2atr -S -b Dos20 $@ $(ATARI_ATR_DIR)
 	dir2atr -S -a -b MyPicoDos406N $@ $(ATARI_ATR_DIR)
 
 $(ATARI_ATR_DBG): $(ATARI_XEX_DBG) | $(ATARI_ATR_DIR_DBG)
-	#cat $(ATARI_3RDPARTY)/bug65.com $(ATARI_XEX_DBG) > $(ATARI_ATR_DIR_DBG)/autorun.sys
-	#dir2atr -S -b Dos20 $@ $(ATARI_ATR_DIR_DBG)
-	#cat $(ATARI_3RDPARTY)/bug65.com $(ATARI_XEX_DBG) > $(ATARI_ATR_DIR_DBG)/autorun.sys
-	#cat $(ATARI_XEX_DBG) $(ATARI_3RDPARTY)/bug65.com > $(ATARI_ATR_DIR_DBG)/autorun.sys
-	#cp $(ATARI_3RDPARTY)/bug65.com $(ATARI_ATR_DIR_DBG)
+        #PicoDos version
 	cp $(ATARI_XEX_DBG) $(ATARI_ATR_DIR_DBG)/autorun.sys
-	#dir2atr -S -a -b MyPicoDos406N $@ $(ATARI_ATR_DIR_DBG)
-	cp $(ATARI_3RDPARTY)/dos20/dos.sys $(ATARI_ATR_DIR_DBG)
-	cp $(ATARI_3RDPARTY)/dos20/dup.sys $(ATARI_ATR_DIR_DBG)
-	dir2atr -S -b Dos20 $@ $(ATARI_ATR_DIR_DBG)
+	dir2atr -S -a -b MyPicoDos406N $@ $(ATARI_ATR_DIR_DBG)
 
 run-atari: $(ATARI_ATR)
 	atari800 -atari -nobasic -rdevice $(ATARI_ATR)
