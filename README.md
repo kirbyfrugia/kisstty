@@ -14,32 +14,36 @@ My goal with this is to make it work for both a real Atari 850 and with emulator
 
 ## Atari 850 bootstrapping
 
-I had to spend a good deal of time debugging the Atari 850 R: handler bootstrapping process. Challenges:
-* Figuring out how it works at all. I'm new to this stuff. Side note: this was fun.
-* Making sure it works with MyPicoDos which doesn't do a lot of the things Dos20 does for you. But it's lighter weight.
-* Dealing with conflicts with the SIO2PC.
-
 My implementation was based off of what is described in the Altirra Hardware Reference Manual (pages 251 to 252). It basically works like this:
-1. Poll $3f to $50 (Atari 850)
+1. Send poll command ($3f) to Atari 850 ($50)
 2. Grab the response and shove it into the DCB. Call SIOV.
 3. Call $0506 to load, relocate, and intialize the handler at MEMLO.
 
-But it wasn't working for me. At least, I wasn't seeing the R: handler loaded in HATABS. So I did a dump of both the relocator and the handler, which you can find in the 3rdparty/atari/atari850 directory. Sadly, this was just a process of me writing the bytes to the screen, taking a photo of the screen, and then using OCR to grab all the bytes.
+But it wasn't working for me. At least, I wasn't seeing the R: handler loaded in HATABS. So I did a dump of both the relocator and the handler, which you can find in the 3rdparty/atari/atari850 directory.
 
 I was getting valid responses to each of the commands. I could see that Step 2 was sending command $21 (load) then $26 (load peripheral handler) then $53 (status) which seemed to map nicely to what was supposed to happen according to the Altirra docs. However, the R: handler was not showing up in HATABS.
 
-I searched the code for any pointers to `$031a` (HATABS). There was a loop in the code that looked for an empty slot in HATABS. Nothing else in the code seemed to be calling that from the loader or the handler. There's an RTS above it, so it's unreachable unless something branches to it or jumps to it. So I just made a call directly to the code at `$0ab3` after the bootstrapping sequence. It worked and the R: device showed up in HATABS. It was surprising, but it seemed to work.
+I searched the code for any pointers to `$031a` (HATABS). There was a loop in the code that looked for an empty slot in HATABS. Nothing else in the code seemed to be calling that from the loader or the handler. So I just made a call directly to the code at `$0ab3` after the bootstrapping sequence. It worked and the R: device showed up in HATABS. It was surprising, but it seemed to work.
 
-Where it might fail:
-* This was built using a rom dump from my actual 850. According to the Altirra manual, there are different ROM revisions. Luckily mine is the common one. My code should work on all revisions for the most part, with the exception that I hard-coded the call to load HATABS with the R: handler after it was loaded (`jsr $0ab3`). It's calling directly into a routine that exists at a known location in my ROM revision. Yours *might* differ but I have no way of knowing.
+Where it still might fail:
+* This was built to work with a rom dump from my actual 850. According to the Altirra manual, there are different ROM revisions. I think mine is the common one. My code should work on all revisions for the most part, with the exception that I hard-coded the call to load HATABS with the R: handler after it was loaded (`jsr $0ab3`). It's calling directly into a routine that exists at a known location in my ROM revision. Yours *might* differ but I have no way of knowing.
 * I have two SIO2PCs. One of them seems to have a conflict with the Atari 850 when trying to bootstrap the R: handler. I never figured out why, but maybe one of them was driving the bus weirdly. If you have one of these, try booting up using it. Then unplug it before trying to load the R: handler.
 
 ## Debugging
 
+I ported [AtariWozmon](https://github.com/fredlcore/AtariWozMon) to ca65 syntax. To use:
+```sh
+make clean && make atari-debug
+make run-debug # to run in the atari800 emulator (or run it from your actual atari)
+
+# You'll land in wozmon. You can execute the main app by:
+4000R
+
+```
+
 ## Resources:
 * [Altirra Hardware Reference Manual](https://www.virtualdub.org/downloads/Altirra%20Hardware%20Reference%20Manual.pdf) - very helpful regarding the Atari 850 bootstrapping process and serial comms.
 * [Assembly Language Programming for the Atari Computers](https://www.atariarchives.org/alp/index.php)
-* [De Re Atari](https://www.atariarchives.org/dere/)
 
 # Use of open source
 

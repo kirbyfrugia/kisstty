@@ -70,14 +70,6 @@ $(ATARI_XEX_DBG): $(ATARI_OBJS_DBG)
 	$(LD65) -vm -Ln $(ATARI_VICE_SYM_DBG) -C $(ATARI_CFG_DBG) -m $(ATARI_MAP_DBG) -o $@ $^
 
 $(ATARI_ATR): $(ATARI_XEX) | $(ATARI_ATR_DIR)
-        #Dos20 version
-	##cp $(ATARI_XEX) $(ATARI_ATR_DIR)/autorun.sys
-	#cp $(ATARI_XEX) $(ATARI_ATR_DIR)
-	#cp $(ATARI_3RDPARTY)/dos20/dos.sys $(ATARI_ATR_DIR)
-	#cp $(ATARI_3RDPARTY)/dos20/dup.sys $(ATARI_ATR_DIR)
-	#dir2atr -S -b Dos20 $@ $(ATARI_ATR_DIR)
-
-        #PicoDos version
 	cp $(ATARI_XEX) $(ATARI_ATR_DIR)/autorun.sys
 	dir2atr -S -a -b MyPicoDos406N $@ $(ATARI_ATR_DIR)
 
