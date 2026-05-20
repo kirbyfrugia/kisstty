@@ -29,16 +29,38 @@ Where it still might fail:
 * This was built to work with a rom dump from my actual 850. According to the Altirra manual, there are different ROM revisions. I think mine is the common one. My code should work on all revisions for the most part, with the exception that I hard-coded the call to load HATABS with the R: handler after it was loaded (`jsr $0ab3`). It's calling directly into a routine that exists at a known location in my ROM revision. Yours *might* differ but I have no way of knowing.
 * I have two SIO2PCs. One of them seems to have a conflict with the Atari 850 when trying to bootstrap the R: handler. I never figured out why, but maybe one of them was driving the bus weirdly. If you have one of these, try booting up using it. Then unplug it before trying to load the R: handler.
 
+## Building
+
+```sh
+# release
+make atari
+# debug
+make atari-debug
+```
+This will create an xex file and an atr file in `build/atari/<dist>`. You can run via an emulator or use the atr as a disk for your real Atari 800.
+
+## Running
+
+```sh
+make clean && make atari
+make run-atari # if you want to run it in an emulator
+```
+
 ## Debugging
 
 I ported [AtariWozmon](https://github.com/fredlcore/AtariWozMon) to ca65 syntax. To use:
 ```sh
 make clean && make atari-debug
-make run-debug # to run in the atari800 emulator (or run it from your actual atari)
+make debug-atari # if you want to run it an emulator
 
 # You'll land in wozmon. You can execute the main app by:
 4000R
 
+# To re-enter wozmon on brk, simply add brk to your code, e.g.
+lda #10
+brk     ; re-enters wozmon
+
+# You can return to the debugger from the app by entering `M` for now at least.
 ```
 
 ## Resources:

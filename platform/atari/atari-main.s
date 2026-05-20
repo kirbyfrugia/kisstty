@@ -20,6 +20,14 @@ WOZMON = $9800
 
 .EXPORT start
 start:
+.ifdef DEBUG
+  lda #<wozmon_main
+  sta $0206
+  lda #>wozmon_main
+  sta $0207
+  cli ; for brk to work
+.endif
+
   jsr boot850_check
   bcc @rhandler_loaded
 @bootstrap850:

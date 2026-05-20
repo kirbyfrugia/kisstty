@@ -151,6 +151,7 @@ wozmon_msg2_end:
 .EXPORT wozmon_main
 
 wozmon_main:
+  cli                           ; re-enable IRQs so that we can have brk work
   cld                           ; clear decimal arithmetic mode
   lda #'\'
   jsr wozmon_echo
