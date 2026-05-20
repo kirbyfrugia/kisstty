@@ -55,6 +55,8 @@ make debug-atari # if you want to run it an emulator
 
 # You'll land in wozmon. You can execute the main app by:
 4000R
+...or...
+X
 
 # To re-enter wozmon on brk, simply add brk to your code, e.g.
 lda #10

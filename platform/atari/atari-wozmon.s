@@ -117,6 +117,7 @@ wozmon_msg1:
   .byte $9b
   .byte "WOZMON BY STEVE WOZNIAK 1976", $9b
   .byte "ATARI PORT BY FREDERIK HOLST", $9b
+  .byte "THIS PORT BY KIRBY FRUGIA", $9b
   .byte "FOR ASC 2023", $9b, $9b
 wozmon_msg1_end:
 
@@ -133,7 +134,7 @@ wozmon_msg2:
   invstr "A:B"
   .byte $9b
   .byte " WRITE B TO ADDRESS A", $9b
-  invstr "A R"
+  invstr "AR"
   .byte " RUN FROM ADDRESS A", $9b
   invstr "X"
   .byte " EXIT", $9b, $9b
@@ -196,7 +197,7 @@ wozmon_nextitem:
   beq wozmon_run                ; run user program
   cmp #'X'+$80                  ; X?
   bne wozmon_cont               ; no, then continue
-  rts                           ; exit WozMon
+  jmp $4000
 
 wozmon_cont:
   stx L                         ; 0 -> L
