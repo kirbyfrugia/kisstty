@@ -13,7 +13,6 @@
 ;
 ; Entry point: wozmon_main (exported)
 ; runad should point to wozmon_main in debug linker config.
-; Call with X=0 (IOCB 0, E: device already open).
 ;
 ; Usage:
 ;
@@ -52,9 +51,9 @@
 ; A800: A9 03 8D 00 A9 00 00 00
 ;
 ; Jump to a memory location and execute from there (no return):
-; 179F R
+; 179FR
 ;
-; Exit WozMon:
+; Exit WozMon (jmp to main app at $4000):
 ; X
 
 .SETCPU "6502"
