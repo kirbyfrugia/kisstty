@@ -1,5 +1,5 @@
 .SETCPU "6502"
-.INCLUDE "atari.inc"
+.INCLUDE "atari.inc" ; /usr/share/cc65/asminc/atari.inc
 .INCLUDE "macros.inc"
 
 MAX_INPUT_LEN = 114
@@ -173,30 +173,48 @@ cmd_close:
 ;@done:
 ;  rts
 
+; TODO: move some macros to jsr to save bytes
 cmd_talk:
   ldx #RS232_CHANNEL
   jsr rs232_status
+  bcs @error_status
   lda rs232_input_buffer_size+1
   bne @read
   lda rs232_input_buffer_size
-  beq @write
+  bne @read
+  jmp @done
 @read:
+  ldx #RS232_CHANNEL
   jsr rs232_getchr
-  bcs @error
+  bcc @read_success
+  jmp @error_getchr
+@read_success:
   sta output_buf
   print_str output_buf
-@write:
+@echo:
   lda output_buf
+  ; TODO: just have an init so that we don't have to remember to set this
+  ldx #RS232_CHANNEL
   jsr rs232_putchr
-  bcs @error
+  bcs @error_putchr
   jmp @done
-@error:
+@error_status:
   sty command_error
-  print_bytes str_error, str_error_end
+  print_bytes str_error_status, str_error_status_end
+  jmp @error
+@error_getchr:
+  sty command_error
+  print_bytes str_error_getchr, str_error_getchr_end
+  jmp @error
+@error_putchr:
+  sty command_error
+  print_bytes str_error_putchr, str_error_putchr_end
+@error:
   ldy #0
   lda command_error
   jsr utils_hex_to_str
   print_str utils_hex_str
+  rts
 @done:
   jmp cmd_talk
 
@@ -219,6 +237,15 @@ str_success: .byte "Success", $9b
 str_error:
   .byte "Error: "
 str_error_end:
+str_error_status:
+  .byte "Error on status: "
+str_error_status_end:
+str_error_getchr:
+  .byte "Error on getchr: "
+str_error_getchr_end:
+str_error_putchr:
+  .byte "Error on putchr: "
+str_error_putchr_end:
 
 user_input_buf: .res 256
 output_buf: .byte $9b,$9b

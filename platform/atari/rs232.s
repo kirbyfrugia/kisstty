@@ -36,12 +36,11 @@ rs232_open:
   sta ICCOM,x
   jsr CIOV
 
-  ; configure settings
+  ; set control lines
   ldx rs232_iocb
-  lda #$24
+  lda #CMD_CONTROL_LINES
   sta ICCOM,x
-  lda #RS232_BAUD::B1200
-  ora #RS232_STOPBITS::N1
+  lda #RS232_CONTROL_DTR::OFF | RS232_CONTROL_RTS::OFF | RS232_CONTROL_XMT::MARK
   sta ICAX1,x
   lda #0
   sta ICAX2,x
@@ -52,14 +51,38 @@ rs232_open:
   ldx rs232_iocb
   lda #OPEN
   sta ICCOM,x
-  lda #13        ; concurrent read and write
+  lda #$0d ; read, write, concurrent
   sta ICAX1,x
+  lda #$00
+  sta ICAX2,x
+  jsr CIOV
+  bmi @error
+
+  ; configure settings
+  ldx rs232_iocb
+  lda #CMD_BAUD_STOPBITS_READY
+  sta ICCOM,x
+  lda #RS232_BAUD::B1200
+  ora #RS232_STOPBITS::N1
+  sta ICAX1,x
+  lda #$00
+  sta ICAX2,x
+  jsr CIOV
+  bmi @error
+
+  ldx rs232_iocb
+  lda #CMD_TRANSLATION_PARITY
+  sta ICCOM,x
+  lda #RS232_TRANSLATION::NONE | RS232_PARITY_INPUT::IGNORE_NO_CHANGE | RS232_PARITY_OUTPUT::NOCHANGE | RS232_LINE_FEED::NO_APPEND_LF
+  sta ICAX1,x
+  lda #0
+  sta ICAX2,x
   jsr CIOV
   bmi @error
 
   ; start concurrent mode
   ldx rs232_iocb
-  lda #$28 
+  lda #CMD_CONCURRENCY_MODE 
   sta ICCOM,x
   lda #<write_buf
   sta ICBAL,x
@@ -67,8 +90,12 @@ rs232_open:
   sta ICBAH,x
   lda #<WRITE_BUF_LEN
   sta ICBLL,x
-  lda #<WRITE_BUF_LEN
+  lda #>WRITE_BUF_LEN
   sta ICBLH,x
+  lda #$0c ; concurrent mode
+  sta ICAX1,x
+  lda #$00
+  sta ICAX2,x
   jsr CIOV
   bmi @error
 @opened:
@@ -83,12 +110,12 @@ rs232_open:
 ;747 and 748 and the number in the output buffer in 749.
 rs232_status:
   ldx rs232_iocb
-  lda #STATUS
+  lda #STATIS ; CIO status
   sta ICCOM,x
-  lda #0
-  sta ICAX1,x
-  lda #0
-  sta ICAX2,x
+;  lda #0
+;  sta ICAX1,x
+;  lda #0
+;  sta ICAX2,x
   jsr CIOV
   bmi @error
   
@@ -111,10 +138,12 @@ rs232_status:
 
 rs232_getchr:
   ldx rs232_iocb
-  ; TODO: I think we're lucky this stores the value
-  ;       in the accumulator. Grab somewhere better.
   lda #GETCHR
   sta ICCOM,x
+  lda #1
+  sta ICBLL,x
+  lda #0
+  sta ICBLH,x
   jsr CIOV
   bmi @error
   clc
@@ -128,16 +157,16 @@ rs232_putchr:
   ldx rs232_iocb
   lda #PUTCHR
   sta ICCOM,x
-  lda rs232_output_char
-  lda #<rs232_output_char
-  sta ICBAL,x
-  lda #>rs232_output_char
-  sta ICBAH,x
-  lda #1
-  sta ICBLL,x
-  lda #0
-  sta ICBLH,x
+;  lda #<rs232_output_char
+;  sta ICBAL,x
+;  lda #>rs232_output_char
+;  sta ICBAH,x
+;  lda #1
+;  sta ICBLL,x
+;  lda #0
+;  sta ICBLH,x
  
+  lda rs232_output_char
   jsr CIOV
   bmi @error
   clc
@@ -192,7 +221,7 @@ rs232_iocb: .byte 48
 sample_msg: .byte "Hello, world!",$9b
 sample_msg_end:
 
-rs232_output_char: .byte 0
+rs232_output_char: .byte 0,$9b
 rs232_last_status: .byte 0
 rs232_input_buffer_size: .byte 0, 0
 rs232_output_buffer_size: .byte 0
