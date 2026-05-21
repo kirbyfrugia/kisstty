@@ -142,7 +142,6 @@ cmd_open:
   rts
 
 cmd_close:
-  ldx #RS232_CHANNEL
   jsr rs232_close
   bcs @error
   print_str str_success
@@ -157,25 +156,8 @@ cmd_close:
 @done:
   rts
 
-;cmd_write:
-;  ldx #RS232_CHANNEL
-;  jsr rs232_write
-;  bcs @error
-;  print_str str_success
-;  jmp @done
-;@error:
-;  sty command_error
-;  print_bytes str_error, str_error_end
-;  ldy #0
-;  lda command_error
-;  jsr utils_hex_to_str
-;  print_str utils_hex_str
-;@done:
-;  rts
-
 ; TODO: move some macros to jsr to save bytes
 cmd_talk:
-  ldx #RS232_CHANNEL
   jsr rs232_status
   bcs @error_status
   lda rs232_input_buffer_size+1
@@ -184,7 +166,6 @@ cmd_talk:
   bne @read
   jmp @done
 @read:
-  ldx #RS232_CHANNEL
   jsr rs232_getchr
   bcc @read_success
   jmp @error_getchr
@@ -193,8 +174,6 @@ cmd_talk:
   print_str output_buf
 @echo:
   lda output_buf
-  ; TODO: just have an init so that we don't have to remember to set this
-  ldx #RS232_CHANNEL
   jsr rs232_putchr
   bcs @error_putchr
   jmp @done

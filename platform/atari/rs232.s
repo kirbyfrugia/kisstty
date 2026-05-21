@@ -105,17 +105,10 @@ rs232_open:
   sec
   rts
 
-; OK, see page 43 in the 850 operator manual.
-;STATUS returns the number of chars in the input buffer in locations
-;747 and 748 and the number in the output buffer in 749.
 rs232_status:
   ldx rs232_iocb
   lda #STATIS ; CIO status
   sta ICCOM,x
-;  lda #0
-;  sta ICAX1,x
-;  lda #0
-;  sta ICAX2,x
   jsr CIOV
   bmi @error
   
@@ -157,15 +150,6 @@ rs232_putchr:
   ldx rs232_iocb
   lda #PUTCHR
   sta ICCOM,x
-;  lda #<rs232_output_char
-;  sta ICBAL,x
-;  lda #>rs232_output_char
-;  sta ICBAH,x
-;  lda #1
-;  sta ICBLL,x
-;  lda #0
-;  sta ICBLH,x
- 
   lda rs232_output_char
   jsr CIOV
   bmi @error
@@ -175,34 +159,8 @@ rs232_putchr:
   sec
   rts
 
-
-
-
-;rs232_write:
-;  ldx rs232_iocb
-;  lda #PUTREC
-;  ;lda #$57 ; 'W' write
-;  sta ICCOM,x
-;  lda #<sample_msg
-;  sta ICBAL,x
-;  lda #>sample_msg
-;  sta ICBAH,x
-;  lda #<(sample_msg_end-sample_msg)
-;  sta ICBLL,x
-;  lda #>(sample_msg_end-sample_msg)
-;  sta ICBLH,x
-;  jsr CIOV
-;  bmi @error
-;  clc
-;  rts
-;@error:
-;  sec
-;  rts
-
-
-; inputs:
-;   x - channel
 rs232_close:
+  ldx rs232_iocb
   lda #CLOSE
   sta ICCOM,x
   jsr CIOV
@@ -213,7 +171,6 @@ rs232_close:
 @error:
   sec
   rts
-
 
 write_buf: .res WRITE_BUF_LEN
 dev_name:  .byte "R1",$9b
