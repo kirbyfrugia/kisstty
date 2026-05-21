@@ -68,6 +68,7 @@ brk     ; re-enters wozmon
 ## Resources:
 * [Altirra Hardware Reference Manual](https://www.virtualdub.org/downloads/Altirra%20Hardware%20Reference%20Manual.pdf) - very helpful regarding the Atari 850 bootstrapping process and serial comms.
 * [Assembly Language Programming for the Atari Computers](https://www.atariarchives.org/alp/index.php)
+* [Atari Wiki CIOV Tutorial](https://atariwiki.org/wiki/Wiki.jsp?page=CIOV%20Tutorial)
 
 # Use of open source
 

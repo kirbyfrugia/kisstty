@@ -1,0 +1,62 @@
+.enum RS232_BAUD
+  B300    = %00000000
+  B45_5   = %00000001
+  B50     = %00000010
+  B56_875 = %00000011
+  B75     = %00000100
+  B110    = %00000101
+  B134_5  = %00000110
+  B150    = %00000111
+  B300X   = %00001000 ; same as zero
+  B600    = %00001001
+  B1200   = %00001010
+  B1800   = %00001011
+  B2400   = $00001100
+  B4800   = $00001101
+  B9600   = $00001110
+  B19200  = $00001111 ; not supported by straight 850
+.endenum
+
+
+.enum RS232_WORDSIZE
+  N5 = %00000000
+  N6 = %00010000
+  N7 = %00100000
+  N8 = %00110000
+.endenum
+
+.enum RS232_STOPBITS
+  N0 = %10000000
+  N1 = %00000000
+.endenum
+
+.enum RS232_FLOWCONTROL
+  DSR = %00000100
+  CTS = %00000010
+  CRX = %00000001
+.endenum
+
+.enum RS232_TRANSLATION
+  LIGHT = 0
+  HEAVY = 16
+  NONE  = 32
+.endenum
+
+.enum RS232_PARITY_INPUT
+  IGNORE_NO_CHANGE = 0
+  ODD_AND_CLEAR    = 4
+  EVEN_AND_CLEAR   = 8 
+  IGNORE_AND_CLEAR = 12
+.endenum
+
+.enum RS232_PARITY_OUTPUT
+  NOCHANGE = 0
+  ODD      = 1
+  EVEN     = 2 
+  ONE      = 3
+.endenum
+
+.enum RS232_LINE_FEED
+  NO_APPEND_LF = 0
+  APPEND_LF    = 64
+.endenum

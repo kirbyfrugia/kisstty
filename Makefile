@@ -30,6 +30,7 @@ ATARI_CFG       = $(SRCDIR)/atari/config/atari-asm-xex-release.cfg
 ATARI_CFG_DBG   = $(SRCDIR)/atari/config/atari-asm-xex-debug.cfg
 ATARI_SRCS      = main.s \
 		  boot850.s \
+		  rs232.s \
 		  utils.s \
 		  wozmon.s
 
@@ -48,6 +49,8 @@ ATARI_MAP_DBG      = $(ATARI_BLDDIR_DBG)/kiss8b.map
 ATARI_VICE_SYM_DBG = $(ATARI_BLDDIR_DBG)/kiss8b-vice-symbols.txt
 ATARI_ATR_DBG      = $(ATARI_BLDDIR_DBG)/kiss8b.atr
 ATARI_OBJS_DBG     = $(patsubst %.s,$(ATARI_BLDDIR_DBG)/%.o,$(ATARI_SRCS))
+
+PORT ?= /dev/ttyUSB0
 
 atari: $(ATARI_ATR)
 atari-debug: $(ATARI_ATR_DBG)
@@ -79,10 +82,10 @@ $(ATARI_ATR_DBG): $(ATARI_XEX_DBG) | $(ATARI_ATR_DIR_DBG)
 	dir2atr -S -a -b MyPicoDos406N $@ $(ATARI_ATR_DIR_DBG)
 
 run-atari: $(ATARI_ATR)
-	atari800 -atari -nobasic -rdevice $(ATARI_ATR)
+	atari800 -atari -nobasic -rdevice $(PORT) $(ATARI_ATR)
 
 debug-atari: $(ATARI_ATR_DBG)
-	atari800 -atari -nobasic -rdevice $(ATARI_ATR_DBG)
+	atari800 -atari -nobasic -rdevice $(PORT) $(ATARI_ATR_DBG)
 
 # =============================================================================
 # C64
