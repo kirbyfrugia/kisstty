@@ -66,11 +66,24 @@ brk     ; re-enters wozmon
 ```
 
 ## Resources:
+* [Mapping the Atari](https://www.atariarchives.org/mapping/) - amazing book documenting every memory location in the Atari.
 * [Altirra Hardware Reference Manual](https://www.virtualdub.org/downloads/Altirra%20Hardware%20Reference%20Manual.pdf) - very helpful regarding the Atari 850 bootstrapping process and serial comms.
 * [Assembly Language Programming for the Atari Computers](https://www.atariarchives.org/alp/index.php)
+* [De Re Atari](https://www.atariarchives.org/dere/index.php)
 * [Atari Wiki CIOV Tutorial](https://atariwiki.org/wiki/Wiki.jsp?page=CIOV%20Tutorial)
 
 # Use of open source
 
 Special thanks to:
-* [fredlcore](https://github.com/fredlcore) for [AtariWozmon](https://github.com/fredlcore/AtariWozMon) and all the people he thanked in his repo.
+* [fredlcore](https://github.com/fredlcore) for [AtariWozmon](https://github.com/fredlcore/AtariWozMon). Also, all the people he thanked in his repo.
+
+# Use of AI
+
+I wrote the code. The UI. The logic. All the assembly. I designed it. I built all the hardware I used for it (serial cables, TNC cables). I debugged it. It was hard, and it was me.
+
+I did use AI in the following ways:
+* I occasionally asked questions if I got really stuck, but I tried as best as I could to do this by just reading manuals. I referenced a few above. Let's call this the "ask for help if you really get stuck, but don't ask for the answers" model. For example, I asked it to explain some things to me, but I explicitly instructed it to not give me code or solutions.
+* I also used AI in a couple cases to do some OCR.
+  * I wrote code that dumped memory to my screen and I took a photo with my phone. I had Claude translate that to text for a file on my PC.
+  * I copied and pasted the keycode to ATASCII lookup table from the Atari OS User's manual and had Claude turn that into a lookup file for me.
+  * The above two things were just toil. I could have done it, but it would have taken me too long and been error prone.
