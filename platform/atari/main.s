@@ -40,7 +40,7 @@ start:
   sta $0207
   cli ; for brk to work
 .endif
-  jsr init
+  ;jsr init
   jsr boot850_check
   bcc @rhandler_loaded
 @bootstrap850:
@@ -54,7 +54,7 @@ start:
   print_str str_supported_commands
   print_str str_commands
 @loop:
-  jsr proc_kbd
+  ;jsr proc_kbd
   ; ask for input
   print_bytes str_get_command, str_get_command_end
 
