@@ -1,3 +1,5 @@
+; enums for configuring rs232
+
 .enum RS232_BAUD
   B300    = %00000000
   B45_5   = %00000001

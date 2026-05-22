@@ -4,7 +4,7 @@
 
 MAX_INPUT_LEN = 114
 WOZMON        = $9800
-RS232_CHANNEL = 32 ; channel 2 (2 * 16)
+RS232_CHANNEL = 32    ; channel 2 (2 * 16)
 
 .IMPORT boot850_check 
 .IMPORT boot850_bootstrap 
@@ -20,7 +20,9 @@ RS232_CHANNEL = 32 ; channel 2 (2 * 16)
 .IMPORT rs232_last_status
 .IMPORT rs232_input_buffer_size
 .IMPORT rs232_output_buffer_size
-
+.IMPORT kbd_unmodified
+.IMPORT kbd_shifted
+.IMPORT kbd_ctrld
 
 
 .ifdef DEBUG
@@ -38,6 +40,7 @@ start:
   sta $0207
   cli ; for brk to work
 .endif
+  jsr init
   jsr boot850_check
   bcc @rhandler_loaded
 @bootstrap850:
@@ -51,6 +54,7 @@ start:
   print_str str_supported_commands
   print_str str_commands
 @loop:
+  jsr proc_kbd
   ; ask for input
   print_bytes str_get_command, str_get_command_end
 
@@ -113,6 +117,80 @@ start:
 @ui_done:
   jmp @loop
 
+; TODO: handle the following:
+;   SHIFT+CLEAR - erase entire area
+;   ESC         - same as above
+;   CTRL+CURSOR - arrow keys
+;   CTRL+INSERT - insert a space
+;   DEL BACK S  - backspace without shifting
+;   BACK S      - backspace with shifting following to left
+;   SHIFT+DELETE BS - delete line
+;   CTRL+DELETE BS - delete character, shift following to left
+
+char_to_scr:
+  ldy #0
+  lda user_input_char
+  print_str output_buf
+  rts
+
+proc_kbd:
+  lda CH
+  cmp #$ff
+  beq @nokey
+
+  sta user_input_char
+
+  lda SHFLOK
+  and #%00001000
+  beq @no_shift
+
+  ldx user_input_char
+  lda kbd_shifted,x
+  sta user_input_char
+  jsr char_to_scr
+  jmp @processed
+
+@no_shift:
+  lda SHFLOK
+  and #%00000100
+  beq @no_ctrl
+
+  ldx user_input_char
+  lda kbd_ctrld,x
+  sta user_input_char
+  jsr char_to_scr
+  jmp @processed
+
+@no_ctrl:
+  ldx user_input_char
+  lda kbd_unmodified,x
+  sta user_input_char
+  jsr char_to_scr
+@processed:
+  lda #$ff
+  sta CH
+@nokey:
+  rts
+
+init:
+  ldx #0
+  lda #CLOSE
+  sta ICCOM,x
+  jsr CIOV
+
+  ; disable cursor
+  lda #1
+  sta CRSINH
+
+
+;  lda #0
+;  sta ATRACT ; disable ATRACT (screen dimmer)
+;  lda #10
+;  sta ROWCRS
+;  lda #20
+;  sta COLCRS
+  rts
+
 cmd_boot850:
   jsr boot850_bootstrap
   bcs @error
@@ -171,6 +249,7 @@ cmd_talk:
   jmp @error_getchr
 @read_success:
   sta output_buf
+  ldy #0
   print_str output_buf
 @echo:
   lda output_buf
@@ -226,6 +305,8 @@ str_error_putchr:
   .byte "Error on putchr: "
 str_error_putchr_end:
 
+user_input_char: .byte 0
 user_input_buf: .res 256
 output_buf: .byte $9b,$9b
 command_error: .byte 0
+;display_list: .byte 

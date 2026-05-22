@@ -12,7 +12,7 @@
 .EXPORT rs232_input_buffer_size
 .EXPORT rs232_output_buffer_size
 
-WRITE_BUF_LEN = 512
+WRITE_BUF_LEN           = 512
 CMD_TRANSLATION_PARITY  = $26
 CMD_CONTROL_LINES       = $22
 CMD_CONCURRENCY_MODE    = $28
