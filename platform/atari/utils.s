@@ -110,10 +110,10 @@ utils_dump_mem_row:
   tya
   pha
 
-  lda ZPB2
+  lda ZPB3
   ldy #0
   jsr utils_byte_to_scr_hex
-  lda ZPB3
+  lda ZPB2
   ldy #2
   jsr utils_byte_to_scr_hex
   lda #':'

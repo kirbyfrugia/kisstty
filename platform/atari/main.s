@@ -15,7 +15,7 @@ CURSOR_MINY   = 21
 CURSOR_MAXY   = 23
 
 ; size of whole buffer, including margins
-SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY)*(CURSOR_MAXX-CURSOR_MINX)
+SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY+1)*40
 
 .IMPORT boot850_check 
 .IMPORT boot850_bootstrap 
@@ -449,28 +449,11 @@ shift_clear:
   sta (CURSOR_POS_SCR),y ; first character
   rts
 
-print_zpb_debug:
-  lda SAVMSC
-  clc
-  adc #40
-  sta ZPB0
-  lda SAVMSC+1
-  adc #0
-  sta ZPB1
-  lda #$92
-  sta ZPB2
-  lda #$00
-  sta ZPB3
-  ldy #0
-  jsr utils_dump_mem_row
- 
-  rts
 ; moves current line and subsequent ones down one row
 ; clears current line
 ; moves cursor to start of current line
 line_insert:
-
-  jsr print_zpb_debug 
+  ;dbg_print_zpb SAVMSC, SAVMSC+1, 40, $0092
 
   ldx #CURSOR_MAXY
   cpx CURSOR_POSY
@@ -484,15 +467,17 @@ line_insert:
   sec
   sbc INPUT_UPPER_LEFT_PTR
   sta ZPB0
-  lda #SCR_INPUT_BUFFER_SIZE 
+  lda #(SCR_INPUT_BUFFER_SIZE-1)
+  ;dbg_print_zpb SAVMSC, SAVMSC+1, 40, $009b
   tay
+  sec
+  sbc #40
+  tax
 @copy_loop:
   cpx ZPB0
   beq @copy_done
   sty ZPB1 ; temp
-  tya
-  sec
-  sbc #40
+  txa
   tay
   lda (INPUT_UPPER_LEFT_PTR),y ; character from prev line, same col
   ldy ZPB1
@@ -502,15 +487,16 @@ line_insert:
   jmp @copy_loop
 @copy_done:
   ; we stopped before the very first character, so copy it
+  ;dey
   sty ZPB1
   ldy ZPB0
   lda (INPUT_UPPER_LEFT_PTR),y
   ldy ZPB1
-  dey
   sta (INPUT_UPPER_LEFT_PTR),y
   
   ; now we'll clear the current row
 @done:
+  dbg_print_zpb SAVMSC, SAVMSC+1, 80, $0092
   rts
 
 proc_kbd:
