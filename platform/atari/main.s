@@ -6,10 +6,16 @@
 MAX_INPUT_LEN = 114
 WOZMON        = $9800
 RS232_CHANNEL = 32    ; channel 2 (2 * 16)
+
+; Note: there is some code here that assumes that
+;  the full input area is <256 bytes long. So keep
 CURSOR_MINX   = 2
 CURSOR_MAXX   = 38
 CURSOR_MINY   = 21
 CURSOR_MAXY   = 23
+
+; size of whole buffer, including margins
+SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY)*(CURSOR_MAXX-CURSOR_MINX)
 
 .IMPORT boot850_check 
 .IMPORT boot850_bootstrap 
@@ -210,9 +216,12 @@ show_cursor:
 ;   e.g. don't call if cursor doesn't actually move
 ; inputs:
 ;   ZPB2/3 - delta in cursor move (e.g. $00/$00 for none, $01/$00 for right one, $ff/$ff for left one)
+; assumptions:
+;   CURSOR_POSY already reflect the new cursor position
 move_cursor:
   jsr hide_cursor ; uninvert at pre-move position
 
+  ; update ptr to absolute cursor position
   lda CURSOR_POS_SCR
   clc
   adc ZPB2
@@ -220,6 +229,15 @@ move_cursor:
   lda CURSOR_POS_SCR+1
   adc ZPB3
   sta CURSOR_POS_SCR+1
+
+  ; update ptr to start of current row
+  lda CURSOR_POS_SCR
+  sec
+  sbc CURSOR_POSY
+  sta CURSOR_SOL_PTR
+  lda CURSOR_POS_SCR+1
+  sbc #0
+  sta CURSOR_SOL_PTR+1
 
   rts
 
@@ -379,7 +397,131 @@ try_move_cursor_down:
 @done:
   rts
 
+try_backspace:
+  lda CURSOR_POSY
+  cmp #CURSOR_MINY
+  bne @not_at_beginning ; not on first row
+  lda CURSOR_POSX
+  cmp #CURSOR_MINX
+  bne @not_at_beginning ; not at first char of row
+  jmp @done ; ignore since at beginning
+@not_at_beginning:
+  lda #CURSOR_FLAG_WRAP_DIFF_LINE
+  sta CURSOR_FLAGS
+  jsr try_move_cursor_left
+
+  lda #' '
+  jsr utils_atascii_to_icode
+  sta (CURSOR_POS_SCR),y
+@done:
+  rts
+
+move_cursor_home:
+  lda #CURSOR_MINY
+  sta CURSOR_POSY
+  lda #CURSOR_MINX
+  sta CURSOR_POSX
+
+  jsr hide_cursor
+
+  lda INPUT_UPPER_LEFT_PTR
+  sta CURSOR_POS_SCR
+  sta CURSOR_SOL_PTR
+  lda INPUT_UPPER_LEFT_PTR+1
+  sta CURSOR_POS_SCR+1
+  sta CURSOR_SOL_PTR+1
+
+  jsr show_cursor
+
+  rts
+
+shift_clear:
+  jsr move_cursor_home
+
+  ; blank the input area
+  lda #' '
+  jsr utils_atascii_to_icode
+  ldy #(SCR_INPUT_BUFFER_SIZE-1)
+@loop:
+  sta (CURSOR_POS_SCR),y
+  dey
+  bne @loop
+  sta (CURSOR_POS_SCR),y ; first character
+  rts
+
+print_zpb_debug:
+  lda SAVMSC
+  clc
+  adc #40
+  sta ZPB0
+  lda SAVMSC+1
+  adc #0
+  sta ZPB1
+  lda #$92
+  sta ZPB2
+  lda #$00
+  sta ZPB3
+  ldy #0
+  jsr utils_dump_mem_row
+ 
+  rts
+; moves current line and subsequent ones down one row
+; clears current line
+; moves cursor to start of current line
+line_insert:
+
+  jsr print_zpb_debug 
+
+  ldx #CURSOR_MAXY
+  cpx CURSOR_POSY
+  beq @copy_done; short circuit if on last line
+
+  ; x will be the index to the char to copy from
+  ; y will be the index to the char to copy to
+  ; ZPB0 is offset from top left of input buffer to
+  ; start of cursor line
+  lda CURSOR_SOL_PTR
+  sec
+  sbc INPUT_UPPER_LEFT_PTR
+  sta ZPB0
+  lda #SCR_INPUT_BUFFER_SIZE 
+  tay
+@copy_loop:
+  cpx ZPB0
+  beq @copy_done
+  sty ZPB1 ; temp
+  tya
+  sec
+  sbc #40
+  tay
+  lda (INPUT_UPPER_LEFT_PTR),y ; character from prev line, same col
+  ldy ZPB1
+  sta (INPUT_UPPER_LEFT_PTR),y
+  dey
+  dex
+  jmp @copy_loop
+@copy_done:
+  ; we stopped before the very first character, so copy it
+  sty ZPB1
+  ldy ZPB0
+  lda (INPUT_UPPER_LEFT_PTR),y
+  ldy ZPB1
+  dey
+  sta (INPUT_UPPER_LEFT_PTR),y
+  
+  ; now we'll clear the current row
+@done:
+  rts
+
 proc_kbd:
+  lda SAVMSC
+  sta ZPB0
+  lda SAVMSC+1
+  sta ZPB1
+  ldy #0
+  lda user_input_kbdcode_raw 
+  jsr utils_byte_to_scr_hex
+
   lda user_input_kbdcode_raw 
   cmp #$8e
   beq @up_arrow
@@ -391,6 +533,17 @@ proc_kbd:
   beq @right_arrow
   cmp #$0c
   beq @return
+  cmp #$34
+  beq @backspace
+  cmp #$76 ; shift+clear
+  beq @shift_clear
+  cmp #$b7 ; ctrl+clear
+  beq @shift_clear
+  cmp #$77 ; shift+insert on atari
+  ; TODO: figure out how to do this on emulator
+  ; $77 is correct on atari, $7c for shift+insert on emulator
+  cmp #$7c ; shift+insert on emulator
+  beq @line_insert
 @output:
   lda user_input_atascii
   beq @done
@@ -416,6 +569,15 @@ proc_kbd:
 @right_arrow:
   lda #CURSOR_FLAG_WRAP_SAME_LINE
   jsr try_move_cursor_right
+  jmp @done
+@backspace:
+  jsr try_backspace
+  jmp @done
+@shift_clear:
+  jsr shift_clear
+  jmp @done
+@line_insert:
+  jsr line_insert
   jmp @done
 @return:
 @done:
@@ -461,6 +623,14 @@ init:
   lda #1
   sta CRSINH
 
+  lda SAVMSC
+  clc
+  adc #<(CURSOR_MINY*40+CURSOR_MINX)
+  sta INPUT_UPPER_LEFT_PTR
+  lda SAVMSC+1
+  adc #>(CURSOR_MINY*40+CURSOR_MINX)
+  sta INPUT_UPPER_LEFT_PTR+1
+
   jsr cls
 
 ;  ; clear the screen
@@ -469,24 +639,7 @@ init:
 ;  sta ICCOM,x
 ;  jsr CIOV
 
-  ; set up our own cursor.
-  ; first absolute position
-  lda SAVMSC
-  clc
-  adc #<(CURSOR_MINY*40+CURSOR_MINX)
-  sta CURSOR_POS_SCR
-  lda SAVMSC+1
-  adc #>(CURSOR_MINY*40+CURSOR_MINX)
-  sta CURSOR_POS_SCR+1
-
-  ; then relative position
-  lda #CURSOR_MINX
-  sta CURSOR_POSX
-  lda #CURSOR_MINY
-  sta CURSOR_POSY
-
-  jsr show_cursor
-
+  jsr move_cursor_home
   rts
 
 cmd_boot850:

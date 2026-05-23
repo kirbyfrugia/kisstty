@@ -117,9 +117,11 @@ utils_dump_mem_row:
   ldy #2
   jsr utils_byte_to_scr_hex
   lda #':'
+  jsr utils_atascii_to_icode
   ldy #4
   sta (ZPB0),y
   lda #' '
+  jsr utils_atascii_to_icode
   ldy #5
   sta (ZPB0),y
 
@@ -132,8 +134,11 @@ utils_dump_mem_row:
   lda (ZPB2),y
   ldy UTILS_TMP2
   jsr utils_byte_to_scr_hex
+  iny
+  iny
 
   lda #' '
+  jsr utils_atascii_to_icode
   sta (ZPB0),y
   iny
   inx

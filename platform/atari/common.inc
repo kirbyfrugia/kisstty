@@ -14,7 +14,10 @@ UTILS_TMP5 = $8b
 
 .define CURSOR_FLAG_WRAP_SAME_LINE %10000000
 .define CURSOR_FLAG_WRAP_DIFF_LINE %00000000
-CURSOR_POSX     = $92 ;         - x position of cursor relative to screen upper left
-CURSOR_POSY     = $93 ;         - y position of cursor relative to screen upper left
-CURSOR_POS_SCR  = $94 ; and $95 - absolute memory location of cursor position
-CURSOR_FLAGS    = $96
+
+CURSOR_POSX          = $92 ;         - x position of cursor relative to screen upper left
+CURSOR_POSY          = $93 ;         - y position of cursor relative to screen upper left
+CURSOR_POS_SCR       = $94 ; and $95 - absolute memory location of cursor position
+CURSOR_SOL_PTR       = $96 ; and $97 - pointer to start of line (current cursor line)
+INPUT_UPPER_LEFT_PTR = $98 ; and $99 - pointer to uper left char in input area
+CURSOR_FLAGS         = $9a
