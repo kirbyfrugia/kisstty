@@ -1,131 +1,145 @@
 .SETCPU "6502"
 .INCLUDE "atari.inc"
 .INCLUDE "macros.inc"
+.INCLUDE "common.inc"
 
 MAX_INPUT_LEN = 114
 
-.EXPORT utils_hex_to_str
-.EXPORT utils_hex_str
-.EXPORT utils_print_dcb
-.EXPORT utils_print_hatabs
-.EXPORT utils_dump_mem
+.EXPORT utils_atascii_to_icode
+.EXPORT utils_byte_to_scr_hex
+.EXPORT utils_dump_mem_row
 
 .SEGMENT "CODE"
 
-ZPB0 = $80
-ZPB1 = $81
-ZPB2 = $82
-ZPB3 = $83
+; converts an atascii character to icode,
+; used for screen display
+;
+;
+; Reference: Mapping the atari, $e108
+; inputs:
+;   a - the character in atascii
+; outputs:
+;   a - the char in icode
+utils_atascii_to_icode:
+  cmp #32
+  bcs @check_gteq_32
+  ; 0 to 31, add 64
+  clc
+  adc #64
+  bne @done
+@check_gteq_32:
+  cmp #96
+  bcs @check_gteq_96
+  ; 32 to 95, sub 32
+  sec
+  sbc #32
+  jmp @done
+@check_gteq_96:
+  cmp #128
+  bcs @check_gteq_128
+  ; 96 to 127, no change
+  bne @done
+@check_gteq_128:
+  cmp #160
+  bcs @check_gteq_160
+  ; 128 to 159, add 64
+  clc
+  adc #64
+  bne @done
+@check_gteq_160:
+  cmp #224
+  bcs @gteq_224
+  ; 160 to 223, sub 32
+  sec
+  sbc #32
+  bne @done
+@gteq_224:
+  ; 224 to 255, no change
+@done:
+  rts
 
-; writes the hex value in A to hex_str offset by y
-; adds a $9b at the end
-; Note: Y will be incremented by 2.
-utils_hex_to_str:
-  sta tmp0
-  stx tmp1
+; inputs:
+;   - ZPB0/ZPB1 - location to print
+;   - y - offset from location
+;   - a - byte to print 
+; outputs:
+;   - Writes char to (zpb0),y
+; modifies:
+;   - UTILS_TMP1
+utils_byte_to_scr_hex:
+  sta UTILS_TMP1
+  txa
   pha
+  tya
+  pha
+
+  lda UTILS_TMP1
   lsr
   lsr
   lsr
   lsr
   tax
-  lda HEX_TABLE,x
-  sta utils_hex_str,y
-  pla
+  lda HEX_TABLE_SCR,x
+  sta (ZPB0),y
+  lda UTILS_TMP1
   and #%00001111
   tax
   iny
-  lda HEX_TABLE,x
-  sta utils_hex_str,y 
-  iny
-  lda #$9b
-  sta utils_hex_str,y
-  ldx tmp1
-  lda tmp0
+  lda HEX_TABLE_SCR,x
+  sta (ZPB0),y 
+
+  pla
+  tay
+  pla
+  tax
+  lda UTILS_TMP1
   rts
 
-; dump memory to screen in 8-byte rows with address
+; dump memory to screen in an 8-byte row with an address
+; 
 ; input:
-;   $80/$81 = start address lo/hi
-;   x       = number of rows to print
-; also uses $82 and $83
+;   ZPB0/ZPB1 - screen address
+;   ZPB2/ZPB3 - start address lo/hi
+;   y - offset from start of screen row to print
+; modifies:
+;   - UTILS_TMP2
+utils_dump_mem_row:
+  pha
+  txa
+  pha
+  tya
+  pha
 
-; example usage:
-;  lda #<$031a
-;  sta $80
-;  lda #>$031a
-;  sta $81
-;  ldx #3 ; each row is 8 bytes
-;  jsr utils_dump_mem
-utils_dump_mem:
-  stx dump_rows
-@next_row:
+  lda ZPB2
   ldy #0
-  lda ZPB1
-  jsr utils_hex_to_str
-  lda ZPB0
-  jsr utils_hex_to_str
+  jsr utils_byte_to_scr_hex
+  lda ZPB3
+  ldy #2
+  jsr utils_byte_to_scr_hex
   lda #':'
-  sta utils_hex_str,y
-  iny
+  ldy #4
+  sta (ZPB0),y
   lda #' '
-  sta utils_hex_str,y
-  iny
+  ldy #5
+  sta (ZPB0),y
 
+  iny
   ldx #0
 @next_byte:
-  sty ZPB2
+  sty UTILS_TMP2
   txa
   tay
-  lda (ZPB0),y
-  ldy ZPB2
-  jsr utils_hex_to_str
+  lda (ZPB2),y
+  ldy UTILS_TMP2
+  jsr utils_byte_to_scr_hex
+
   lda #' '
-  sta utils_hex_str,y
+  sta (ZPB0),y
   iny
   inx
   cpx #8
   bne @next_byte
-  dey
-  lda #$9b
-  sta utils_hex_str,y
-  print_str utils_hex_str
-  dec dump_rows
-  beq @done
-
-  lda ZPB0
-  clc
-  adc #8
-  sta ZPB0
-  lda ZPB1
-  adc #0
-  sta ZPB1
-  jmp @next_row
 @done:
-  rts
-
-utils_print_dcb:
-  pha
-  txa
-  pha
-  tya
-  pha
-  print_bytes str_dcb, str_dcb_end
-  ldy #0
-  ldx #0
-@loop:
-  lda DDEVIC,x
-  jsr utils_hex_to_str
-  lda #','
-  sta utils_hex_str,y
-  iny
-  inx
-  cpx #12
-  bne @loop
-  dey
-  lda #$9b
-  sta utils_hex_str,y
-  print_str utils_hex_str
   pla
   tay
   pla
@@ -133,57 +147,10 @@ utils_print_dcb:
   pla
   rts
 
-utils_print_hatabs:
-  pha
-  txa
-  pha
-  tya
-  pha
-  print_bytes str_hatabs, str_hatabs_end
+HEX_TABLE_ATASCII: .byte "0123456789ABCDEF"
 
-  ldy #0
-  ldx #0
-@loop:
-  lda HATABS,x
-  sta hatabs_str, y
-  inx
-  inx
-  inx
-  iny
-  lda #','
-  sta hatabs_str, y
-  iny
-  cpx #24
-  bcc @loop
-
-  lda #$9b
-  sta hatabs_str, y
-
-  print_str hatabs_str
-
-  pla
-  tay
-  pla
-  tax
-  pla
-
-  rts
-
-dump_rows: .byte 0
-dump_buf:  .res 64
-utils_hex_str: .res 80
-hatabs_str: .res 80
-tmp0: .byte 0
-tmp1: .byte 0
-tmp2: .byte 0
-
-str_dcb:
-  .byte "dcb: "
-str_dcb_end:
-
-str_hatabs:
-  .byte "HATABS: "
-str_hatabs_end:
-
-HEX_TABLE: .byte "0123456789ABCDEF"
+; subtract 32 from their ATASCII since all are 32 to 95
+HEX_TABLE_SCR:
+  .byte 16,17,18,19,20,21,22,23,24,25
+  .byte 33,34,35,36,37,38
 

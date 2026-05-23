@@ -1,3 +1,7 @@
+; TODO: this now needs to be fixed since I'm no longer using the built in
+; editor
+
+
 ; WozMon for Atari 8-bit, ca65 port for kiss6502
 ;
 ; Original: The WOZ Monitor for the Apple 1, Steve Wozniak, 1976
