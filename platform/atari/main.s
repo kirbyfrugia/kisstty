@@ -28,7 +28,6 @@ CURSOR_MAXY   = 3
 .IMPORT kbd_shifted
 .IMPORT kbd_ctrld
 
-
 .ifdef DEBUG
 .IMPORT wozmon_main
 .endif
@@ -144,16 +143,12 @@ inkbd:
   lda SAVMSC+1
   sta ZPB1
 
-  sei
-  lda kbd_vbi_keycode
-  pha
-  lda #$ff
-  sta kbd_vbi_keycode
-  cli
-  pla
+  lda CH
   cmp #$ff
   beq @no_key
   sta user_input_kbdcode_raw  ; with ctrl/shift bits
+  lda #$ff
+  sta CH
   lda user_input_kbdcode_raw
   and #%00111111
   sta user_input_kbdcode_char ; stripped of ctrl/shift bits
@@ -456,27 +451,7 @@ proc_kbd:
   jsr show_cursor ; make sure cursor shown
   rts
 
-; Resource used to help understand how to get the OS
-; keyboard handler to work while not using the screen editor:
-;   https://atarimax.com/freenet/freenet_material/12.AtariLibrary/2.MiscellaneousTextFiles/showarticle.php?34=
-vbi:
-  pha
-  lda CH
-  cmp #$ff
-  beq @done
-  sta kbd_vbi_keycode
-  lda #$ff
-  sta CH
-@done:
-  pla
-  jmp XITVBV
-
 init:
-  ldy #<vbi
-  ldx #>vbi
-  lda #7
-  jsr SETVBV
-
   ; disable the OS screen editor
   ldx #0
   lda #CLOSE
@@ -622,13 +597,9 @@ str_error_putchr:
   .byte "Error on putchr: "
 str_error_putchr_end:
 
-kbd_vbi_keycode: .byte 0
 user_input_kbdcode_raw: .byte 0
 user_input_kbdcode_char: .byte 0
 user_input_atascii: .byte 0
 user_input_buf: .res 256
 output_buf: .byte $9b,$9b
 command_error: .byte 0
-;display_list: .byte 
-
-key_counter: .byte 0
