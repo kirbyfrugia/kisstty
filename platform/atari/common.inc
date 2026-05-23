@@ -12,6 +12,9 @@ UTILS_TMP3 = $89
 UTILS_TMP4 = $8a
 UTILS_TMP5 = $8b
 
+.define CURSOR_FLAG_WRAP_SAME_LINE %10000000
+.define CURSOR_FLAG_WRAP_DIFF_LINE %00000000
 CURSOR_POSX     = $92 ;         - x position of cursor relative to screen upper left
 CURSOR_POSY     = $93 ;         - y position of cursor relative to screen upper left
 CURSOR_POS_SCR  = $94 ; and $95 - absolute memory location of cursor position
+CURSOR_FLAGS    = $96

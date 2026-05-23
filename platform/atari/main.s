@@ -223,42 +223,6 @@ move_cursor:
 
   rts
 
-try_move_cursor_left:
-  lda CURSOR_POSX
-  cmp #CURSOR_MINX
-  beq @wrap
-
-  ; if here, simply move the cursor left
-  dec CURSOR_POSX
-
-  lda #$ff
-  sta ZPB2
-  sta ZPB3
-  jsr move_cursor
-  jmp @done
-@wrap:
-  ; if wrapped to the left, move up one row and to
-  ; the end of the row.
-
-  lda CURSOR_POSY
-  cmp #CURSOR_MINY
-  beq @done ; already at top left
-
-  lda #CURSOR_MAXX
-  sta CURSOR_POSX
-  dec CURSOR_POSY
-
-  lda #0
-  sec
-  sbc #((CURSOR_MINX+1)+(39-CURSOR_MAXX))
-  sta ZPB2
-  lda #$ff
-  sta ZPB3
-  jsr move_cursor
-
-@done:
-  rts
-
 try_move_cursor_up:
   lda CURSOR_POSY
   cmp #CURSOR_MINY
@@ -288,6 +252,60 @@ try_move_cursor_up:
 @done:
   rts
 
+; inputs
+;   CURSOR_FLAG
+;     - bit 7 - CURSOR_FLAG_WRAP_SAME_LINE if you want cursor to move up a line on wrap
+try_move_cursor_left:
+  lda CURSOR_POSX
+  cmp #CURSOR_MINX
+  beq @wrap
+
+  ; if here, simply move the cursor left
+  dec CURSOR_POSX
+
+  lda #$ff
+  sta ZPB2
+  sta ZPB3
+  jsr move_cursor
+  jmp @done
+@wrap:
+  lda #CURSOR_FLAG_WRAP_SAME_LINE 
+  bit CURSOR_FLAGS
+  bmi @wrap_same_line
+@wrap_next_line:
+  ; wrapped to the left in next line mode, e.g. text
+  ; move up one row and to the end of the row.
+  lda CURSOR_POSY
+  cmp #CURSOR_MINY
+  beq @done ; already at top left
+
+  lda #CURSOR_MAXX
+  sta CURSOR_POSX
+  dec CURSOR_POSY
+
+  lda #0
+  sec
+  sbc #((CURSOR_MINX+1)+(39-CURSOR_MAXX))
+  sta ZPB2
+  lda #$ff
+  sta ZPB3
+  jsr move_cursor
+  jmp @done
+@wrap_same_line:
+  ; wrapped, but same line, e.g. arrow movement
+  ; wrap on the same row
+  lda #CURSOR_MAXX
+  sta CURSOR_POSX
+
+  lda #(CURSOR_MAXX-CURSOR_MINX)
+  sta ZPB2
+  lda #0
+  sta ZPB3
+  jsr move_cursor
+@done:
+  rts
+
+
 try_move_cursor_right:
   lda CURSOR_POSX
   cmp #(CURSOR_MAXX)
@@ -302,6 +320,10 @@ try_move_cursor_right:
   jsr move_cursor
   jmp @done
 @wrap:
+  lda #CURSOR_FLAG_WRAP_SAME_LINE 
+  bit CURSOR_FLAGS
+  bmi @wrap_same_line
+@wrap_next_line:
   lda CURSOR_POSY
   cmp #CURSOR_MAXY
   beq @done ; at bottom right
@@ -313,6 +335,18 @@ try_move_cursor_right:
   lda #((39-CURSOR_MAXX)+(CURSOR_MINX)+1)
   sta ZPB2
   lda #0
+  sta ZPB3
+  jsr move_cursor
+  jmp @done
+@wrap_same_line:
+  lda #CURSOR_MINX
+  sta CURSOR_POSX
+
+  lda #0
+  sec
+  sbc #(CURSOR_MAXX-CURSOR_MINX)
+  sta ZPB2
+  lda #$ff
   sta ZPB3
   jsr move_cursor
 @done:
@@ -364,6 +398,8 @@ proc_kbd:
   jsr utils_atascii_to_icode
   ldy #0
   sta (CURSOR_POS_SCR),y
+  lda #CURSOR_FLAG_WRAP_DIFF_LINE
+  sta CURSOR_FLAGS
   jsr try_move_cursor_right
   jmp @done
 @up_arrow:
@@ -373,9 +409,12 @@ proc_kbd:
   jsr try_move_cursor_down
   jmp @done
 @left_arrow:
+  lda #CURSOR_FLAG_WRAP_SAME_LINE
+  sta CURSOR_FLAGS
   jsr try_move_cursor_left
   jmp @done
 @right_arrow:
+  lda #CURSOR_FLAG_WRAP_SAME_LINE
   jsr try_move_cursor_right
   jmp @done
 @return:
