@@ -137,15 +137,9 @@ start:
 
 ; Keyboard behavior described in the Atari OS User Manual Page 47
 inkbd:
-  ; TODO remove this. Used for printing bytes to screen
-  lda SAVMSC
-  sta ZPB0
-  lda SAVMSC+1
-  sta ZPB1
-
   lda CH
   cmp #$ff
-  beq @no_key
+  beq @done
   sta user_input_kbdcode_raw  ; with ctrl/shift bits
   lda #$ff
   sta CH
@@ -153,23 +147,13 @@ inkbd:
   and #%00111111
   sta user_input_kbdcode_char ; stripped of ctrl/shift bits
 
-  ; print raw keyboard code to screen
-  lda user_input_kbdcode_raw 
-  ldy #6
-  jsr utils_byte_to_scr_hex
-
-  ; print keyboard code to screen (minus ctrl/shift bits)
-  lda user_input_kbdcode_char
-  ldy #9
-  jsr utils_byte_to_scr_hex
-
   lda user_input_kbdcode_raw
   ; Bit 7 is 1 if ctrl key pressed
   ; Bit 6 is 1 if shift key pressed
   and #%11000000
   beq @lower_case
   cmp #%11000000
-  beq @ignored ; ignore if ctrl+shift
+  beq @done ; ignore if ctrl+shift
 
   and #%10000000
   bne @control_pressed
@@ -178,65 +162,21 @@ inkbd:
   ldx user_input_kbdcode_char
   lda kbd_shifted,x
   sta user_input_atascii
-  ldy #12
-  jsr utils_byte_to_scr_hex
   jmp @processed
-
 @control_pressed:
   ldx user_input_kbdcode_char
   lda kbd_ctrld,x
   sta user_input_atascii
-  ldy #12
-  jsr utils_byte_to_scr_hex
   jmp @processed
 @lower_case:
   ldx user_input_kbdcode_char
   lda kbd_unmodified,x
   sta user_input_atascii
-  ldy #12
-  jsr utils_byte_to_scr_hex
   jmp @processed
-@ignored:
-  ldy #12
-  lda #0
-  jsr utils_byte_to_scr_hex
 @processed:
   jsr proc_kbd
-  ; remove these two lines after debugging
-  jsr print_cursor_dbg
   jsr show_cursor
-@no_key:
 @done:
-  rts
-
-print_cursor_dbg:
-  pha
-  tya
-  pha
-
-  lda SAVMSC
-  sta ZPB0
-  lda SAVMSC+1
-  sta ZPB1
-
-  ldy #16
-  lda CURSOR_POSX
-  jsr utils_byte_to_scr_hex
-
-  ldy #19
-  lda CURSOR_POSY
-  jsr utils_byte_to_scr_hex
-
-  ldy #22
-  lda CURSOR_POS_SCR+1
-  jsr utils_byte_to_scr_hex
-  ldy #24
-  lda CURSOR_POS_SCR
-  jsr utils_byte_to_scr_hex
-
-  pla
-  tay
-  pla
   rts
 
 hide_cursor:
@@ -269,8 +209,7 @@ show_cursor:
 ; moves the cursor. assumes that it is correct to do so
 ;   e.g. don't call if cursor doesn't actually move
 ; inputs:
-;   ZPB2/3 - delta in x direction (e.g. $00/$00 for none, $01/$00 for right one, $ff/$ff for left one)
-;   ZPB4 - delta in y direction (e.g. $00 for none, $01 for down one, $ff for up one)
+;   ZPB2/3 - delta in cursor move (e.g. $00/$00 for none, $01/$00 for right one, $ff/$ff for left one)
 move_cursor:
   jsr hide_cursor ; uninvert at pre-move position
 
@@ -444,6 +383,34 @@ proc_kbd:
   jsr show_cursor ; make sure cursor shown
   rts
 
+cls:
+  lda SAVMSC
+  sta ZPB0
+  lda SAVMSC+1
+  sta ZPB1
+
+  ldx #23
+@row_loop:
+  ldy #39
+  lda #' '
+  jsr utils_atascii_to_icode
+@col_loop:
+  sta (ZPB0),y
+  dey
+  bpl @col_loop
+  dex
+  bmi @done
+  lda ZPB0
+  clc
+  adc #40
+  sta ZPB0
+  bcc @nowrap
+  inc ZPB1
+@nowrap:
+  jmp @row_loop
+@done:
+  rts
+
 init:
   ; disable the OS screen editor
   ldx #0
@@ -454,6 +421,8 @@ init:
   ; disable cursor
   lda #1
   sta CRSINH
+
+  jsr cls
 
 ;  ; clear the screen
 ;  ldx #6
@@ -477,7 +446,6 @@ init:
   lda #CURSOR_MINY
   sta CURSOR_POSY
 
-  jsr print_cursor_dbg
   jsr show_cursor
 
   rts
