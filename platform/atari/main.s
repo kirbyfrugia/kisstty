@@ -7,9 +7,9 @@ MAX_INPUT_LEN = 114
 WOZMON        = $9800
 RS232_CHANNEL = 32    ; channel 2 (2 * 16)
 CURSOR_MINX   = 2
-CURSOR_MAXX   = 39
-CURSOR_MINY   = 0
-CURSOR_MAXY   = 3
+CURSOR_MAXX   = 38
+CURSOR_MINY   = 21
+CURSOR_MAXY   = 23
 
 .IMPORT boot850_check 
 .IMPORT boot850_bootstrap 
@@ -311,19 +311,12 @@ try_move_cursor_left:
 
   lda #0
   sec
-  sbc #(CURSOR_MINX+1)
+  sbc #((CURSOR_MINX+1)+(39-CURSOR_MAXX))
   sta ZPB2
   lda #$ff
   sta ZPB3
   jsr move_cursor
 
-;  lda #$ff
-;  sta ZPB4 ; move up one row
-;  lda #(CURSOR_MAXX-CURSOR_MINX)
-;  sta ZPB2 ; move to the end of the column
-;  lda #0
-;  sta ZPB3
-;  jsr move_cursor
 @done:
   rts
 
@@ -378,7 +371,7 @@ try_move_cursor_right:
   lda #CURSOR_MINX
   sta CURSOR_POSX
 
-  lda #(CURSOR_MINX+1)
+  lda #((39-CURSOR_MAXX)+(CURSOR_MINX)+1)
   sta ZPB2
   lda #0
   sta ZPB3
@@ -462,20 +455,26 @@ init:
   lda #1
   sta CRSINH
 
+;  ; clear the screen
+;  ldx #6
+;  lda #0
+;  sta ICCOM,x
+;  jsr CIOV
+
   ; set up our own cursor.
   ; first absolute position
   lda SAVMSC
   clc
-  adc #CURSOR_MINX
+  adc #<(CURSOR_MINY*40+CURSOR_MINX)
   sta CURSOR_POS_SCR
   lda SAVMSC+1
-  adc #0
+  adc #>(CURSOR_MINY*40+CURSOR_MINX)
   sta CURSOR_POS_SCR+1
 
   ; then relative position
-  lda #2
+  lda #CURSOR_MINX
   sta CURSOR_POSX
-  lda #0
+  lda #CURSOR_MINY
   sta CURSOR_POSY
 
   jsr print_cursor_dbg
