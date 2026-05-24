@@ -174,7 +174,6 @@ ti_init:
 ; skip the screen rows that are in the margin
   ldy #0
 @margin_row_loop:
-  iny
   cpy margin_top
   beq @margin_row_loop_done
 
@@ -185,6 +184,7 @@ ti_init:
   bcc @nowrap_margin_row
   inc CMDDATA5
 @nowrap_margin_row:
+  iny
   jmp @margin_row_loop
 @margin_row_loop_done:
 
