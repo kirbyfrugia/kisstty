@@ -11,15 +11,9 @@
 .EXPORT mti_tmp_dump_data
 
 MARGIN_LEFT   = 2
-MARGIN_RIGHT  = 1
 MARGIN_TOP    = 21
-MARGIN_BTM    = 0
-MINX          = MARGIN_LEFT
-MAXX          = SCREEN_WIDTH - MARGIN_RIGHT
-MINY          = MARGIN_TOP
-MAXY          = SCREEN_HEIGHT - MARGIN_BTM
-WIDTH         = (MAXX-MINX)+1
-HEIGHT        = (MAXY-MINY)+1
+WIDTH         = 38
+HEIGHT        = 3
 SIZE          = WIDTH * HEIGHT
 ;SIZE          = NUM_ROWS * SCREEN_WIDTH
 
@@ -119,6 +113,10 @@ mti_init:
   sta height
   lda #SIZE
   sta size
+  lda #(WIDTH-1)
+  sta cursor_maxx
+  lda #(HEIGHT-1)
+  sta cursor_maxy
 
   ; set pointers to table where screen row data is stored
   lda #<input_scr_rows_lo
@@ -163,6 +161,8 @@ height:              .byte 0
 size:                .byte 0
 cursorx:             .byte 0
 cursory:             .byte 0
+cursor_maxx:         .byte 0
+cursor_maxy:         .byte 0
 cursorpos:           .byte 0
 cursor_scr_row_ptr:  .byte 0,0
 

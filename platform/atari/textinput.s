@@ -36,7 +36,10 @@
 .EXPORT ti_init
 .EXPORT ti_set_metadata
 .EXPORT ti_scr_ptr
+.EXPORT ti_move_cursor_up
 .EXPORT ti_move_cursor_down
+.EXPORT ti_move_cursor_left
+.EXPORT ti_move_cursor_right
 .EXPORT ti_show_cursor
 
 
@@ -191,47 +194,25 @@ ti_init:
   ; now update all our row pointers
   ldy #0
 @row_loop:
-  lda CMDDATA4
-  sta (CMDDATA0),y
-  lda CMDDATA5
-  sta (CMDDATA2),y
-
-  iny
   cpy height
   beq @row_done
 
+  lda CMDDATA5
+  sta (CMDDATA2),y
   lda CMDDATA4
+  sta (CMDDATA0),y
+
   clc
   adc #SCREEN_WIDTH
   sta CMDDATA4
   bcc @nowrap_row
   inc CMDDATA5
 @nowrap_row:
+  iny
   jmp @row_loop
 @row_done:
   jsr update_cursor_scr_row_ptr
   jsr copy_out
-  rts
-
-; moves the cursor down a row if possible
-ti_move_cursor_down:
-  lda cursory
-  cmp height
-  bcs @ignore
-
-  lda #CURSOR_FLAG_DISABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
-
-  inc cursory
-  jsr update_cursor_scr_row_ptr
-
-  lda #CURSOR_FLAG_ENABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
-
-  jsr copy_out
-@ignore:
   rts
 
 ; internal only, assumes local_data is populated
@@ -285,17 +266,98 @@ ti_show_cursor:
 @done:
   rts
 
-; moves the cursor up a row
-;
-; inputs:
-;   CMDDATA0/1 - ptr to the text input struct
 ti_move_cursor_up:
+  lda #CURSOR_FLAG_DISABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  lda cursory
+  beq @wrapped
+  dec cursory
+  jmp @updated
+@wrapped:
+  lda cursor_maxy
+  sta cursory
+@updated:
+  jsr update_cursor_scr_row_ptr
+
+  lda #CURSOR_FLAG_ENABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  jsr copy_out
+
+  rts
+
+ti_move_cursor_down:
+  lda #CURSOR_FLAG_DISABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  lda cursory
+  cmp cursor_maxy
+  beq @wrapped
+
+  inc cursory
+  bne @updated
+@wrapped:
+  lda #0
+  sta cursory
+@updated:
+  jsr update_cursor_scr_row_ptr
+
+  lda #CURSOR_FLAG_ENABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  jsr copy_out
   rts
 
 ti_move_cursor_left:
+  lda #CURSOR_FLAG_DISABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  lda cursorx
+  beq @wrapped
+  dec cursorx
+  jmp @updated
+@wrapped:
+  lda cursor_maxx
+  sta cursorx
+@updated:
+  jsr update_cursor_scr_row_ptr
+
+  lda #CURSOR_FLAG_ENABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  jsr copy_out
+
   rts
 
 ti_move_cursor_right:
+  lda #CURSOR_FLAG_DISABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  lda cursorx
+  cmp cursor_maxx
+  beq @wrapped
+
+  inc cursorx
+  bne @updated
+@wrapped:
+  lda #0
+  sta cursorx
+@updated:
+  jsr update_cursor_scr_row_ptr
+
+  lda #CURSOR_FLAG_ENABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  jsr copy_out
   rts
 
 ; shifts all data from the cursor onwards to the right
@@ -394,6 +456,8 @@ height:              .byte 0   ; height of area in screen rows
 size:                .byte 0   ; number of characters for input area
 cursorx:             .byte 0   ; cursor x position relative to upper left of input area
 cursory:             .byte 0   ; cursor y position relative to upper left of input area
+cursor_maxx:         .byte 0   ; maximum x position for cursor relative to upper left of input area
+cursor_maxy:         .byte 0   ; maximum y position for cursor relative to upper left of input area
 cursorpos:           .byte 0   ; cursor position relative to upper left of input area
 cursor_scr_row_ptr:  .byte 0,0 ; ptr screen memory at start of row where cursor resides
 metadata_end:

@@ -38,7 +38,10 @@ SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY+1)*40
 .IMPORT mti_tmp_dump_data
 .IMPORT ti_scr_ptr
 .IMPORT ti_show_cursor
+.IMPORT ti_move_cursor_up
 .IMPORT ti_move_cursor_down
+.IMPORT ti_move_cursor_left
+.IMPORT ti_move_cursor_right
 
 .ifdef DEBUG
 .IMPORT wozmon_main
@@ -665,16 +668,20 @@ inkbd:
 ;  rts
 ;
 cmd_move_cursor_up:
+  jsr ti_move_cursor_up
   rts
+
 cmd_move_cursor_down:
   jsr ti_move_cursor_down
   rts
+
 cmd_move_cursor_left:
+  jsr ti_move_cursor_left
   rts
+
 cmd_move_cursor_right:
+  jsr ti_move_cursor_right
   rts
-
-
 
 proc_kbd:
   ; TODO remove when no longer debugging
