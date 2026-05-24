@@ -1,3 +1,32 @@
+; This implements a text input component with a cursor. 
+; You can create your own text inputs and can have more than one
+; on the screen at a time, each with its own cursor.
+;
+; The logic needed for everything is contained in this file.
+; To use it, make an EXACT copy of the struct at the bottom of the file,
+; and any time you want to call a function from this file,
+; just make sure that it's operating on a copy of your metadata.
+;
+; This isn't super efficient. If you're frequently changing between
+; text inputs, you're doing a fair amount of copying. If performance
+; is an issue, this is a good place to look for improvements.
+;
+; General usage 
+;   ti_set_metadata - copies your metadata to local storage here
+;                     and keeps a pointer to your metadata
+;                     for updating. Any time you call this, you
+;                     replace the local storage and update pointers
+;   ti_init         - used to initialize the text input once you
+;                     know where on the screen it will be
+;   ti_*            - functions that operate on the component. if
+;                     any metadata changes, these functions will
+;                     copy the locally stored metadata to your source.
+;
+; Commands take arguments from CMDDATA.*
+;   NOTE: there is heavy usage of CMDDATA.* vars internally,
+;         so there's no guarantee that the data in these
+;         won't be modified when you call any function here.
+;
 .SETCPU "6502"
 .INCLUDE "common.inc"
 .INCLUDE "config.inc"
@@ -5,9 +34,11 @@
 .SEGMENT "CODE"
 
 .EXPORT ti_init
+.EXPORT ti_set_metadata
 .EXPORT ti_scr_ptr
-.EXPORT ti_set_cursor
+.EXPORT ti_move_cursor_down
 .EXPORT ti_show_cursor
+
 
 
 ; interface needed:
@@ -65,119 +96,146 @@ cursor_to_local_pos:
   sta cursorpos
   rts
 
-; copies the given text input to local storage for ease
-; assumes that struct sizes match
+; takes our local text input metadata and copies it out
 ;
 ; inputs:
 ;   CMDDATA0/1 - ptr to the text input struct
-copy_local:
-  ldy #(LOCALDATA_SIZE-1)
+copy_out:
+  ldy #(METADATA_SIZE-1)
 @loop:
-  lda (CMDDATA0),y
-  sta localdata,y
+  lda metadata,y
+  sta (TI_METADATA_PTR_LO),y
+  dey
+  bpl @loop
+  rts
+
+; takes source text input metadata and copies it
+; to local storage, including the pointer to
+; this metadata.
+;
+; inputs:
+;   CMDDATA0/1 - ptr to the source metadata struct
+ti_set_metadata:
+  lda CMDDATA0
+  sta TI_METADATA_PTR_LO
+  lda CMDDATA1
+  sta TI_METADATA_PTR_HI
+
+  ldy #(METADATA_SIZE-1)
+@loop:
+  lda (TI_METADATA_PTR_LO),y
+  sta metadata,y
   dey
   bpl @loop
   rts
 
 ; initializes a text input, sets appropriate screen pointers
 ;
-; inputs:
-;   CMDDATA0/1 - ptr to the text input struct
-;   CMDDATA2/3 - used internally, no need to set, ptr to the text input screen point row lookup, lo bytes
-;   CMDDATA4/5 - used internally, no need to set, ptr to the text input screen point row lookup, hi bytes
-;   CMDDATA6/7 - used internally, no need to set, temp buffer
 ; assumes:
 ;   SCR_PTR_LO already set
 ti_init:
-  jsr copy_local
+  ; each row in the text input corresponds to a row in the screen.
+  ; we keep track of the location of these rows for faster computation
+  ; when we're editing text, moving cursors, etc.
+  ; the pointer points to the beginning of the screen row, which may be
+  ; further left than the margin.
+  ;
+  ; this data is stored in the following format:
+  ;  scr_rows_lo: .byte 0,0,0
+  ;  scr_rows_hi: .byte 0,0,0
+  ; where each pair represents a row, starting with the
+  ; first row of the text input. each index is a row.
+  ;
+  ; any text input will have its own location in memory
+  ; where this data is stored, and it's pointed at by
+  ; the metadata struct scr_rows_ptr_loc_lo/hi.
 
-  ; get the pointer to where we store the screen row pointers
-  ; it's a pointer to pointers
+  ; get the pointers to where we store the screen row pointers,
+  ; which are pointers to screen memory locations
+
+  ; get pointer to pointer data for lo byte of screen rows
   lda scr_rows_ptr_loc_lo
-  sta CMDDATA2
+  sta CMDDATA0
   lda scr_rows_ptr_loc_lo+1
+  sta CMDDATA1
+
+  ; get pointer to pointer data for hi byte of screen rows
+  lda scr_rows_ptr_loc_hi
+  sta CMDDATA2
+  lda scr_rows_ptr_loc_hi+1
   sta CMDDATA3
 
-  lda scr_rows_ptr_loc_hi
+  ; CMDDATA4/5 are a pointer to each actual screen row
+  lda SCR_PTR_LO
   sta CMDDATA4
-  lda scr_rows_ptr_loc_hi+1
+  lda SCR_PTR_HI
   sta CMDDATA5
 
-  lda SCR_PTR_LO
-  sta CMDDATA6
-  lda SCR_PTR_HI
-  sta CMDDATA7
-
-; skip the screen rows that are the margin
+; skip the screen rows that are in the margin
   ldy #0
 @margin_row_loop:
   iny
   cpy margin_top
   beq @margin_row_loop_done
 
-  lda CMDDATA6
+  lda CMDDATA4
   clc
   adc #SCREEN_WIDTH
-  sta CMDDATA6
+  sta CMDDATA4
   bcc @nowrap_margin_row
-  inc CMDDATA7
+  inc CMDDATA5
 @nowrap_margin_row:
   jmp @margin_row_loop
 @margin_row_loop_done:
 
+  ; now update all our row pointers
   ldy #0
 @row_loop:
-  lda CMDDATA6
+  lda CMDDATA4
+  sta (CMDDATA0),y
+  lda CMDDATA5
   sta (CMDDATA2),y
-  lda CMDDATA7
-  sta (CMDDATA4),y
 
   iny
   cpy height
   beq @row_done
 
-  lda CMDDATA6
+  lda CMDDATA4
   clc
   adc #SCREEN_WIDTH
-  sta CMDDATA6
+  sta CMDDATA4
   bcc @nowrap_row
-  inc CMDDATA7
+  inc CMDDATA5
 @nowrap_row:
   jmp @row_loop
 @row_done:
+  jsr update_cursor_scr_row_ptr
+  jsr copy_out
   rts
 
-; sets the cursor to the given position
-;
-; inputs:
-;   CMDDATA0/1 - ptr to the text input struct
-;   CMDDATA2   - cursor x position
-;   CMDDATA3   - cursor y position
-ti_set_cursor:
-  lda CMDDATA2
-  sta cursorx
-  lda CMDDATA3
-  sta cursory
-  ldy #INPUTS_WIDTH_OFFSET
-  lda (CMDDATA0),y
-  sta width
-  jsr cursor_to_local_pos
-  lda cursorpos
-  ldy #INPUTS_CURSORPOS_OFFSET
-  sta (CMDDATA0),y
-  rts
+; moves the cursor down a row if possible
+ti_move_cursor_down:
+  lda cursory
+  cmp height
+  bcs @ignore
 
-; hides the cursor
-;
-; inputs:
-;   CMDDATA0/1 - ptr to the text input struct
-ti_hide_cursor:
+  lda #CURSOR_FLAG_DISABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  inc cursory
+  jsr update_cursor_scr_row_ptr
+
+  lda #CURSOR_FLAG_ENABLE
+  sta CMDDATA0
+  jsr ti_show_cursor
+
+  jsr copy_out
+@ignore:
   rts
 
 ; internal only, assumes local_data is populated
-; WARN:
-;   modifies CMDDATA2/3/4/5
-update_scr_coords_current_row:
+update_cursor_scr_row_ptr:
   ldy cursory
 
   ; get the pointer to where we store the screen row pointers
@@ -187,40 +245,33 @@ update_scr_coords_current_row:
   lda scr_rows_ptr_loc_lo+1
   sta CMDDATA3
   lda (CMDDATA2),y
-  sta scr_coords_current_row
+  sta cursor_scr_row_ptr
 
   lda scr_rows_ptr_loc_hi
   sta CMDDATA4
   lda scr_rows_ptr_loc_hi+1
   sta CMDDATA5
   lda (CMDDATA4),y
-  sta scr_coords_current_row+1
+  sta cursor_scr_row_ptr+1
 
   rts
 
 ; shows the cursor
-;
 ; inputs:
-;   CMDDATA0/1 - ptr to the text input struct
-;   CMDDATA2/3 - used internally, no need to set, ptr to the text input screen point row lookup, lo bytes
-;   CMDDATA4/5 - used internally, no need to set, ptr to the text input screen point row lookup, hi bytes
-;   CMDDATA6   - CURSOR_FLAG
+;   CMDDATA0   - CURSOR_FLAG
 ti_show_cursor:
-  jsr copy_local
-  jsr update_scr_coords_current_row
-
-  lda scr_coords_current_row
+  lda cursor_scr_row_ptr
   sta CMDDATA2
-  lda scr_coords_current_row+1
+  lda cursor_scr_row_ptr+1
   sta CMDDATA3
 
   lda margin_left
   clc
-  adc cursory
+  adc cursorx
   tay
 
   lda #CURSOR_FLAG_ENABLE
-  bit CMDDATA6
+  bit CMDDATA0
   bmi @show_cursor
   
   lda (CMDDATA2),y
@@ -239,9 +290,6 @@ ti_show_cursor:
 ; inputs:
 ;   CMDDATA0/1 - ptr to the text input struct
 ti_move_cursor_up:
-  rts
-
-ti_move_cursor_down:
   rts
 
 ti_move_cursor_left:
@@ -325,9 +373,6 @@ ti_scr_ptr:
 @nowrap_col:
   rts
 
-ti_scr_hide_cursor:
-  rts
-
 ti_scr_move_cursor_home:
   lda #0
   sta cursorx
@@ -337,22 +382,20 @@ ti_scr_move_cursor_home:
 ti_copy_input_struct:
   rts
 
-scr_coords_current_row: .byte 0,0
-
 ; internal copy
-localdata:
-data_ptr:            .byte 0,0
-scr_rows_ptr_loc_lo: .byte 0,0
-scr_rows_ptr_loc_hi: .byte 0,0
-margin_left:         .byte 0
-margin_right:        .byte 0
-margin_top:          .byte 0
-margin_btm:          .byte 0
-width:               .byte 0
-height:              .byte 0
-size:                .byte 0
-cursorx:             .byte 0
-cursory:             .byte 0
-cursorpos:           .byte 0
-localdata_end:
-LOCALDATA_SIZE = localdata_end-localdata
+metadata:
+data_ptr:            .byte 0,0 ; ptr to input area data
+scr_rows_ptr_loc_lo: .byte 0,0 ; ptr to table of pointers for location of start of each screen row, lo byte
+scr_rows_ptr_loc_hi: .byte 0,0 ; ptr to table of pointers for location of start of each screen row, hi byte
+margin_left:         .byte 0   ; margin from left of screen to left of text area
+margin_top:          .byte 0   ; margin from top of screen to top of text area
+width:               .byte 0   ; width of area in screen columns
+height:              .byte 0   ; height of area in screen rows
+size:                .byte 0   ; number of characters for input area
+cursorx:             .byte 0   ; cursor x position relative to upper left of input area
+cursory:             .byte 0   ; cursor y position relative to upper left of input area
+cursorpos:           .byte 0   ; cursor position relative to upper left of input area
+cursor_scr_row_ptr:  .byte 0,0 ; ptr screen memory at start of row where cursor resides
+metadata_end:
+METADATA_SIZE = metadata_end-metadata
+

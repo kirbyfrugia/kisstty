@@ -34,12 +34,11 @@ SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY+1)*40
 .IMPORT kbd_shifted
 .IMPORT kbd_ctrld
 .IMPORT mti_init
-.IMPORT mti_main_input_struct
+.IMPORT mti_main_input_metadata
 .IMPORT mti_tmp_dump_data
 .IMPORT ti_scr_ptr
-.IMPORT ti_set_cursor
-.IMPORT ti_hide_cursor
 .IMPORT ti_show_cursor
+.IMPORT ti_move_cursor_down
 
 .ifdef DEBUG
 .IMPORT wozmon_main
@@ -194,9 +193,9 @@ init:
 
   jsr mti_init
 
-;  lda #<mti_main_input_struct
+;  lda #<mti_main_input_metadata
 ;  sta CMDDATA0
-;  lda #>mti_main_input_struct
+;  lda #>mti_main_input_metadata
 ;  sta CMDDATA1
 ;  lda #0
 ;  sta CMDDATA2
@@ -206,9 +205,9 @@ init:
   lda #0
   jsr mti_tmp_dump_data
   
-  lda #<mti_main_input_struct
+  lda #<mti_main_input_metadata
   sta CMDDATA0
-  lda #>mti_main_input_struct
+  lda #>mti_main_input_metadata
   sta CMDDATA1
   lda #CURSOR_FLAG_ENABLE
   sta CMDDATA6
@@ -668,6 +667,7 @@ inkbd:
 cmd_move_cursor_up:
   rts
 cmd_move_cursor_down:
+  jsr ti_move_cursor_down
   rts
 cmd_move_cursor_left:
   rts

@@ -26,7 +26,6 @@ INPUT_UPPER_LEFT_PTR = $98 ; and $99 - pointer to uper left char in input area
 
 ; BIT 7 - show/hide - 1 if show, 0 if hide
 ; BIT 6
-CURSOR_FLAGS         = $9a
 CURSOR_FLAG_ENABLE   = %10000000
 CURSOR_FLAG_DISABLE  = %00000000
 
@@ -48,3 +47,6 @@ CMDDATAE             = $a9
 CMDDATAF             = $aa
 SCR_PTR_LO           = $ab
 SCR_PTR_HI           = $ac
+TI_METADATA_PTR_LO   = $ad
+TI_METADATA_PTR_HI   = $ae
+

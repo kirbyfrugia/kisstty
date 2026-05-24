@@ -5,8 +5,9 @@
 
 .IMPORT utils_dump_mem_row
 .IMPORT ti_init
+.IMPORT ti_set_metadata
 .EXPORT mti_init
-.EXPORT mti_main_input_struct
+.EXPORT mti_main_input_metadata
 .EXPORT mti_tmp_dump_data
 
 MARGIN_LEFT   = 2
@@ -39,9 +40,9 @@ mti_tmp_dump_data:
   adc #0
   sta CMDDATA1
 
-  lda #<mti_main_input_struct
+  lda #<mti_main_input_metadata
   sta CMDDATA2
-  lda #>mti_main_input_struct
+  lda #>mti_main_input_metadata
   sta CMDDATA3
   ldy #0
   jsr utils_dump_mem_row
@@ -54,9 +55,9 @@ mti_tmp_dump_data:
   adc #0
   sta CMDDATA1
 
-  lda #<(mti_main_input_struct+8)
+  lda #<(mti_main_input_metadata+8)
   sta CMDDATA2
-  lda #>(mti_main_input_struct+8)
+  lda #>(mti_main_input_metadata+8)
   sta CMDDATA3
   ldy #0
   jsr utils_dump_mem_row
@@ -104,18 +105,14 @@ mti_init:
   sta cursory
   sta cursorpos
 
-  lda #<mti_main_input_data
+  lda #<mti_main_input_metadata
   sta data_ptr
-  lda #>mti_main_input_data
+  lda #>mti_main_input_metadata
   sta data_ptr+1
   lda #MARGIN_LEFT
   sta margin_left
-  lda #MARGIN_RIGHT
-  sta margin_right
   lda #MARGIN_TOP
   sta margin_top
-  lda #MARGIN_BTM
-  sta margin_btm
   lda #WIDTH
   sta width
   lda #HEIGHT
@@ -134,10 +131,11 @@ mti_init:
   lda #>input_scr_rows_hi
   sta scr_rows_ptr_loc_hi+1
 
-  lda #<mti_main_input_struct
+  lda #<mti_main_input_metadata
   sta CMDDATA0
-  lda #>mti_main_input_struct
+  lda #>mti_main_input_metadata
   sta CMDDATA1
+  jsr ti_set_metadata
   jsr ti_init
   ;lda #0
   ;sta CMDDATA2
@@ -151,20 +149,22 @@ mti_init:
   rts
 
 
-mti_main_input_struct:
+; see textinput.s for documentation
+; WARN: be very careful if you modify any of this.
+;       it needs to match the struct in textinput.s exactly.
+mti_main_input_metadata:
 data_ptr:            .byte 0,0
 scr_rows_ptr_loc_lo: .byte 0,0
 scr_rows_ptr_loc_hi: .byte 0,0
 margin_left:         .byte 0
-margin_right:        .byte 0
 margin_top:          .byte 0
-margin_btm:          .byte 0
 width:               .byte 0
 height:              .byte 0
 size:                .byte 0
 cursorx:             .byte 0
 cursory:             .byte 0
 cursorpos:           .byte 0
+cursor_scr_row_ptr:  .byte 0,0
 
 input_scr_rows_lo:  .res HEIGHT
 input_scr_rows_hi:  .res HEIGHT
