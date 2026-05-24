@@ -99,9 +99,9 @@ mti_init:
   sta cursory
   sta cursorpos
 
-  lda #<mti_main_input_metadata
+  lda #<mti_main_input_data
   sta data_ptr
-  lda #>mti_main_input_metadata
+  lda #>mti_main_input_data
   sta data_ptr+1
   lda #MARGIN_LEFT
   sta margin_left

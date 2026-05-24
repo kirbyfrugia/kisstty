@@ -42,6 +42,7 @@ SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY+1)*40
 .IMPORT ti_move_cursor_down
 .IMPORT ti_move_cursor_left
 .IMPORT ti_move_cursor_right
+.IMPORT ti_addchar
 
 .ifdef DEBUG
 .IMPORT wozmon_main
@@ -205,17 +206,14 @@ init:
 ;  sta CMDDATA3
 ;  jsr ti_set_cursor
 
-  lda #0
-  jsr mti_tmp_dump_data
+  ;lda #0
+  ;jsr mti_tmp_dump_data
   
-  lda #<mti_main_input_metadata
-  sta CMDDATA0
-  lda #>mti_main_input_metadata
-  sta CMDDATA1
-  lda #CURSOR_FLAG_ENABLE
-  sta CMDDATA6
   jsr ti_show_cursor
   ;jsr move_cursor_home
+
+  lda #0
+  jsr mti_tmp_dump_data
   rts
 
 
@@ -689,6 +687,16 @@ cmd_move_cursor_right:
   jsr ti_move_cursor_right
   rts
 
+cmd_addchar:
+  lda user_input_atascii
+  beq @done
+  ;jsr utils_atascii_to_icode
+  jsr ti_addchar
+  lda #0
+  jsr mti_tmp_dump_data
+@done:
+  rts
+
 proc_kbd:
   ; TODO remove when no longer debugging
   lda SAVMSC
@@ -719,18 +727,10 @@ proc_kbd:
   cmp #$77 ; shift+insert on atari
   ; TODO: figure out how to do this on emulator
   ; $77 is correct on atari, $7c for shift+insert on emulator
-  cmp #$7c ; shift+insert on emulator
+  ;cmp #$7c ; shift+insert on emulator
   beq @line_insert
 @output:
-;  lda user_input_atascii
-;  beq @done
-;  ; output their keypress
-;  jsr utils_atascii_to_icode
-;  ldy #0
-;  sta (CURSOR_POS_SCR),y
-;  lda #CURSOR_FLAG_WRAP_DIFF_LINE
-;  sta CURSOR_FLAGS
-;  jsr try_move_cursor_right
+  jsr cmd_addchar
   jmp @done
 @up_arrow:
   jmp cmd_move_cursor_up

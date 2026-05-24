@@ -50,4 +50,7 @@ SCR_PTR_LO           = $ab
 SCR_PTR_HI           = $ac
 TI_METADATA_PTR_LO   = $ad
 TI_METADATA_PTR_HI   = $ae
-
+TI_SCR_ROW_PTR_LO    = $af
+TI_SCR_ROW_PTR_HI    = $b0
+TI_DATA_PTR_LO       = $b1
+TI_DATA_PTR_HI       = $b2

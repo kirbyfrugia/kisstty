@@ -33,84 +33,15 @@
 .INCLUDE "textinput.inc"
 .SEGMENT "CODE"
 
+.IMPORT utils_atascii_to_icode
 .EXPORT ti_init
 .EXPORT ti_set_metadata
-.EXPORT ti_scr_ptr
 .EXPORT ti_move_cursor_up
 .EXPORT ti_move_cursor_down
 .EXPORT ti_move_cursor_left
 .EXPORT ti_move_cursor_right
 .EXPORT ti_show_cursor
-
-
-
-; interface needed:
-;   set cursor position
-;   move cursor up/down, left/right
-;   shift+clear
-;     - clear all data, move cursor top left
-;   insert line
-;     - moves all lines down from current cursor
-;   insert char
-;     - writes a space under current cursor
-;     - moves all characters after cursor to right
-;   backspace (atari style)
-;     - erases character under cursor
-;     - move cursor left
-;     - no shifting of data
-;   backspace (other style, later)
-;     - erase character under cursor
-;     - shift all data after cursor left
-;   delete line
-;     - removes whole line
-;     - moves subsequent lines up
-;   delete char (at cursor)
-;     - moves all characters after cursor one char to the left
-
-; raw composable functions needed
-;   Note: keep data separate from presentation
-;   set cursor position
-;   move cursor left/right/up/down
-;   hide/show cursor
-;   redraw row (with offset)
-;   redraw
-;   insert char
-;   delete char
-;   delete row (with offset)
-;   replace char
-
-
-; internal use only, updates the local cursor pos
-; given the current cursor x and y
-; expects:
-;   cursorx, cursory, width to be set
-cursor_to_local_pos:
-  clc
-  lda #0
-  tax
-@row_loop:
-  cpx cursory
-  beq @row_loop_done
-  adc width
-  inx
-  jmp @row_loop
-@row_loop_done:
-  adc cursorx
-  sta cursorpos
-  rts
-
-; takes our local text input metadata and copies it out
-;
-; inputs:
-;   CMDDATA0/1 - ptr to the text input struct
-copy_out:
-  ldy #(METADATA_SIZE-1)
-@loop:
-  lda metadata,y
-  sta (TI_METADATA_PTR_LO),y
-  dey
-  bpl @loop
-  rts
+.EXPORT ti_addchar
 
 ; takes source text input metadata and copies it
 ; to local storage, including the pointer to
@@ -130,7 +61,26 @@ ti_set_metadata:
   sta metadata,y
   dey
   bpl @loop
+
+  lda data_ptr
+  sta TI_DATA_PTR_LO 
+  lda data_ptr+1
+  sta TI_DATA_PTR_HI
   rts
+
+; takes our local text input metadata and copies it out
+;
+; inputs:
+;   CMDDATA0/1 - ptr to the text input struct
+copy_out:
+  ldy #(METADATA_SIZE-1)
+@loop:
+  lda metadata,y
+  sta (TI_METADATA_PTR_LO),y
+  dey
+  bpl @loop
+  rts
+
 
 ; initializes a text input, sets appropriate screen pointers
 ;
@@ -211,8 +161,72 @@ ti_init:
   iny
   jmp @row_loop
 @row_done:
+  jsr update_cursor_pos
   jsr update_cursor_scr_row_ptr
+
+  lda #CURSOR_FLAG_ENABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+
   jsr copy_out
+  rts
+
+
+
+; interface needed:
+;   set cursor position
+;   move cursor up/down, left/right
+;   shift+clear
+;     - clear all data, move cursor top left
+;   insert line
+;     - moves all lines down from current cursor
+;   insert char
+;     - writes a space under current cursor
+;     - moves all characters after cursor to right
+;   backspace (atari style)
+;     - erases character under cursor
+;     - move cursor left
+;     - no shifting of data
+;   backspace (other style, later)
+;     - erase character under cursor
+;     - shift all data after cursor left
+;   delete line
+;     - removes whole line
+;     - moves subsequent lines up
+;   delete char (at cursor)
+;     - moves all characters after cursor one char to the left
+
+; raw composable functions needed
+;   Note: keep data separate from presentation
+;   set cursor position
+;   move cursor left/right/up/down
+;   hide/show cursor
+;   redraw row (with offset)
+;   redraw
+;   insert char
+;   delete char
+;   delete row (with offset)
+;   replace char
+
+
+; internal use only, updates the local cursor pos
+; given the current cursor x and y
+update_cursor_pos:
+  clc
+  lda #0
+  tax
+@row_loop:
+  cpx cursory
+  beq @row_loop_done
+  clc
+  adc width
+  inx
+  bne @row_loop
+@row_loop_done:
+  clc
+  ;adc margin_left
+  adc cursorx
+  sta cursorpos
   rts
 
 ; internal only, assumes local_data is populated
@@ -227,6 +241,7 @@ update_cursor_scr_row_ptr:
   sta CMDDATA3
   lda (CMDDATA2),y
   sta cursor_scr_row_ptr
+  sta TI_SCR_ROW_PTR_LO
 
   lda scr_rows_ptr_loc_hi
   sta CMDDATA4
@@ -234,6 +249,7 @@ update_cursor_scr_row_ptr:
   sta CMDDATA5
   lda (CMDDATA4),y
   sta cursor_scr_row_ptr+1
+  sta TI_SCR_ROW_PTR_HI
 
   rts
 
@@ -282,6 +298,7 @@ ti_move_cursor_up:
   lda cursor_maxy
   sta cursory
 @updated:
+  jsr update_cursor_pos
   jsr update_cursor_scr_row_ptr
 
   lda #CURSOR_FLAG_ENABLE
@@ -307,6 +324,7 @@ ti_move_cursor_down:
   lda #0
   sta cursory
 @updated:
+  jsr update_cursor_pos
   jsr update_cursor_scr_row_ptr
 
   lda #CURSOR_FLAG_ENABLE
@@ -334,7 +352,7 @@ ti_move_cursor_left:
   lda cursorx
   beq @wrapped
   dec cursorx
-  jmp @done
+  jmp @updated
 @wrapped:
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
   bit CMDDATA0
@@ -343,7 +361,7 @@ ti_move_cursor_left:
   ; if here, just wrap around on the same line
   lda cursor_maxx
   sta cursorx
-  bne @done
+  bne @updated
 @wrapped_change_lines:
   lda cursory
   beq @done ; already at top, just ignore movement
@@ -353,6 +371,8 @@ ti_move_cursor_left:
   ; and move to the end of it
   lda cursor_maxx
   sta cursorx
+@updated:
+  jsr update_cursor_pos
   jsr update_cursor_scr_row_ptr
 @done:
   lda #CURSOR_FLAG_ENABLE
@@ -360,7 +380,6 @@ ti_move_cursor_left:
   jsr internal_show_cursor
 
   jsr copy_out
-
   rts
 
 ti_move_cursor_right:
@@ -373,7 +392,7 @@ ti_move_cursor_right:
   beq @wrapped
 
   inc cursorx
-  bne @done
+  bne @updated
 @wrapped:
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
   bit CMDDATA0
@@ -382,7 +401,7 @@ ti_move_cursor_right:
   ; if here, just wrap around on the same line
   lda #0
   sta cursorx
-  beq @done
+  beq @updated
 @wrapped_change_lines:
   lda cursory
   cmp cursor_maxy
@@ -393,6 +412,8 @@ ti_move_cursor_right:
   ; and move to the start of it
   lda #0
   sta cursorx
+@updated:
+  jsr update_cursor_pos
   jsr update_cursor_scr_row_ptr
 @done:
   lda #CURSOR_FLAG_ENABLE
@@ -427,65 +448,41 @@ ti_shift_data_right:
 @done:
   rts
 
+internal_update_screen_char:
+  ldy cursorpos
+  lda (TI_DATA_PTR_LO),y
+  jsr utils_atascii_to_icode
+  pha
+  lda margin_left
+  clc
+  adc cursorx
+  tay
+  pla
+  sta (TI_SCR_ROW_PTR_LO),y
+  rts
+
+; sets the character at the current cursor location provided in A.
+; moves the cursor to the right.
+;
+; inputs
+;   - A the character
+ti_addchar:
+  ldy cursorpos
+  sta (TI_DATA_PTR_LO),y
+  jsr internal_update_screen_char
+  lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
+  sta CMDDATA0
+  jsr ti_move_cursor_right
+  rts
+
 ti_insert_char:
   rts
 
-; calculates the screen position given a relative x and y position
-;
-; input args:
-;   CMDDATA0/1 - ptr to the textinput struct
-;   CMDDATA2   - x position relative to left of text input
-;   CMDDATA3   - y position relative to top of text input
-; output args:
-;   CMDDATA4/5 - absolute ptr to position relative to start of screen
-; modifies:
-;   a, x, y
-ti_scr_ptr:
-  lda SCR_PTR_LO
-  sta CMDDATA4
-  lda SCR_PTR_HI
-  sta CMDDATA5
-  ldx #0
-@row_loop:
-  cpx CMDDATA2
-  beq @row_done
-  lda CMDDATA4
-  clc
-  adc #SCREEN_WIDTH
-  sta CMDDATA4
-  bcc @nowrap_row
-  inc CMDDATA5
-@nowrap_row:
-  inx
-  bne @row_loop
-@row_done:
-  ; now add the left margin and the given offset
-  ldy #INPUTS_MARGIN_LEFT_OFFSET
-  lda (CMDDATA0),y
-  sta margin_left
-  ldy #INPUTS_CURSORX_OFFSET
-  lda (CMDDATA0),y
-  sta cursorx
-
-  lda CMDDATA4
-  clc
-  adc cursorx
-  adc margin_left
-  sta CMDDATA4
-  bcc @nowrap_col
-  inc CMDDATA5
-@nowrap_col:
-  rts
-
 ti_scr_move_cursor_home:
-  lda #0
-  sta cursorx
-  sta cursory
   rts
 
-ti_copy_input_struct:
-  rts
 
+newchar0: .byte 0
 show_cursor_var0: .byte 0
 
 ; internal copy
