@@ -31,6 +31,8 @@ ATARI_CFG_DBG   = $(SRCDIR)/atari/config/atari-asm-xex-debug.cfg
 ATARI_SRCS      = main.s \
 		  boot850.s \
 		  kbd.s \
+		  maintextinput.s \
+		  textinput.s \
 		  rs232.s \
 		  utils.s \
 		  wozmon.s

@@ -18,7 +18,7 @@ MAX_INPUT_LEN = 114
 ; Reference: Mapping the atari, $e108
 ; inputs:
 ;   a - the character in atascii
-; outputs:
+; modifies/outputs:
 ;   a - the char in icode
 utils_atascii_to_icode:
   cmp #32
@@ -58,51 +58,47 @@ utils_atascii_to_icode:
 @done:
   rts
 
+; Writes char to (CMDDATA0),y
+;
 ; inputs:
-;   - ZPB0/ZPB1 - location to print
+;   - CMDDATA0/CMDDATA1 - location to print
 ;   - y - offset from location
 ;   - a - byte to print 
-; outputs:
-;   - Writes char to (zpb0),y
-; modifies:
-;   - UTILS_TMP1
 utils_byte_to_scr_hex:
-  sta UTILS_TMP1
+  sta tmp_byte_to_str
   txa
   pha
   tya
   pha
 
-  lda UTILS_TMP1
+  lda tmp_byte_to_str
   lsr
   lsr
   lsr
   lsr
   tax
   lda HEX_TABLE_SCR,x
-  sta (ZPB0),y
-  lda UTILS_TMP1
+  sta (CMDDATA0),y
+  lda tmp_byte_to_str
   and #%00001111
   tax
   iny
   lda HEX_TABLE_SCR,x
-  sta (ZPB0),y 
+  sta (CMDDATA0),y
 
   pla
   tay
   pla
   tax
-  lda UTILS_TMP1
+  lda tmp_byte_to_str
   rts
 
 ; dump memory to screen in an 8-byte row with an address
 ; 
 ; input:
-;   ZPB0/ZPB1 - screen address
-;   ZPB2/ZPB3 - start address lo/hi
-;   y - offset from start of screen row to print
+;   CMDDATA0/CMDDATA1- screen address
+;   CMDDATA2/CMDDATA3- start address lo/hi
 ; modifies:
-;   - UTILS_TMP2
 utils_dump_mem_row:
   pha
   txa
@@ -110,36 +106,36 @@ utils_dump_mem_row:
   tya
   pha
 
-  lda ZPB3
+  lda CMDDATA3
   ldy #0
   jsr utils_byte_to_scr_hex
-  lda ZPB2
+  lda CMDDATA2
   ldy #2
   jsr utils_byte_to_scr_hex
   lda #':'
   jsr utils_atascii_to_icode
   ldy #4
-  sta (ZPB0),y
+  sta (CMDDATA0),y
   lda #' '
   jsr utils_atascii_to_icode
   ldy #5
-  sta (ZPB0),y
+  sta (CMDDATA0),y
 
   iny
   ldx #0
 @next_byte:
-  sty UTILS_TMP2
+  sty tmp_dump_mem
   txa
   tay
-  lda (ZPB2),y
-  ldy UTILS_TMP2
+  lda (CMDDATA2),y
+  ldy tmp_dump_mem
   jsr utils_byte_to_scr_hex
   iny
   iny
 
   lda #' '
   jsr utils_atascii_to_icode
-  sta (ZPB0),y
+  sta (CMDDATA0),y
   iny
   inx
   cpx #8
@@ -159,3 +155,5 @@ HEX_TABLE_SCR:
   .byte 16,17,18,19,20,21,22,23,24,25
   .byte 33,34,35,36,37,38
 
+tmp_dump_mem:    .byte 0
+tmp_byte_to_str: .byte 0

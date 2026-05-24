@@ -1,3 +1,6 @@
+SCREEN_WIDTH  = 40
+SCREEN_HEIGHT = 24
+
 ZPB0 = $80
 ZPB1 = $81
 ZPB2 = $82
@@ -20,8 +23,28 @@ CURSOR_POSY          = $93 ;         - y position of cursor relative to screen u
 CURSOR_POS_SCR       = $94 ; and $95 - absolute memory location of cursor position
 CURSOR_SOL_PTR       = $96 ; and $97 - pointer to start of line (current cursor line)
 INPUT_UPPER_LEFT_PTR = $98 ; and $99 - pointer to uper left char in input area
+
+; BIT 7 - show/hide - 1 if show, 0 if hide
+; BIT 6
 CURSOR_FLAGS         = $9a
-TMP0 = $9b
-TMP1 = $9c
-TMP2 = $9d
-TMP3 = $9e
+CURSOR_FLAG_ENABLE   = %10000000
+CURSOR_FLAG_DISABLE  = %00000000
+
+CMDDATA0             = $9b
+CMDDATA1             = $9c
+CMDDATA2             = $9d
+CMDDATA3             = $9e
+CMDDATA4             = $9f
+CMDDATA5             = $a0
+CMDDATA6             = $a1
+CMDDATA7             = $a2
+CMDDATA8             = $a3
+CMDDATA9             = $a4
+CMDDATAA             = $a5
+CMDDATAB             = $a6
+CMDDATAC             = $a7
+CMDDATAD             = $a8
+CMDDATAE             = $a9
+CMDDATAF             = $aa
+SCR_PTR_LO           = $ab
+SCR_PTR_HI           = $ac

@@ -2,36 +2,36 @@
   pha
   tya
   pha
-  lda ZPB0
+  lda CMDARG0
   pha
-  lda ZPB1
+  lda CMDARG1
   pha
-  lda ZPB2
+  lda CMDARG2
   pha
-  lda ZPB3
+  lda CMDARG3
   pha
   lda scr_base_lo
   clc
   adc #scr_offset
-  sta ZPB0
+  sta CMDARG0
   lda scr_base_hi
   adc #0
-  sta ZPB1
+  sta CMDARG1
   lda #<addr
-  sta ZPB2
+  sta CMDARG2
   lda #>addr
-  sta ZPB3
+  sta CMDARG3
   ldy #0
   jsr utils_dump_mem_row
 
   pla
-  sta ZPB3
+  sta CMDARG3
   pla
-  sta ZPB2
+  sta CMDARG2
   pla
-  sta ZPB1
+  sta CMDARG1
   pla
-  sta ZPB0
+  sta CMDARG0
   pla
   tay
   pla
