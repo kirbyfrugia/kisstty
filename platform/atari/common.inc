@@ -25,9 +25,10 @@ CURSOR_SOL_PTR       = $96 ; and $97 - pointer to start of line (current cursor 
 INPUT_UPPER_LEFT_PTR = $98 ; and $99 - pointer to uper left char in input area
 
 ; BIT 7 - show/hide - 1 if show, 0 if hide
-; BIT 6
-CURSOR_FLAG_ENABLE   = %10000000
-CURSOR_FLAG_DISABLE  = %00000000
+CURSOR_FLAG_ENABLE                = %10000000
+CURSOR_FLAG_DISABLE               = %00000000
+CURSOR_BEHAVIOR_WRAP_CHANGE_LINES = %10000000
+CURSOR_BEHAVIOR_WRAP_SAME_LINE    = %00000000
 
 CMDDATA0             = $9b
 CMDDATA1             = $9c

@@ -676,10 +676,16 @@ cmd_move_cursor_down:
   rts
 
 cmd_move_cursor_left:
+  lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
+  ;lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
+  sta CMDDATA0
   jsr ti_move_cursor_left
   rts
 
 cmd_move_cursor_right:
+  lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
+  ;lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
+  sta CMDDATA0
   jsr ti_move_cursor_right
   rts
 

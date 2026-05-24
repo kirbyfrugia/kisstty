@@ -241,6 +241,9 @@ update_cursor_scr_row_ptr:
 ; inputs:
 ;   CMDDATA0   - CURSOR_FLAG
 ti_show_cursor:
+  lda CMDDATA0
+  sta show_cursor_var0
+internal_show_cursor:
   lda cursor_scr_row_ptr
   sta CMDDATA2
   lda cursor_scr_row_ptr+1
@@ -252,7 +255,7 @@ ti_show_cursor:
   tay
 
   lda #CURSOR_FLAG_ENABLE
-  bit CMDDATA0
+  bit show_cursor_var0
   bmi @show_cursor
   
   lda (CMDDATA2),y
@@ -268,8 +271,8 @@ ti_show_cursor:
 
 ti_move_cursor_up:
   lda #CURSOR_FLAG_DISABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
+  sta show_cursor_var0
+  jsr internal_show_cursor
 
   lda cursory
   beq @wrapped
@@ -282,8 +285,8 @@ ti_move_cursor_up:
   jsr update_cursor_scr_row_ptr
 
   lda #CURSOR_FLAG_ENABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
+  sta show_cursor_var0
+  jsr internal_show_cursor
 
   jsr copy_out
 
@@ -291,8 +294,8 @@ ti_move_cursor_up:
 
 ti_move_cursor_down:
   lda #CURSOR_FLAG_DISABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
+  sta show_cursor_var0
+  jsr internal_show_cursor
 
   lda cursory
   cmp cursor_maxy
@@ -307,30 +310,54 @@ ti_move_cursor_down:
   jsr update_cursor_scr_row_ptr
 
   lda #CURSOR_FLAG_ENABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
+  sta show_cursor_var0
+  jsr internal_show_cursor
 
   jsr copy_out
   rts
 
+; moves the cursor left if possible.
+;
+; pass CMDARG0 to define behavior when we
+; wrap to the left. Zero will stay on the same
+; line. Non-zero will move up a line. Used
+; when we move the cursor based on arrow keys vs
+; text changes.
+;
+; inputs:
+;   - CMDDATA0 - BIT 7 determines be
 ti_move_cursor_left:
   lda #CURSOR_FLAG_DISABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
+  sta show_cursor_var0
+  jsr internal_show_cursor
 
   lda cursorx
   beq @wrapped
   dec cursorx
-  jmp @updated
+  jmp @done
 @wrapped:
+  lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
+  bit CMDDATA0
+  bmi @wrapped_change_lines
+
+  ; if here, just wrap around on the same line
   lda cursor_maxx
   sta cursorx
-@updated:
-  jsr update_cursor_scr_row_ptr
+  bne @done
+@wrapped_change_lines:
+  lda cursory
+  beq @done ; already at top, just ignore movement
 
+  ; move up a line
+  dec cursory
+  ; and move to the end of it
+  lda cursor_maxx
+  sta cursorx
+  jsr update_cursor_scr_row_ptr
+@done:
   lda #CURSOR_FLAG_ENABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
+  sta show_cursor_var0
+  jsr internal_show_cursor
 
   jsr copy_out
 
@@ -338,24 +365,39 @@ ti_move_cursor_left:
 
 ti_move_cursor_right:
   lda #CURSOR_FLAG_DISABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
+  sta show_cursor_var0
+  jsr internal_show_cursor
 
   lda cursorx
   cmp cursor_maxx
   beq @wrapped
 
   inc cursorx
-  bne @updated
+  bne @done
 @wrapped:
+  lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
+  bit CMDDATA0
+  bmi @wrapped_change_lines
+
+  ; if here, just wrap around on the same line
   lda #0
   sta cursorx
-@updated:
-  jsr update_cursor_scr_row_ptr
+  beq @done
+@wrapped_change_lines:
+  lda cursory
+  cmp cursor_maxy
+  beq @done; already at bottom
 
+  ; move down a line
+  inc cursory
+  ; and move to the start of it
+  lda #0
+  sta cursorx
+  jsr update_cursor_scr_row_ptr
+@done:
   lda #CURSOR_FLAG_ENABLE
-  sta CMDDATA0
-  jsr ti_show_cursor
+  sta show_cursor_var0
+  jsr internal_show_cursor
 
   jsr copy_out
   rts
@@ -443,6 +485,8 @@ ti_scr_move_cursor_home:
 
 ti_copy_input_struct:
   rts
+
+show_cursor_var0: .byte 0
 
 ; internal copy
 metadata:
