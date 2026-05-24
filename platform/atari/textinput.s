@@ -41,7 +41,8 @@
 .EXPORT ti_move_cursor_left
 .EXPORT ti_move_cursor_right
 .EXPORT ti_show_cursor
-.EXPORT ti_addchar
+.EXPORT ti_typechar
+.EXPORT ti_backspace
 
 ; takes source text input metadata and copies it
 ; to local storage, including the pointer to
@@ -466,7 +467,7 @@ internal_update_screen_char:
 ;
 ; inputs
 ;   - A the character
-ti_addchar:
+ti_typechar:
   ldy cursorpos
   sta (TI_DATA_PTR_LO),y
   jsr internal_update_screen_char
@@ -474,6 +475,22 @@ ti_addchar:
   sta CMDDATA0
   jsr ti_move_cursor_right
   rts
+
+; moves the cursor to the left and deletes the
+; character under the cursor
+ti_backspace:
+  lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
+  sta CMDDATA0
+  jsr ti_move_cursor_left
+  ldy cursorpos
+  lda #' '
+  sta (TI_DATA_PTR_LO),y
+  jsr internal_update_screen_char
+  lda #CURSOR_FLAG_ENABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+  rts
+
 
 ti_insert_char:
   rts

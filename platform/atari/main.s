@@ -42,7 +42,8 @@ SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY+1)*40
 .IMPORT ti_move_cursor_down
 .IMPORT ti_move_cursor_left
 .IMPORT ti_move_cursor_right
-.IMPORT ti_addchar
+.IMPORT ti_typechar
+.IMPORT ti_backspace
 
 .ifdef DEBUG
 .IMPORT wozmon_main
@@ -687,14 +688,16 @@ cmd_move_cursor_right:
   jsr ti_move_cursor_right
   rts
 
-cmd_addchar:
+cmd_typechar:
   lda user_input_atascii
   beq @done
   ;jsr utils_atascii_to_icode
-  jsr ti_addchar
-  lda #0
-  jsr mti_tmp_dump_data
+  jsr ti_typechar
 @done:
+  rts
+
+cmd_backspace:
+  jsr ti_backspace
   rts
 
 proc_kbd:
@@ -730,7 +733,7 @@ proc_kbd:
   ;cmp #$7c ; shift+insert on emulator
   beq @line_insert
 @output:
-  jsr cmd_addchar
+  jsr cmd_typechar
   jmp @done
 @up_arrow:
   jmp cmd_move_cursor_up
@@ -750,6 +753,7 @@ proc_kbd:
 ;  jsr try_move_cursor_right
   jmp @done
 @backspace:
+  jsr cmd_backspace
 ;  jsr try_backspace
   jmp @done
 @shift_clear:
@@ -760,6 +764,9 @@ proc_kbd:
   jmp @done
 @return:
 @done:
+  ; TODO: remove
+  lda #0
+  jsr mti_tmp_dump_data
 ;  jsr show_cursor ; make sure cursor shown
   rts
 
