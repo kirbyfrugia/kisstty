@@ -32,7 +32,7 @@ ATARI_SRCS      = main.s \
 		  boot850.s \
 		  kbd.s \
 		  maintextinput.s \
-		  textinput.s \
+		  textarea.s \
 		  rs232.s \
 		  utils.s \
 		  wozmon.s

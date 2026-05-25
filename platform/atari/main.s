@@ -30,19 +30,20 @@ CTRL_SHIFT_FLAG_LOWER = %00000000
 .IMPORT mti_init
 .IMPORT mti_main_input_metadata
 .IMPORT mti_tmp_dump_data
-.IMPORT ti_scr_ptr
-.IMPORT ti_show_cursor
-.IMPORT ti_move_cursor_up
-.IMPORT ti_move_cursor_down
-.IMPORT ti_move_cursor_left
-.IMPORT ti_move_cursor_right
-.IMPORT ti_typechar
-.IMPORT ti_backspace
-.IMPORT ti_shift_clear
-.IMPORT ti_line_insert
-.IMPORT ti_char_insert
-.IMPORT ti_line_delete
-.IMPORT ti_char_delete
+.IMPORT ta_initsys
+.IMPORT ta_scr_ptr
+.IMPORT ta_show_cursor
+.IMPORT ta_move_cursor_up
+.IMPORT ta_move_cursor_down
+.IMPORT ta_move_cursor_left
+.IMPORT ta_move_cursor_right
+.IMPORT ta_typechar
+.IMPORT ta_backspace
+.IMPORT ta_shift_clear
+.IMPORT ta_line_insert
+.IMPORT ta_char_insert
+.IMPORT ta_line_delete
+.IMPORT ta_char_delete
 
 .ifdef DEBUG
 .IMPORT wozmon_main
@@ -166,8 +167,9 @@ init:
 
   jsr cls
 
+  jsr ta_initsys
   jsr mti_init
-  jsr ti_show_cursor
+  jsr ta_show_cursor
   rts
 
 ; Keyboard behavior described in the Atari OS User Manual Page 47
@@ -285,54 +287,54 @@ inkbd:
   rts
 
 cmd_move_cursor_up:
-  jsr ti_move_cursor_up
+  jsr ta_move_cursor_up
   rts
 
 cmd_move_cursor_down:
-  jsr ti_move_cursor_down
+  jsr ta_move_cursor_down
   rts
 
 cmd_move_cursor_left:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
-  jsr ti_move_cursor_left
+  jsr ta_move_cursor_left
   rts
 
 cmd_move_cursor_right:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
-  jsr ti_move_cursor_right
+  jsr ta_move_cursor_right
   rts
 
 cmd_typechar:
   lda user_input_atascii
   beq @done
-  jsr ti_typechar
+  jsr ta_typechar
 @done:
   rts
 
 cmd_backspace:
-  jsr ti_backspace
+  jsr ta_backspace
   rts
 
 cmd_shift_clear:
-  jsr ti_shift_clear
+  jsr ta_shift_clear
   rts
 
 cmd_line_insert:
-  jsr ti_line_insert
+  jsr ta_line_insert
   rts
 
 cmd_char_insert:
-  jsr ti_char_insert
+  jsr ta_char_insert
   rts
 
 cmd_line_delete:
-  jsr ti_line_delete
+  jsr ta_line_delete
   rts
 
 cmd_char_delete:
-  jsr ti_char_delete
+  jsr ta_char_delete
   rts
 
 proc_kbd:

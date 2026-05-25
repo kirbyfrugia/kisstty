@@ -1,13 +1,13 @@
 .SETCPU "6502"
 .INCLUDE "common.inc"
 .INCLUDE "config.inc"
+.INCLUDE "textarea.inc"
 .SEGMENT "CODE"
 
 .IMPORT utils_dump_mem_row
-.IMPORT ti_init
-.IMPORT ti_set_metadata
+.IMPORT ta_init_textarea
+.IMPORT ta_set_metadata
 .EXPORT mti_init
-.EXPORT mti_main_input_metadata
 .EXPORT mti_tmp_dump_data
 
 MARGIN_LEFT   = 2
@@ -15,7 +15,6 @@ MARGIN_TOP    = 21
 WIDTH         = 38
 HEIGHT        = 3
 SIZE          = WIDTH * HEIGHT
-;SIZE          = NUM_ROWS * SCREEN_WIDTH
 
 ; get rid of this, only here for debug
 ; inputs: a -
@@ -34,9 +33,9 @@ mti_tmp_dump_data:
   adc #0
   sta CMDDATA1
 
-  lda #<mti_main_input_metadata
+  lda #<metadata
   sta CMDDATA2
-  lda #>mti_main_input_metadata
+  lda #>metadata
   sta CMDDATA3
   ldy #0
   jsr utils_dump_mem_row
@@ -49,9 +48,9 @@ mti_tmp_dump_data:
   adc #0
   sta CMDDATA1
 
-  lda #<(mti_main_input_metadata+8)
+  lda #<(metadata+8)
   sta CMDDATA2
-  lda #>(mti_main_input_metadata+8)
+  lda #>(metadata+8)
   sta CMDDATA3
   ldy #0
   jsr utils_dump_mem_row
@@ -95,39 +94,39 @@ mti_tmp_dump_data:
 ;   CMDDATA0/1 - pointer to the upper left of the real screen
 mti_init:
   lda #0
-  sta cursorx
-  sta cursory
-  sta cursorpos
+  sta metadata+TextArea::cursorx
+  sta metadata+TextArea::cursory
+  sta metadata+TextArea::cursorpos
 
   lda #<mti_main_input_data
-  sta data_ptr
+  sta metadata+TextArea::data_ptr
   lda #>mti_main_input_data
-  sta data_ptr+1
+  sta metadata+TextArea::data_ptr+1
   lda #MARGIN_LEFT
-  sta margin_left
+  sta metadata+TextArea::margin_left
   lda #MARGIN_TOP
-  sta margin_top
+  sta metadata+TextArea::margin_top
   lda #WIDTH
-  sta width
+  sta metadata+TextArea::width
   lda #HEIGHT
-  sta height
+  sta metadata+TextArea::height
   lda #SIZE
-  sta size
+  sta metadata+TextArea::size
   lda #(WIDTH-1)
-  sta cursor_maxx
+  sta metadata+TextArea::cursor_maxx
   lda #(HEIGHT-1)
-  sta cursor_maxy
+  sta metadata+TextArea::cursor_maxy
 
   ; set pointers to table where screen row data is stored
   lda #<input_scr_rows_lo
-  sta scr_rows_ptr_loc_lo
+  sta metadata+TextArea::scr_row_ptr_table_lo
   lda #>input_scr_rows_lo
-  sta scr_rows_ptr_loc_lo+1
+  sta metadata+TextArea::scr_row_ptr_table_lo+1
 
   lda #<input_scr_rows_hi
-  sta scr_rows_ptr_loc_hi
+  sta metadata+TextArea::scr_row_ptr_table_hi
   lda #>input_scr_rows_hi
-  sta scr_rows_ptr_loc_hi+1
+  sta metadata+TextArea::scr_row_ptr_table_hi+1
 
   ; fill the data
   lda #' '
@@ -137,47 +136,19 @@ mti_init:
   dey
   bpl @loop
 
-
-  lda #<mti_main_input_metadata
+  lda #<metadata
   sta CMDDATA0
-  lda #>mti_main_input_metadata
+  lda #>metadata
   sta CMDDATA1
-  jsr ti_set_metadata
-  jsr ti_init
-  ;lda #0
-  ;sta CMDDATA2
-  ;sta CMDDATA3
-  ;jsr ti_scr_ptr
-  ;lda CMDDATA4
-  ;sta scr_ptr
-  ;lda CMDDATA5
-  ;sta scr_ptr+1
+  jsr ta_set_metadata
+  jsr ta_init_textarea
 
   rts
 
+metadata: .tag TextArea
 
-; see textinput.s for documentation
-; WARN: be very careful if you modify any of this.
-;       it needs to match the struct in textinput.s exactly.
-mti_main_input_metadata:
-data_ptr:            .byte 0,0
-scr_rows_ptr_loc_lo: .byte 0,0
-scr_rows_ptr_loc_hi: .byte 0,0
-margin_left:         .byte 0
-margin_top:          .byte 0
-width:               .byte 0
-height:              .byte 0
-size:                .byte 0
-cursorx:             .byte 0
-cursory:             .byte 0
-cursor_maxx:         .byte 0
-cursor_maxy:         .byte 0
-cursorpos:           .byte 0
-cursor_scr_row_ptr:  .byte 0,0
-
-input_scr_rows_lo:  .res HEIGHT
-input_scr_rows_hi:  .res HEIGHT
-
+input_scr_rows_lo:   .res HEIGHT
+input_scr_rows_hi:   .res HEIGHT
 mti_main_input_data: .res SIZE
 
 tmp_dump: .byte 0

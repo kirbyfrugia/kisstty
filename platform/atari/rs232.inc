@@ -1,3 +1,6 @@
+.ifndef RS232_INC
+RS232_INC = 1
+
 ; enums for configuring rs232
 
 .enum RS232_BAUD
@@ -80,3 +83,5 @@
   SPACE     = %00000010
   MARK      = %00000011
 .endenum
+
+.endif

@@ -1,3 +1,5 @@
+.ifndef COMMON_INC
+COMMON_INC = 1
 SCREEN_WIDTH  = 40
 SCREEN_HEIGHT = 24
 
@@ -56,3 +58,5 @@ TI_DATA_PTR_LO       = $b1 ; pointer to the data in the currently loaded metadat
 TI_DATA_PTR_HI       = $b2
 TI_SCR_PTR_LO        = $b3 ; pointer to the upper left screen coords in the currently loaded metadata in the text input control
 TI_SCR_PTR_HI        = $b4
+
+.endif

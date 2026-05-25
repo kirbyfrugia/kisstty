@@ -1,77 +1,29 @@
-.macro dbg_print_zpb scr_base_lo, scr_base_hi, scr_offset, addr
-  pha
-  tya
-  pha
-  lda CMDARG0
-  pha
-  lda CMDARG1
-  pha
-  lda CMDARG2
-  pha
-  lda CMDARG3
-  pha
-  lda scr_base_lo
-  clc
-  adc #scr_offset
-  sta CMDARG0
-  lda scr_base_hi
-  adc #0
-  sta CMDARG1
-  lda #<addr
-  sta CMDARG2
-  lda #>addr
-  sta CMDARG3
-  ldy #0
-  jsr utils_dump_mem_row
+.ifndef MACROS_INC
+MACROS_INC = 1
 
-  pla
-  sta CMDARG3
-  pla
-  sta CMDARG2
-  pla
-  sta CMDARG1
-  pla
-  sta CMDARG0
-  pla
-  tay
-  pla
+.macro copy_struct_abs_to_zp  abs_addr, zp_ptr, struct_type
+  ldy #.sizeof(struct_type) - 1
+@abs_to_zp_loop:
+  lda abs_addr,y
+  sta (zp_ptr),y
+  dey
+  bpl @abs_to_zp_loop
 .endmacro
 
-.macro print_str str_data
-  ldx #0
-  lda #<str_data
-  sta ICBAL,x
-  lda #>str_data
-  sta ICBAH,x
-
-  lda #$ff
-  sta ICBLL,x
-  lda #0
-  sta ICBLH,x
-
-  lda #PUTREC
-  sta ICCOM,x
-  jsr CIOV
+.macro copy_struct_zp_to_abs  zp_ptr, abs_addr, struct_type
+  ldy #.sizeof(struct_type) - 1
+@zp_to_abs_loop:
+  lda (zp_ptr),y
+  sta abs_addr,y
+  dey
+  bpl @zp_to_abs_loop
 .endmacro
 
-.macro print_bytes str_data, str_data_end
-  ldx #0
-  lda #<str_data
-  sta ICBAL,x
-  lda #>str_data
-  sta ICBAH,x
-  lda #<(str_data_end-str_data)
-  sta ICBLL,x
-  lda #>(str_data_end-str_data)
-  sta ICBLH,x
-
-  lda #11
-  sta ICCOM,x
-  jsr CIOV
-.endmacro
-
+; iverts a string on screen (bg/fg swap)
 .macro invstr str
   .repeat .strlen(str), i
     .byte .strat(str, i) | $80
   .endrepeat
 .endmacro
+
+.endif
