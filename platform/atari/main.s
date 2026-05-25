@@ -28,8 +28,12 @@ CTRL_SHIFT_FLAG_LOWER = %00000000
 .IMPORT kbd_shifted
 .IMPORT kbd_ctrld
 .IMPORT mti_init
+.IMPORT mti_set_active
 .IMPORT mti_main_input_metadata
 .IMPORT mti_tmp_dump_data
+.IMPORT mo_init
+.IMPORT mo_append
+.IMPORT mo_set_active
 .IMPORT ta_initsys
 .IMPORT ta_scr_ptr
 .IMPORT ta_show_cursor
@@ -78,67 +82,6 @@ start:
 @loop:
   jsr inkbd
   jmp @loop
-  ; ask for input
-  ;print_bytes str_get_command, str_get_command_end
-
-  ; read user input
-  ldx #0
-  lda #<user_input_buf
-  sta ICBAL,x
-  lda #>user_input_buf
-  sta ICBAH,x
-
-  lda #<MAX_INPUT_LEN
-  sta ICBLL,x
-  lda #>MAX_INPUT_LEN
-  sta ICBLH,x
-
-  lda #GETREC
-  sta ICCOM,x
-  jsr CIOV
-
-  ; echo back user command
-  ldx #0
-  lda #PUTREC
-  sta ICCOM,x
-  jsr CIOV
-
-  lda user_input_buf 
-  cmp #'B'
-  beq @ui_b
-  cmp #'O'
-  beq @ui_o
-  cmp #'C'
-  beq @ui_c
-  cmp #'T'
-  beq @ui_t
-.ifdef DEBUG
-  cmp #'M'
-  beq @ui_m
-.endif
-  bne @ui_invalid
-@ui_b:
-  jsr cmd_boot850
-  jmp @ui_done
-@ui_o:
-  jsr cmd_open
-  jmp @ui_done
-@ui_c:
-  jsr cmd_close
-  jmp @ui_done
-@ui_t:
-  jsr cmd_talk
-  jmp @ui_done
-.ifdef DEBUG
-@ui_m:
-  jmp WOZMON
-.endif
-@ui_invalid:
-  ;print_str str_invalid_command
-  ;print_str str_supported_commands
-  ;print_str str_commands
-@ui_done:
-  jmp @loop
 
 init:
   lda #CTRL_SHIFT_FLAG_LOWER 
@@ -168,6 +111,7 @@ init:
   jsr cls
 
   jsr ta_initsys
+  jsr mo_init
   jsr mti_init
   jsr ta_show_cursor
   rts
@@ -409,6 +353,16 @@ proc_kbd:
   jsr cmd_char_delete
   jmp @done
 @return:
+  jsr mo_set_active
+  lda #<str_success
+  sta CMDDATA0
+  lda #>str_success
+  sta CMDDATA1
+  lda #7
+  sta CMDDATA2
+  jsr mo_append
+  jsr mti_set_active
+
 @done:
   rts
 
@@ -540,7 +494,7 @@ str_invalid_command: .byte "Invalid input", $9b
 str_get_command:
   .byte "cmd: "
 str_get_command_end:
-str_success: .byte "Success", $9b
+str_success: .byte "success", $9b
 str_error:
   .byte "Error: "
 str_error_end:

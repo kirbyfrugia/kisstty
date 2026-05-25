@@ -56,6 +56,7 @@
 .EXPORT ta_line_insert
 .EXPORT ta_char_insert
 .EXPORT ta_line_delete
+.EXPORT ta_line_append
 .EXPORT ta_char_delete
 
 ta_initsys:
@@ -99,7 +100,7 @@ ta_set_metadata:
   lda local_metadata+TextArea::cursor_scr_row_ptr+1
   sta TI_SCR_ROW_PTR_HI
 
-  jsr debug_dump_data
+  ;jsr debug_dump_data
 
   rts
 
@@ -188,6 +189,8 @@ ta_init_textarea:
 @row_done:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
+
+  jsr int_repaint
 
   lda #CURSOR_FLAG_ENABLE
   sta show_cursor_var0
@@ -608,14 +611,10 @@ int_shift_lines_down:
 @done:
   rts
 
-; shifts all lines from the cursor line downwards
-; up by one
+; shifts all lines up from the provided starting point
+; - move_line_start_line_pos - should point to start of line
 int_shift_lines_up:
-  ; first find the start of the line we're on
-  lda local_metadata+TextArea::cursorpos
-  sec
-  sbc local_metadata+TextArea::cursorx
-  sta move_line_start_line_pos
+  lda move_line_start_line_pos
   sta move_line_cursor_to    ; start of current line
   clc
   adc local_metadata+TextArea::width
@@ -636,6 +635,20 @@ int_shift_lines_up:
   cmp local_metadata+TextArea::size
   bne @loop
 @done:
+  rts
+
+
+
+; shifts all lines from the cursor line downwards
+; up by one
+int_shift_lines_up_from_cursor:
+  ; first find the start of the line we're on
+  lda local_metadata+TextArea::cursorpos
+  sec
+  sbc local_metadata+TextArea::cursorx
+  sta move_line_start_line_pos
+  jsr int_shift_lines_up
+
   rts
 
 ; moves all lines down from current cursor
@@ -735,7 +748,7 @@ ta_line_delete:
   sta show_cursor_var0
   jsr int_show_cursor
 
-  jsr int_shift_lines_up
+  jsr int_shift_lines_up_from_cursor
 @last_line:
   jsr int_clear_last_row
   jsr int_repaint
@@ -743,6 +756,61 @@ ta_line_delete:
   lda #CURSOR_FLAG_ENABLE
   sta show_cursor_var0
   jsr int_show_cursor
+  rts
+
+; inputs:
+;   - CMDDATA0/1 - pointer to the data to append
+;   - CMDDATA2   - number of chars. On you if you exceed
+ta_line_append:
+  lda CMDDATA0
+  pha
+  lda CMDDATA1
+  pha
+  lda CMDDATA2
+  pha
+
+  lda #CURSOR_FLAG_DISABLE
+  sta show_cursor_var0
+  jsr int_show_cursor
+
+  ; shift all lines up
+  lda #0
+  sta move_line_start_line_pos
+  jsr int_shift_lines_up
+
+  ; now write the data
+  pla
+  sta CMDDATA2
+  pla
+  sta CMDDATA1
+  pla
+  sta CMDDATA0
+  lda local_metadata+TextArea::size
+  sec
+  sbc local_metadata+TextArea::width
+  tay
+  sty debug_tmp0
+  ldx #0
+@loop:
+  sty append_tempy
+  txa
+  tay
+  lda (CMDDATA0),y
+  jsr utils_atascii_to_icode
+  ldy append_tempy
+  sta (TI_DATA_PTR_LO),y
+  iny
+  inx
+  cpx CMDDATA2
+  bne @loop
+
+  ; repaint the text area. it all changed
+  jsr int_repaint
+
+  lda #CURSOR_FLAG_ENABLE
+  sta show_cursor_var0
+  jsr int_show_cursor
+
   rts
 
 ; erases the char under the cursor by moving all
@@ -821,12 +889,16 @@ show_cursor_var0: .byte 0
 update_marker_start: .byte 0
 update_marker_end:   .byte 0
 
+append_tempy: .byte 0
+
 move_line_start_line_pos: .byte 0
 move_line_cursor_from:    .byte 0
 move_line_cursor_to:      .byte 0
 
 repaint_tmp0:             .byte 0
 repaint_tmp1:             .byte 0
+
+debug_tmp0: .byte 0
 
 ; internal copy
 local_metadata: .tag TextArea

@@ -8,12 +8,13 @@
 .IMPORT ta_init_textarea
 .IMPORT ta_set_metadata
 .EXPORT mti_init
+.EXPORT mti_set_active
 .EXPORT mti_tmp_dump_data
 
 MARGIN_LEFT   = 2
-MARGIN_TOP    = 21
+MARGIN_TOP    = 20
 WIDTH         = 38
-HEIGHT        = 3
+HEIGHT        = 4
 SIZE          = WIDTH * HEIGHT
 
 ; get rid of this, only here for debug
@@ -130,11 +131,12 @@ mti_init:
 
   ; fill the data
   lda #' '
-  ldy #(SIZE-1)
+  ldy #0
 @loop:
   sta mti_main_input_data,y
-  dey
-  bpl @loop
+  iny
+  cpy #SIZE
+  bne @loop
 
   lda #<metadata
   sta CMDDATA0
@@ -143,6 +145,14 @@ mti_init:
   jsr ta_set_metadata
   jsr ta_init_textarea
 
+  rts
+
+mti_set_active:
+  lda #<metadata
+  sta CMDDATA0
+  lda #>metadata
+  sta CMDDATA1
+  jsr ta_set_metadata
   rts
 
 metadata: .tag TextArea

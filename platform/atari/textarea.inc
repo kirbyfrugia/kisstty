@@ -15,7 +15,7 @@ TEXT_AREA_INC = 1
   cursor_maxx               .byte ; INPUTS_CURSOR_MAXX_OFFSET         = 13
   cursor_maxy               .byte ; INPUTS_CURSOR_MAXY_OFFSET         = 14
   cursorpos                 .byte ; INPUTS_CURSORPOS_OFFSET           = 15
-  cursor_scr_row_ptr        .byte ; INPUTS_CURSOR_SCR_ROW_PTR         = 16 ; and 17
+  cursor_scr_row_ptr        .word ; INPUTS_CURSOR_SCR_ROW_PTR         = 16 ; and 17
 .endstruct
 
 .endif

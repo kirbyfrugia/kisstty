@@ -19,7 +19,7 @@ MACROS_INC = 1
   bpl @zp_to_abs_loop
 .endmacro
 
-; iverts a string on screen (bg/fg swap)
+; inverts a string on screen (bg/fg swap)
 .macro invstr str
   .repeat .strlen(str), i
     .byte .strat(str, i) | $80
