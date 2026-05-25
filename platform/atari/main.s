@@ -7,15 +7,9 @@ MAX_INPUT_LEN = 114
 WOZMON        = $9800
 RS232_CHANNEL = 32    ; channel 2 (2 * 16)
 
-; Note: there is some code here that assumes that
-;  the full input area is <256 bytes long. So keep
-CURSOR_MINX   = 2
-CURSOR_MAXX   = 38
-CURSOR_MINY   = 21
-CURSOR_MAXY   = 23
-
-; size of whole buffer, including margins
-SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY+1)*40
+CTRL_SHIFT_FLAG_CTRL  = %10000000
+CTRL_SHIFT_FLAG_SHIFT = %01000000
+CTRL_SHIFT_FLAG_LOWER = %00000000
 
 .IMPORT boot850_check 
 .IMPORT boot850_bootstrap 
@@ -146,6 +140,9 @@ start:
   jmp @loop
 
 init:
+  lda #CTRL_SHIFT_FLAG_LOWER 
+  sta ctrl_shift_lock_flag
+
   ; disable the OS screen editor
   ldx #0
   lda #CLOSE
@@ -177,10 +174,40 @@ init:
 inkbd:
   lda CH
   cmp #$ff
-  beq @done
+  beq @no_key_pressed
   sta user_input_kbdcode_raw  ; with ctrl/shift bits
   lda #$ff
   sta CH
+  jmp @key_pressed
+
+@no_key_pressed:
+  jmp @done
+
+@key_pressed:
+  ; first let's handle ctrl-lock and shift-lock
+  ; presses
+  lda user_input_kbdcode_raw
+  cmp #$3c
+  beq @lock_lower
+  cmp #$bc
+  beq @lock_ctrl
+  cmp #$7c
+  beq @lock_shift
+  bne @not_a_lock_key
+@lock_lower:
+  lda #CTRL_SHIFT_FLAG_LOWER 
+  sta ctrl_shift_lock_flag
+  jmp @done
+@lock_ctrl:
+  lda #CTRL_SHIFT_FLAG_CTRL  
+  sta ctrl_shift_lock_flag
+  jmp @done
+@lock_shift:
+  lda #CTRL_SHIFT_FLAG_SHIFT 
+  sta ctrl_shift_lock_flag
+  jmp @done
+
+@not_a_lock_key:
   lda user_input_kbdcode_raw
   and #%00111111
   sta user_input_kbdcode_char ; stripped of ctrl/shift bits
@@ -196,6 +223,53 @@ inkbd:
   and #%10000000
   bne @control_pressed
 
+  lda user_input_kbdcode_raw
+  and #%01000000
+  bne @shift_pressed
+
+@lower_case:
+  ; if here, lower case, but we need to check
+  ; ctrl lock or shift lock are on
+  ldx user_input_kbdcode_char
+  lda kbd_unmodified,x
+  sta user_input_atascii
+
+  ; ignore for non-alphas according to spec (OS User's manual)
+  cmp #$61 ;#'A'
+  bcc @processed
+
+  cmp #$7b ;#'['
+  bcs @processed
+
+  ; now check to see if CTRL lock
+  lda ctrl_shift_lock_flag
+  and #CTRL_SHIFT_FLAG_CTRL
+  bne @control_locked
+
+  lda ctrl_shift_lock_flag
+  and #CTRL_SHIFT_FLAG_SHIFT
+  bne @shift_locked
+  jmp @processed
+
+@shift_locked:
+  ldx user_input_kbdcode_char
+  ;lda user_input_kbdcode_char
+  ;ora #CTRL_SHIFT_FLAG_SHIFT ; add the shift bit
+  ;sta user_input_kbdcode_char
+  ;tax
+  lda kbd_shifted,x
+  sta user_input_atascii
+  jmp @processed
+@control_locked:
+  ldx user_input_kbdcode_char
+  ;lda user_input_kbdcode_char
+  ;ora #CTRL_SHIFT_FLAG_CTRL; add the ctrl bit
+  ;sta user_input_kbdcode_char
+  ;tax
+  lda kbd_ctrld,x
+  sta user_input_atascii
+  jmp @processed
+@shift_pressed:
   ; if here, shift pressed
   ldx user_input_kbdcode_char
   lda kbd_shifted,x
@@ -205,15 +279,8 @@ inkbd:
   ldx user_input_kbdcode_char
   lda kbd_ctrld,x
   sta user_input_atascii
-  jmp @processed
-@lower_case:
-  ldx user_input_kbdcode_char
-  lda kbd_unmodified,x
-  sta user_input_atascii
-  jmp @processed
 @processed:
   jsr proc_kbd
-  ;jsr show_cursor
 @done:
   rts
 
@@ -276,6 +343,9 @@ proc_kbd:
   sta CMDDATA1
   ldy #0
   lda user_input_kbdcode_raw 
+  jsr utils_byte_to_scr_hex
+  ldy #3
+  lda ctrl_shift_lock_flag
   jsr utils_byte_to_scr_hex
 
   lda user_input_kbdcode_raw 
@@ -489,9 +559,6 @@ user_input_buf: .res 256
 output_buf: .byte $9b,$9b
 command_error: .byte 0
 
-loop_count: .byte 0
-screen_rows_lo:
-  .res (CURSOR_MAXY-CURSOR_MINY)+1
+ctrl_shift_lock_flag: .byte 0
 
-screen_rows_hi:
-  .res (CURSOR_MAXY-CURSOR_MINY)+1
+loop_count: .byte 0
