@@ -514,15 +514,14 @@ internal_clear_data:
   rts
 
 
-; repaints the entire screen areas for the input
+; repaints the entire screen area for the input
 ; box. Useful when data changes. Not so efficient,
 ; but I'll worry about that later.
-internal_repaint:
 ; basic algorithm
 ; start at the first screen row where our input lives.
 ; have a loop that starts margin_left over and goes until width
 ; keep a cursor counter for the actual data.
-
+internal_repaint:
   ; lo byte pointer to first row
   lda scr_rows_ptr_loc_lo
   sta CMDDATA0
@@ -573,6 +572,21 @@ internal_repaint:
   sta CMDDATA1
   jmp @screen_row_loop
 @done:
+  rts
+
+; clears the current row
+internal_clear_row:
+  lda cursorpos
+  sec
+  sbc cursorx
+  tay
+  ldx width
+  lda #' '
+@loop:
+  sta (TI_DATA_PTR_LO),y
+  iny
+  dex
+  bne @loop
   rts
 
 ; clears all data in the input and returns the cursor home
@@ -637,6 +651,7 @@ ti_line_insert:
   jsr internal_show_cursor
 
   jsr internal_shift_lines_down
+  jsr internal_clear_row
   jsr internal_repaint
 
   jsr copy_out
