@@ -569,6 +569,20 @@ internal_clear_row:
   bne @loop
   rts
 
+; yeah, hacky. extra code. whatever, need it sometimes.
+internal_clear_last_row:
+  lda size
+  sec
+  sbc width
+  tay
+  lda #' '
+@loop:
+  sta (TI_DATA_PTR_LO),y
+  iny
+  cpy size
+  bne @loop
+  rts
+
 ; clears all data in the input and returns the cursor home
 ti_shift_clear:
   lda #CURSOR_FLAG_DISABLE
@@ -616,8 +630,36 @@ internal_shift_lines_down:
   dec move_line_cursor_from
   jmp @loop
 @done:
-
   rts
+
+internal_shift_lines_up:
+  ; first find the start of the line we're on
+  lda cursorpos
+  sec
+  sbc cursorx
+  sta move_line_start_line_pos
+  sta move_line_cursor_to    ; start of current line
+  clc
+  adc width
+  sta move_line_cursor_from  ; start of next line
+
+  ldx cursory
+@row_loop:
+  ldy #0
+@loop:
+  ldy move_line_cursor_from
+  lda (TI_DATA_PTR_LO),y
+  ldy move_line_cursor_to
+  sta (TI_DATA_PTR_LO),y
+
+  inc move_line_cursor_to
+  inc move_line_cursor_from
+  lda move_line_cursor_from
+  cmp size
+  bne @loop
+@done:
+  rts
+
 
 ; moves all lines down from current cursor
 ; including current line and clears current line
@@ -692,6 +734,24 @@ ti_char_insert:
   rts
 
 ti_line_delete:
+  lda cursory
+  cmp cursor_maxy
+  beq @last_line ; on last line
+
+  lda #CURSOR_FLAG_DISABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+
+  jsr internal_shift_lines_up
+@last_line:
+  jsr internal_clear_last_row
+  jsr internal_repaint
+
+  jsr copy_out
+
+  lda #CURSOR_FLAG_ENABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
   rts
 
 ti_char_delete:
