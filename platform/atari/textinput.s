@@ -423,31 +423,6 @@ ti_move_cursor_right:
   jsr copy_out
   rts
 
-; shifts all data from the cursor onwards to the right
-; inputs:
-;   CMDDATA0/1 - ptr to the text input struct
-;   CMDDATA2/3 - ptr to the text input data
-ti_shift_data_right:
-  ldy #INPUTS_CURSORPOS_OFFSET
-  lda (CMDDATA0),y
-  sta cursorpos
-  ldy #INPUTS_SIZE_OFFSET
-  lda (CMDDATA0),y
-  sta size
-  tay
-  dey
-@loop:
-  cpy cursorpos
-  bcc @done
-  dey
-  lda (CMDDATA2),y
-  iny
-  sta (CMDDATA2),y
-  dey
-  jmp @loop
-@done:
-  rts
-
 internal_update_screen_char:
   ldy cursorpos
   lda (TI_DATA_PTR_LO),y
@@ -517,7 +492,7 @@ internal_clear_data:
 ; repaints the entire screen area for the input
 ; box. Useful when data changes. Not so efficient,
 ; but I'll worry about that later.
-; basic algorithm
+; basic algorithm:
 ; start at the first screen row where our input lives.
 ; have a loop that starts margin_left over and goes until width
 ; keep a cursor counter for the actual data.
@@ -640,7 +615,8 @@ internal_shift_lines_down:
   rts
 
 ; moves all lines down from current cursor
-; including current line
+; including current line and clears current line
+; cursor stays where it is.
 ti_line_insert:
   lda cursory
   cmp cursor_maxy
