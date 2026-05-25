@@ -156,38 +156,6 @@ init:
   lda #1
   sta CRSINH
 
-;  lda SAVMSC
-;  clc
-;  adc #<(CURSOR_MINY*40+CURSOR_MINX)
-;  sta INPUT_UPPER_LEFT_PTR
-;  lda SAVMSC+1
-;  adc #>(CURSOR_MINY*40+CURSOR_MINX)
-;  sta INPUT_UPPER_LEFT_PTR+1
-
-;  lda INPUT_UPPER_LEFT_PTR
-;  sta ZPB0
-;  lda INPUT_UPPER_LEFT_PTR+1
-;  sta ZPB1
-;
-;  ldx #0
-;@init_screen_ptrs:
-;  lda ZPB0
-;  sta screen_rows_lo,x
-;  lda ZPB1
-;  sta screen_rows_hi,x
-;  inx
-;  cpx #(CURSOR_MAXY-CURSOR_MINY+1)
-;  bcs @init_screen_ptrsd
-;  lda ZPB0
-;  clc
-;  adc #40
-;  sta ZPB0
-;  lda ZPB1
-;  adc #0
-;  sta ZPB1
-;  bne @init_screen_ptrs
-;@init_screen_ptrsd:
-
   lda SAVMSC
   sta SCR_PTR_LO
   lda SAVMSC+1
@@ -202,39 +170,8 @@ init:
   jsr cls
 
   jsr mti_init
-
-;  lda #<mti_main_input_metadata
-;  sta CMDDATA0
-;  lda #>mti_main_input_metadata
-;  sta CMDDATA1
-;  lda #0
-;  sta CMDDATA2
-;  sta CMDDATA3
-;  jsr ti_set_cursor
-
-  ;lda #0
-  ;jsr mti_tmp_dump_data
-  
   jsr ti_show_cursor
-  ;jsr move_cursor_home
-
-  ;lda #0
-  ;jsr mti_tmp_dump_data
   rts
-
-
-
-; TODO: handle the following:
-;   See "Mapping the Atari" 702/2BE. Deal with ctrl-lock
-;   SHIFT+CLEAR - erase entire area
-;   ESC         - same as above
-;   CTRL+CURSOR - arrow keys
-;   CTRL+INSERT - insert a space
-;   DEL BACK S  - backspace without shifting
-;   BACK S      - backspace with shifting following to left
-;   SHIFT+DELETE BS - delete line
-;   CTRL+DELETE BS - delete character, shift following to left
-
 
 ; Keyboard behavior described in the Atari OS User Manual Page 47
 inkbd:
@@ -280,397 +217,6 @@ inkbd:
 @done:
   rts
 
-;hide_cursor:
-;  pha
-;  tya
-;  pha
-;  ldy #0
-;  lda (CURSOR_POS_SCR),y
-;  and #%01111111
-;  sta (CURSOR_POS_SCR),y
-;  pla
-;  tay
-;  pla
-;  rts
-;
-;; make sure the cursor is visible at its expected location
-;show_cursor:
-;  pha
-;  tya
-;  pha
-;  ldy #0
-;  lda (CURSOR_POS_SCR),y
-;  ora #%10000000
-;  sta (CURSOR_POS_SCR),y
-;  pla
-;  tay
-;  pla
-;  rts
-;
-;; moves the cursor. assumes that it is correct to do so
-;;   e.g. don't call if cursor doesn't actually move
-;; inputs:
-;;   ZPB2/3 - delta in cursor move (e.g. $00/$00 for none, $01/$00 for right one, $ff/$ff for left one)
-;; assumptions:
-;;   CURSOR_POSY already reflect the new cursor position
-;move_cursor:
-;  pha
-;  jsr hide_cursor ; uninvert at pre-move position
-;
-;  ; update ptr to absolute cursor position
-;  lda CURSOR_POS_SCR
-;  clc
-;  adc ZPB2
-;  sta CURSOR_POS_SCR
-;  lda CURSOR_POS_SCR+1
-;  adc ZPB3
-;  sta CURSOR_POS_SCR+1
-;
-;  ; update ptr to start of current row
-;  lda CURSOR_POS_SCR
-;  sec
-;  sbc CURSOR_POSY
-;  sta CURSOR_SOL_PTR
-;  lda CURSOR_POS_SCR+1
-;  sbc #0
-;  sta CURSOR_SOL_PTR+1
-;
-;  pla
-;  rts
-;
-;try_move_cursor_up:
-;  lda CURSOR_POSY
-;  cmp #CURSOR_MINY
-;  beq @wrap
-;
-;  dec CURSOR_POSY
-;
-;  lda #0
-;  sec
-;  sbc #40
-;  sta ZPB2
-;  lda #$ff
-;  sta ZPB3
-;  jsr move_cursor
-;  jmp @done
-;@wrap:
-;  lda #<((CURSOR_MAXY-CURSOR_MINY)*40)
-;  sta ZPB2
-;  lda #>((CURSOR_MAXY-CURSOR_MINY)*40)
-;  sta ZPB3
-;
-;  ldy #CURSOR_MAXY
-;  sty CURSOR_POSY
-;
-;  jsr move_cursor
-;  jmp @done
-;@done:
-;  rts
-;
-;; inputs
-;;   CURSOR_FLAG
-;;     - bit 7 - CURSOR_FLAG_WRAP_SAME_LINE if you want cursor to move up a line on wrap
-;try_move_cursor_left:
-;  lda CURSOR_POSX
-;  cmp #CURSOR_MINX
-;  beq @wrap
-;
-;  ; if here, simply move the cursor left
-;  dec CURSOR_POSX
-;
-;  lda #$ff
-;  sta ZPB2
-;  sta ZPB3
-;  jsr move_cursor
-;  jmp @done
-;@wrap:
-;  lda #CURSOR_FLAG_WRAP_SAME_LINE 
-;  bit CURSOR_FLAGS
-;  bmi @wrap_same_line
-;@wrap_next_line:
-;  ; wrapped to the left in next line mode, e.g. text
-;  ; move up one row and to the end of the row.
-;  lda CURSOR_POSY
-;  cmp #CURSOR_MINY
-;  beq @done ; already at top left
-;
-;  lda #CURSOR_MAXX
-;  sta CURSOR_POSX
-;  dec CURSOR_POSY
-;
-;  lda #0
-;  sec
-;  sbc #((CURSOR_MINX+1)+(39-CURSOR_MAXX))
-;  sta ZPB2
-;  lda #$ff
-;  sta ZPB3
-;  jsr move_cursor
-;  jmp @done
-;@wrap_same_line:
-;  ; wrapped, but same line, e.g. arrow movement
-;  ; wrap on the same row
-;  lda #CURSOR_MAXX
-;  sta CURSOR_POSX
-;
-;  lda #(CURSOR_MAXX-CURSOR_MINX)
-;  sta ZPB2
-;  lda #0
-;  sta ZPB3
-;  jsr move_cursor
-;@done:
-;  rts
-;
-;
-;try_move_cursor_right:
-;  lda CURSOR_POSX
-;  cmp #(CURSOR_MAXX)
-;  beq @wrap
-;
-;  inc CURSOR_POSX
-;
-;  lda #$01
-;  sta ZPB2
-;  lda #$00
-;  sta ZPB3
-;  jsr move_cursor
-;  jmp @done
-;@wrap:
-;  lda #CURSOR_FLAG_WRAP_SAME_LINE 
-;  bit CURSOR_FLAGS
-;  bmi @wrap_same_line
-;@wrap_next_line:
-;  lda CURSOR_POSY
-;  cmp #CURSOR_MAXY
-;  beq @done ; at bottom right
-;
-;  inc CURSOR_POSY
-;  lda #CURSOR_MINX
-;  sta CURSOR_POSX
-;
-;  lda #((39-CURSOR_MAXX)+(CURSOR_MINX)+1)
-;  sta ZPB2
-;  lda #0
-;  sta ZPB3
-;  jsr move_cursor
-;  jmp @done
-;@wrap_same_line:
-;  lda #CURSOR_MINX
-;  sta CURSOR_POSX
-;
-;  lda #0
-;  sec
-;  sbc #(CURSOR_MAXX-CURSOR_MINX)
-;  sta ZPB2
-;  lda #$ff
-;  sta ZPB3
-;  jsr move_cursor
-;@done:
-;  rts
-;
-;try_move_cursor_down:
-;  lda CURSOR_POSY
-;  cmp #(CURSOR_MAXY)
-;  beq @wrap
-;
-;  inc CURSOR_POSY
-;
-;  lda #40
-;  sta ZPB2
-;  lda #0
-;  sta ZPB3
-;  jsr move_cursor
-;  jmp @done
-;@wrap:
-;  lda #CURSOR_MINY
-;  sta CURSOR_POSY
-;
-;  lda #0
-;  sec
-;  sbc #<((CURSOR_MAXY-CURSOR_MINY)*40)
-;  sta ZPB2
-;  lda #$ff
-;  sta ZPB3
-;  jsr move_cursor
-;@done:
-;  rts
-;
-;try_backspace:
-;  lda CURSOR_POSY
-;  cmp #CURSOR_MINY
-;  bne @not_at_beginning ; not on first row
-;  lda CURSOR_POSX
-;  cmp #CURSOR_MINX
-;  bne @not_at_beginning ; not at first char of row
-;  jmp @done ; ignore since at beginning
-;@not_at_beginning:
-;  lda #CURSOR_FLAG_WRAP_DIFF_LINE
-;  sta CURSOR_FLAGS
-;  jsr try_move_cursor_left
-;
-;  lda #' '
-;  jsr utils_atascii_to_icode
-;  sta (CURSOR_POS_SCR),y
-;@done:
-;  rts
-;
-;move_cursor_home:
-;  lda #CURSOR_MINY
-;  sta CURSOR_POSY
-;  lda #CURSOR_MINX
-;  sta CURSOR_POSX
-;
-;  jsr hide_cursor
-;
-;  lda INPUT_UPPER_LEFT_PTR
-;  sta CURSOR_POS_SCR
-;  sta CURSOR_SOL_PTR
-;  lda INPUT_UPPER_LEFT_PTR+1
-;  sta CURSOR_POS_SCR+1
-;  sta CURSOR_SOL_PTR+1
-;
-;  jsr show_cursor
-;
-;  rts
-;
-;shift_clear:
-;  jsr move_cursor_home
-;
-;  ; blank the input area
-;  lda #' '
-;  jsr utils_atascii_to_icode
-;  ldy #(SCR_INPUT_BUFFER_SIZE-1)
-;@loop:
-;  sta (CURSOR_POS_SCR),y
-;  dey
-;  bne @loop
-;  sta (CURSOR_POS_SCR),y ; first character
-;  rts
-;
-;; inputs:
-;;   - ZPB0/1 ptr to start of row
-;clear_row:
-;  pha
-;  tya
-;  pha
-;
-;  ldy #39
-;@loop:
-;  lda #' '
-;  jsr utils_atascii_to_icode
-;  sta (ZPB0),y
-;  dey
-;  bpl @loop
-;
-;  pla
-;  tay
-;  pla
-;  rts
-;
-;
-;TODO: clean up all this shit. Too much use of ZPB0/ZPB1 and there
-;are issues all over the place.
-;
-;Switch to the caller needing to worry about things getting corrupted
-;so that only the caller will put things on the stack if they care.
-;
-;TODO ALSO: keep track of relative cursor positions on top of absolutes.
-;
-;We have 3:
-;* Relative to top left of input
-;* Relative to top left of screen
-;* Absolute position in memory.
-;
-;Rethink it. What if we just had a function where you could pass
-;the desired relative position.
-;
-;And what if we used the cursor for modifications, too? Do an action,
-;move the cursor, do another. Treat it like all edits happen via the cursor
-;to simplify.
-;
-;could add "move to" "delete to" etc.
-;
-;; inputs
-;;   ZPB0/1 - ptr to start of row
-;move_cursor_to_start_of_row:
-;  pha
-;  lda ZPB0
-;  pha
-;  lda ZPB1
-;  pha
-;
-;  jsr hide_cursor
-;
-;  lda #CURSOR_MINX
-;  sec
-;  sbc CURSOR_POSX
-;  sta ZPB2
-;  lda
-;  lda #$ff
-;  sta ZPB3
-;
-;  lda #CURSOR_MINX
-;  sta CURSOR_POSX
-;
-;  jsr move_cursor
-;  jsr show_cursor
-;
-;  pla
-;  sta ZPB3
-;  pla
-;  sta ZPB2
-;  pla
-;  rts
-;
-;; moves current line and subsequent ones down one row
-;; clears current line
-;; moves cursor to start of current line
-;line_insert:
-;  ;dbg_print_zpb SAVMSC, SAVMSC+1, 40, $0092
-;
-;  lda CURSOR_POSY
-;  cmp #CURSOR_MAXY
-;  beq @done
-;  sec
-;  sbc CURSOR_MINY
-;  sta ZPB5  ; we stop when we get here
-;
-;  jsr hide_cursor
-;
-;  ldx #(CURSOR_MAXY-CURSOR_MINY)
-;@row_loop:
-;  ; row to copy to
-;  lda screen_rows_lo,x
-;  sta ZPB2
-;  lda screen_rows_hi,x
-;  sta ZPB3
-;
-;  ; row to copy from
-;  dex 
-;  lda screen_rows_lo,x
-;  sta ZPB0
-;  lda screen_rows_hi,x
-;  sta ZPB1
-;
-;  ldy #39
-;@col_loop:
-;  lda (ZPB0),y
-;  sta (ZPB2),y
-;  dey
-;  bpl @col_loop
-;
-;  cpx ZPB5
-;  beq @copy_done
-;  jmp @row_loop
-;@copy_done:
-;  ; now we'll clear the current row
-;  jsr clear_row
-;  jsr move_cursor_to_start_of_row
-;
-;@done:
-;  dbg_print_zpb SAVMSC, SAVMSC+1, 40, $0080
-;  dbg_print_zpb SAVMSC, SAVMSC+1, 80, $0092
-;  rts
-;
 cmd_move_cursor_up:
   jsr ti_move_cursor_up
   rts
@@ -681,14 +227,12 @@ cmd_move_cursor_down:
 
 cmd_move_cursor_left:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
-  ;lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
   sta CMDDATA0
   jsr ti_move_cursor_left
   rts
 
 cmd_move_cursor_right:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
-  ;lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
   sta CMDDATA0
   jsr ti_move_cursor_right
   rts
@@ -696,7 +240,6 @@ cmd_move_cursor_right:
 cmd_typechar:
   lda user_input_atascii
   beq @done
-  ;jsr utils_atascii_to_icode
   jsr ti_typechar
 @done:
   rts
@@ -771,18 +314,12 @@ proc_kbd:
   jmp @done
 @left_arrow:
   jmp cmd_move_cursor_left
-;  lda #CURSOR_FLAG_WRAP_SAME_LINE
-;  sta CURSOR_FLAGS
-;  jsr try_move_cursor_left
   jmp @done
 @right_arrow:
   jmp cmd_move_cursor_right
-;  lda #CURSOR_FLAG_WRAP_SAME_LINE
-;  jsr try_move_cursor_right
   jmp @done
 @backspace:
   jsr cmd_backspace
-;  jsr try_backspace
   jmp @done
 @shift_clear:
   jsr cmd_shift_clear
@@ -801,16 +338,12 @@ proc_kbd:
   jmp @done
 @return:
 @done:
-  ; TODO: remove
-  ;lda #40
-  ;jsr mti_tmp_dump_data
-;  jsr show_cursor ; make sure cursor shown
   rts
 
 cls:
-  lda SAVMSC
+  lda SCR_PTR_LO
   sta ZPB0
-  lda SAVMSC+1
+  lda SCR_PTR_LO+1
   sta ZPB1
 
   ldx #23
