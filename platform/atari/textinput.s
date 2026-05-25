@@ -641,10 +641,54 @@ ti_line_insert:
   sta show_cursor_var0
   jsr internal_show_cursor
 @done:
-  jsr debug_dump_data
+  rts
+
+; shifts all characters from cursor to the
+; right to the right
+internal_shift_chars_right:
+  ldy size
+  dey
+@loop:
+  dey
+  cpy cursorpos
+  beq @first_char
+  lda (TI_DATA_PTR_LO),y
+  iny
+  sta (TI_DATA_PTR_LO),y
+  cpy #1
+  beq @done
+  dey
+  jmp @loop
+@first_char:
+  lda (TI_DATA_PTR_LO),y
+  iny
+  sta (TI_DATA_PTR_LO),y
+  dey
+  lda #' '
+  sta (TI_DATA_PTR_LO),y
+@done:
   rts
 
 ti_char_insert:
+  ldy cursorpos
+  iny
+  beq @done ; rolled over
+  cpy size
+  bcs @done ; at or beyond last char
+
+  lda #CURSOR_FLAG_DISABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+
+  jsr internal_shift_chars_right
+  jsr internal_repaint
+
+  jsr copy_out
+
+  lda #CURSOR_FLAG_ENABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+@done:
   rts
 
 ti_line_delete:
