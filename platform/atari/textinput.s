@@ -46,6 +46,9 @@
 .EXPORT ti_backspace
 .EXPORT ti_shift_clear
 .EXPORT ti_line_insert
+.EXPORT ti_char_insert
+.EXPORT ti_line_delete
+.EXPORT ti_char_delete
 
 ; takes source text input metadata and copies it
 ; to local storage, including the pointer to
@@ -423,6 +426,8 @@ ti_move_cursor_right:
   jsr copy_out
   rts
 
+; updates a single character on the screen in
+; the current row
 internal_update_screen_char:
   ldy cursorpos
   lda (TI_DATA_PTR_LO),y
@@ -639,12 +644,14 @@ ti_line_insert:
   jsr debug_dump_data
   rts
 
-ti_insert_char:
+ti_char_insert:
   rts
 
-ti_scr_move_cursor_home:
+ti_line_delete:
   rts
 
+ti_char_delete:
+  rts
 
 debug_dump_data:
   lda SCR_PTR_LO

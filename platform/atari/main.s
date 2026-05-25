@@ -46,6 +46,9 @@ SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY+1)*40
 .IMPORT ti_backspace
 .IMPORT ti_shift_clear
 .IMPORT ti_line_insert
+.IMPORT ti_char_insert
+.IMPORT ti_line_delete
+.IMPORT ti_char_delete
 
 .ifdef DEBUG
 .IMPORT wozmon_main
@@ -710,6 +713,18 @@ cmd_line_insert:
   jsr ti_line_insert
   rts
 
+cmd_char_insert:
+  jsr ti_char_insert
+  rts
+
+cmd_line_delete:
+  jsr ti_line_delete
+  rts
+
+cmd_char_delete:
+  jsr ti_char_delete
+  rts
+
 proc_kbd:
   ; TODO remove when no longer debugging
   lda SAVMSC
@@ -734,13 +749,17 @@ proc_kbd:
   cmp #$34
   beq @backspace
   cmp #$76 ; shift+clear ($b4 on atari 800 emulator)
-  cmp #$b4
   beq @shift_clear
-  cmp #$b7 ; ctrl+clear
+  cmp #$b6 ; ctrl+clear
   beq @shift_clear
   cmp #$77 ; shift+insert on atari ($7c on atari800 emulator)
-  cmp #$7c
   beq @line_insert
+  cmp #$b7 ; ctrl+insert
+  beq @char_insert
+  cmp #$74 ; shift+delete bs
+  beq @line_delete
+  cmp #$b4 ; ctrl+delete bs
+  beq @char_delete
 @output:
   jsr cmd_typechar
   jmp @done
@@ -770,6 +789,15 @@ proc_kbd:
   jmp @done
 @line_insert:
   jsr cmd_line_insert
+  jmp @done
+@char_insert:
+  jsr cmd_char_insert
+  jmp @done
+@line_delete:
+  jsr cmd_line_delete
+  jmp @done
+@char_delete:
+  jsr cmd_char_delete
   jmp @done
 @return:
 @done:
