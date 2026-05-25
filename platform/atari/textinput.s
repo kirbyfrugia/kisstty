@@ -711,6 +711,26 @@ internal_shift_chars_right:
 @done:
   rts
 
+; shifts all characters to the right of the cursor
+; to the left one space
+internal_shift_chars_left:
+  ldy cursorpos
+@loop:
+  iny
+  cpy size
+  beq @last_char
+  lda (TI_DATA_PTR_LO),y
+  dey
+  sta (TI_DATA_PTR_LO),y
+  iny
+  jmp @loop
+@last_char: 
+  dey
+  lda #' '
+  sta (TI_DATA_PTR_LO),y
+@done:
+  rts
+
 ti_char_insert:
   ldy cursorpos
   iny
@@ -754,7 +774,28 @@ ti_line_delete:
   jsr internal_show_cursor
   rts
 
+; erases the char under the cursor by moving all
+; the characters to the right one space left.
 ti_char_delete:
+  ldy cursorpos
+  iny
+  cpy size
+  beq @done ; at last char
+ 
+  lda #CURSOR_FLAG_DISABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+
+  jsr internal_shift_chars_left
+  jsr internal_repaint
+  jsr ti_move_cursor_left
+
+  jsr copy_out
+
+  lda #CURSOR_FLAG_ENABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+@done:
   rts
 
 debug_dump_data:
@@ -802,7 +843,7 @@ debug_dump_data:
   sta CMDDATA3
   
   inx
-  cpx #10
+  cpx #15
   bne @loop
   rts
 
