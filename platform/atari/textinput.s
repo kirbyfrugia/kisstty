@@ -34,6 +34,7 @@
 .SEGMENT "CODE"
 
 .IMPORT utils_atascii_to_icode
+.IMPORT utils_dump_mem_row
 .EXPORT ti_init
 .EXPORT ti_set_metadata
 .EXPORT ti_move_cursor_up
@@ -43,6 +44,8 @@
 .EXPORT ti_show_cursor
 .EXPORT ti_typechar
 .EXPORT ti_backspace
+.EXPORT ti_shift_clear
+.EXPORT ti_line_insert
 
 ; takes source text input metadata and copies it
 ; to local storage, including the pointer to
@@ -142,6 +145,10 @@ ti_init:
   jmp @margin_row_loop
 @margin_row_loop_done:
 
+  lda CMDDATA4
+  sta TI_SCR_PTR_LO
+  lda CMDDATA5
+  sta TI_SCR_PTR_HI
   ; now update all our row pointers
   ldy #0
 @row_loop:
@@ -177,17 +184,9 @@ ti_init:
 ; interface needed:
 ;   set cursor position
 ;   move cursor up/down, left/right
-;   shift+clear
-;     - clear all data, move cursor top left
-;   insert line
-;     - moves all lines down from current cursor
 ;   insert char
 ;     - writes a space under current cursor
 ;     - moves all characters after cursor to right
-;   backspace (atari style)
-;     - erases character under cursor
-;     - move cursor left
-;     - no shifting of data
 ;   backspace (other style, later)
 ;     - erase character under cursor
 ;     - shift all data after cursor left
@@ -476,8 +475,8 @@ ti_typechar:
   jsr ti_move_cursor_right
   rts
 
-; moves the cursor to the left and deletes the
-; character under the cursor
+; erases character under cursor, moves cursor left.
+; atari style doesn't shift data left.
 ti_backspace:
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
   sta CMDDATA0
@@ -491,6 +490,163 @@ ti_backspace:
   jsr internal_show_cursor
   rts
 
+internal_cursor_home:
+  lda #0
+  sta cursory
+  sta cursorx
+  sta cursorpos
+  jsr update_cursor_pos
+  jsr update_cursor_scr_row_ptr
+  rts
+
+; clears all data between the markers
+; inputs:
+;   - update_marker_start (position to start)
+;   - update_marker_end   (position to end, exclusive)
+internal_clear_data:
+  ldy update_marker_start
+@loop:
+  lda #' '
+  sta (TI_DATA_PTR_LO),y
+  iny
+  cpy update_marker_end
+  bcc @loop
+  rts
+
+
+; repaints the entire screen areas for the input
+; box. Useful when data changes. Not so efficient,
+; but I'll worry about that later.
+internal_repaint:
+; basic algorithm
+; start at the first screen row where our input lives.
+; have a loop that starts margin_left over and goes until width
+; keep a cursor counter for the actual data.
+
+  ; lo byte pointer to first row
+  lda scr_rows_ptr_loc_lo
+  sta CMDDATA0
+  lda scr_rows_ptr_loc_lo+1
+  sta CMDDATA1
+
+  ; hi byte pointer to first row
+  lda scr_rows_ptr_loc_hi
+  sta CMDDATA2
+  lda scr_rows_ptr_loc_hi+1
+  sta CMDDATA3
+
+  ; now save the ptr to first row
+  ldy #0
+  lda (CMDDATA0),y
+  sta CMDDATA0
+  lda (CMDDATA2),y
+  sta CMDDATA1
+
+  ldx #0 ; temporary cursor
+@screen_row_loop:
+  lda margin_left
+  tay
+  lda width
+  clc
+  adc #2
+  sta repaint_tmp1
+@screen_col_loop:
+  sty repaint_tmp0
+  txa
+  tay
+  lda (TI_DATA_PTR_LO),y
+  jsr utils_atascii_to_icode
+  ldy repaint_tmp0
+  sta (CMDDATA0),y
+  inx
+  iny
+  cpy repaint_tmp1
+  bcc @screen_col_loop
+  cpx size
+  bcs @done
+  lda CMDDATA0
+  clc
+  adc #SCREEN_WIDTH
+  sta CMDDATA0
+  lda CMDDATA1
+  adc #0
+  sta CMDDATA1
+  jmp @screen_row_loop
+@done:
+  rts
+
+; clears all data in the input and returns the cursor home
+ti_shift_clear:
+  lda #CURSOR_FLAG_DISABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+
+  lda #0
+  sta update_marker_start
+  lda size
+  sta update_marker_end
+  jsr internal_clear_data
+
+  jsr internal_cursor_home
+  jsr internal_repaint
+
+  jsr copy_out
+
+  lda #CURSOR_FLAG_ENABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+  rts
+
+internal_shift_lines_down:
+  ; first find the start of the line we're on
+  lda cursorpos
+  sec
+  sbc cursorx
+  sta move_line_start_line_pos
+  lda size
+  sec
+  sbc #1
+  sta move_line_cursor_to ; end of last line
+  sbc width
+  sta move_line_cursor_from ; end of previous line
+@loop:
+  ldy move_line_cursor_from
+  lda (TI_DATA_PTR_LO),y
+  ldy move_line_cursor_to
+  sta (TI_DATA_PTR_LO),y
+
+  lda move_line_start_line_pos
+  cmp move_line_cursor_from
+  beq @done
+  dec move_line_cursor_to
+  dec move_line_cursor_from
+  jmp @loop
+@done:
+
+  rts
+
+; moves all lines down from current cursor
+; including current line
+ti_line_insert:
+  lda cursory
+  cmp cursor_maxy
+  beq @done
+
+  lda #CURSOR_FLAG_DISABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+
+  jsr internal_shift_lines_down
+  jsr internal_repaint
+
+  jsr copy_out
+
+  lda #CURSOR_FLAG_ENABLE
+  sta show_cursor_var0
+  jsr internal_show_cursor
+@done:
+  jsr debug_dump_data
+  rts
 
 ti_insert_char:
   rts
@@ -499,8 +655,67 @@ ti_scr_move_cursor_home:
   rts
 
 
+debug_dump_data:
+  lda SCR_PTR_LO
+  clc
+  adc #40
+  sta CMDDATA0
+  lda SCR_PTR_HI
+  adc #0
+  sta CMDDATA1
+  lda #<update_marker_start
+  sta CMDDATA2
+  lda #>update_marker_start
+  sta CMDDATA3
+  jsr utils_dump_mem_row
+ 
+  lda SCR_PTR_LO
+  clc
+  adc #80
+  sta CMDDATA0
+  lda SCR_PTR_HI
+  adc #0
+  sta CMDDATA1
+  lda data_ptr
+  sta CMDDATA2
+  lda data_ptr+1
+  sta CMDDATA3
+  ldx #0
+@loop:
+  jsr utils_dump_mem_row
+  lda CMDDATA0
+  clc
+  adc #40
+  sta CMDDATA0
+  lda CMDDATA1
+  adc #0
+  sta CMDDATA1
+
+  lda CMDDATA2
+  clc
+  adc #8
+  sta CMDDATA2
+  lda CMDDATA3
+  adc #0
+  sta CMDDATA3
+  
+  inx
+  cpx #10
+  bne @loop
+  rts
+
+
 newchar0: .byte 0
 show_cursor_var0: .byte 0
+update_marker_start: .byte 0
+update_marker_end:   .byte 0
+
+move_line_start_line_pos: .byte 0
+move_line_cursor_from:    .byte 0
+move_line_cursor_to:      .byte 0
+
+repaint_tmp0:             .byte 0
+repaint_tmp1:             .byte 0
 
 ; internal copy
 metadata:

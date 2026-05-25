@@ -129,6 +129,15 @@ mti_init:
   lda #>input_scr_rows_hi
   sta scr_rows_ptr_loc_hi+1
 
+  ; fill the data
+  lda #' '
+  ldy #(SIZE-1)
+@loop:
+  sta mti_main_input_data,y
+  dey
+  bpl @loop
+
+
   lda #<mti_main_input_metadata
   sta CMDDATA0
   lda #>mti_main_input_metadata

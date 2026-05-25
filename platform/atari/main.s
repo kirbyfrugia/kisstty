@@ -44,6 +44,8 @@ SCR_INPUT_BUFFER_SIZE = (CURSOR_MAXY-CURSOR_MINY+1)*40
 .IMPORT ti_move_cursor_right
 .IMPORT ti_typechar
 .IMPORT ti_backspace
+.IMPORT ti_shift_clear
+.IMPORT ti_line_insert
 
 .ifdef DEBUG
 .IMPORT wozmon_main
@@ -213,8 +215,8 @@ init:
   jsr ti_show_cursor
   ;jsr move_cursor_home
 
-  lda #0
-  jsr mti_tmp_dump_data
+  ;lda #0
+  ;jsr mti_tmp_dump_data
   rts
 
 
@@ -700,6 +702,14 @@ cmd_backspace:
   jsr ti_backspace
   rts
 
+cmd_shift_clear:
+  jsr ti_shift_clear
+  rts
+
+cmd_line_insert:
+  jsr ti_line_insert
+  rts
+
 proc_kbd:
   ; TODO remove when no longer debugging
   lda SAVMSC
@@ -723,14 +733,13 @@ proc_kbd:
   beq @return
   cmp #$34
   beq @backspace
-  cmp #$76 ; shift+clear
+  cmp #$76 ; shift+clear ($b4 on atari 800 emulator)
+  cmp #$b4
   beq @shift_clear
   cmp #$b7 ; ctrl+clear
   beq @shift_clear
-  cmp #$77 ; shift+insert on atari
-  ; TODO: figure out how to do this on emulator
-  ; $77 is correct on atari, $7c for shift+insert on emulator
-  ;cmp #$7c ; shift+insert on emulator
+  cmp #$77 ; shift+insert on atari ($7c on atari800 emulator)
+  cmp #$7c
   beq @line_insert
 @output:
   jsr cmd_typechar
@@ -757,16 +766,16 @@ proc_kbd:
 ;  jsr try_backspace
   jmp @done
 @shift_clear:
-;  jsr shift_clear
+  jsr cmd_shift_clear
   jmp @done
 @line_insert:
-;  jsr line_insert
+  jsr cmd_line_insert
   jmp @done
 @return:
 @done:
   ; TODO: remove
-  lda #0
-  jsr mti_tmp_dump_data
+  ;lda #40
+  ;jsr mti_tmp_dump_data
 ;  jsr show_cursor ; make sure cursor shown
   rts
 
