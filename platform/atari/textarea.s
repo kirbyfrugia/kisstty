@@ -505,7 +505,7 @@ int_repaint:
   tay
   lda local_metadata+TextArea::width
   clc
-  adc #2
+  adc local_metadata+TextArea::margin_left
   sta repaint_tmp1
 @screen_col_loop:
   sty repaint_tmp0

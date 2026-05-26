@@ -12,7 +12,7 @@
 .EXPORT mo_set_active
 .EXPORT mo_append
 
-MARGIN_LEFT   = 2
+MARGIN_LEFT   = 1
 WIDTH         = 38
 HEIGHT        = 6
 SIZE          = WIDTH * HEIGHT

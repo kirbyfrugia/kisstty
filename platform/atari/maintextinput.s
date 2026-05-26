@@ -11,7 +11,7 @@
 .EXPORT mti_set_active
 .EXPORT mti_tmp_dump_data
 
-MARGIN_LEFT   = 2
+MARGIN_LEFT   = 1
 MARGIN_TOP    = 20
 WIDTH         = 38
 HEIGHT        = 4
