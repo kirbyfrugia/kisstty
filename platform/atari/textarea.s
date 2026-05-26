@@ -49,7 +49,7 @@
 .EXPORT ta_move_cursor_down
 .EXPORT ta_move_cursor_left
 .EXPORT ta_move_cursor_right
-.EXPORT ta_show_cursor
+;.EXPORT ta_show_cursor
 .EXPORT ta_typechar
 .EXPORT ta_backspace
 .EXPORT ta_shift_clear
@@ -192,8 +192,6 @@ ta_init_textarea:
 
   jsr int_repaint
 
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
 
   rts
@@ -241,13 +239,10 @@ int_update_cursor_scr_row_ptr:
 
   rts
 
-; shows the cursor
-; inputs:
-;   CMDDATA0   - CURSOR_FLAG
-ta_show_cursor:
-  lda CMDDATA0
-  sta show_cursor_var0
-int_show_cursor:
+int_hide_cursor:
+  lda local_metadata+TextArea::use_cursor
+  beq @done
+
   lda local_metadata+TextArea::cursor_scr_row_ptr
   sta CMDDATA2
   lda local_metadata+TextArea::cursor_scr_row_ptr+1
@@ -258,15 +253,26 @@ int_show_cursor:
   adc local_metadata+TextArea::cursorx
   tay
 
-  lda #CURSOR_FLAG_ENABLE
-  bit show_cursor_var0
-  bmi @show_cursor
-  
   lda (CMDDATA2),y
   and #%01111111
   sta (CMDDATA2),y
-  jmp @done
-@show_cursor:
+@done:
+  rts
+
+int_show_cursor:
+  lda local_metadata+TextArea::use_cursor
+  beq @done
+
+  lda local_metadata+TextArea::cursor_scr_row_ptr
+  sta CMDDATA2
+  lda local_metadata+TextArea::cursor_scr_row_ptr+1
+  sta CMDDATA3
+
+  lda local_metadata+TextArea::margin_left
+  clc
+  adc local_metadata+TextArea::cursorx
+  tay
+
   lda (CMDDATA2),y
   ora #%10000000
   sta (CMDDATA2),y
@@ -274,9 +280,7 @@ int_show_cursor:
   rts
 
 ta_move_cursor_up:
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   lda local_metadata+TextArea::cursory
   beq @wrapped
@@ -289,16 +293,12 @@ ta_move_cursor_up:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
 
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
 
   rts
 
 ta_move_cursor_down:
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   lda local_metadata+TextArea::cursory
   cmp local_metadata+TextArea::cursor_maxy
@@ -313,8 +313,6 @@ ta_move_cursor_down:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
 
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
 
   rts
@@ -327,9 +325,7 @@ ta_move_cursor_down:
 ; when we move the cursor based on arrow keys vs
 ; text changes.
 ta_move_cursor_left:
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   lda local_metadata+TextArea::cursorx
   beq @wrapped
@@ -357,16 +353,12 @@ ta_move_cursor_left:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
 @done:
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
 
   rts
 
 ta_move_cursor_right:
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   lda local_metadata+TextArea::cursorx
   cmp local_metadata+TextArea::cursor_maxx
@@ -397,8 +389,6 @@ ta_move_cursor_right:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
 @done:
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
 
   rts
@@ -442,8 +432,6 @@ ta_backspace:
   lda #' '
   sta (TI_DATA_PTR_LO),y
   jsr int_update_screen_char
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
   rts
 
@@ -564,9 +552,7 @@ int_clear_last_row:
 
 ; clears all data in the area and returns the cursor home
 ta_shift_clear:
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   lda #0
   sta update_marker_start
@@ -577,8 +563,6 @@ ta_shift_clear:
   jsr int_cursor_home
   jsr int_repaint
 
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
   rts
 
@@ -659,16 +643,12 @@ ta_line_insert:
   cmp local_metadata+TextArea::cursor_maxy
   beq @done
 
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   jsr int_shift_lines_down
   jsr int_clear_row
   jsr int_repaint
 
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
 @done:
   rts
@@ -726,15 +706,11 @@ ta_char_insert:
   cpy local_metadata+TextArea::size
   bcs @done ; at or beyond last char
 
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   jsr int_shift_chars_right
   jsr int_repaint
 
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
 @done:
   rts
@@ -744,17 +720,13 @@ ta_line_delete:
   cmp local_metadata+TextArea::cursor_maxy
   beq @last_line ; on last line
 
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   jsr int_shift_lines_up_from_cursor
 @last_line:
   jsr int_clear_last_row
   jsr int_repaint
 
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
   rts
 
@@ -769,9 +741,7 @@ ta_line_append:
   lda CMDDATA2
   pha
 
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   ; shift all lines up
   lda #0
@@ -807,8 +777,6 @@ ta_line_append:
   ; repaint the text area. it all changed
   jsr int_repaint
 
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
 
   rts
@@ -821,16 +789,12 @@ ta_char_delete:
   cpy local_metadata+TextArea::size
   beq @done ; at last char
  
-  lda #CURSOR_FLAG_DISABLE
-  sta show_cursor_var0
-  jsr int_show_cursor
+  jsr int_hide_cursor
 
   jsr int_shift_chars_left
   jsr int_repaint
   jsr ta_move_cursor_left
 
-  lda #CURSOR_FLAG_ENABLE
-  sta show_cursor_var0
   jsr int_show_cursor
 @done:
   rts

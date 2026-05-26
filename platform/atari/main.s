@@ -10,6 +10,7 @@ RS232_CHANNEL = 32    ; channel 2 (2 * 16)
 CTRL_SHIFT_FLAG_CTRL  = %10000000
 CTRL_SHIFT_FLAG_SHIFT = %01000000
 CTRL_SHIFT_FLAG_LOWER = %00000000
+DEBOUNCE_NUM_FRAMES   = 30
 
 .IMPORT boot850_check 
 .IMPORT boot850_bootstrap 
@@ -36,7 +37,6 @@ CTRL_SHIFT_FLAG_LOWER = %00000000
 .IMPORT mo_set_active
 .IMPORT ta_initsys
 .IMPORT ta_scr_ptr
-.IMPORT ta_show_cursor
 .IMPORT ta_move_cursor_up
 .IMPORT ta_move_cursor_down
 .IMPORT ta_move_cursor_left
@@ -80,8 +80,40 @@ start:
   ;print_str str_supported_commands
   ;print_str str_commands
 @loop:
+  jsr proc_console_keys
   jsr inkbd
   jmp @loop
+
+vbi_handler:
+
+@select_key_handler:
+  lda CONSOL
+  and #%00000010   ; SELECT key, active low
+  bne @select_up
+
+  inc debounce_count_select
+  lda debounce_count_select
+  cmp #DEBOUNCE_NUM_FRAMES
+  bne @select_done
+  lda #1
+  sta select_fired
+  lda #0
+  sta debounce_count_select
+  jmp @select_done
+@select_up:
+  lda #0
+  sta debounce_count_select
+@select_done:
+@done:
+  jmp XITVBV ; hand control back to OS
+
+
+set_vbi_handler:
+  lda #7 ; deferred
+  ldx #>vbi_handler
+  ldy #<vbi_handler
+  jsr SETVBV
+  rts
 
 init:
   lda #CTRL_SHIFT_FLAG_LOWER 
@@ -110,10 +142,22 @@ init:
 
   jsr cls
 
+  jsr draw_ui
+
+  jsr set_vbi_handler
   jsr ta_initsys
   jsr mo_init
   jsr mti_init
-  jsr ta_show_cursor
+  rts
+
+proc_console_keys:
+  lda select_fired
+  beq @select_handled
+  jsr next_theme
+  lda #0
+  sta select_fired
+@select_handled:
+@done:
   rts
 
 ; Keyboard behavior described in the Atari OS User Manual Page 47
@@ -394,6 +438,53 @@ cls:
 @done:
   rts
 
+; inputs:
+;   x - theme number
+set_theme:
+  ldx current_theme
+  lda themes_bg,x
+  sta COLOR2
+  lda themes_fg,x
+  sta COLOR1
+
+  rts
+
+next_theme:
+  ldx current_theme
+  inx
+  cpx #(themes_fg_end-themes_fg)
+  bcc @nowrap
+  ldx #0
+@nowrap:
+  stx current_theme
+@do_it:
+  jsr set_theme
+  stx current_theme
+  rts
+
+draw_ui:
+  ldx #0
+  stx current_theme
+  jsr set_theme
+
+  LINE_ABOVE_INPUT_OFFSET = 40*19
+  lda SCR_PTR_LO
+  clc
+  adc #<LINE_ABOVE_INPUT_OFFSET
+  sta ZPB0
+  LDA SCR_PTR_HI
+  adc #>LINE_ABOVE_INPUT_OFFSET
+  sta ZPB1
+
+  lda #$52 ; horizontal bar
+  ldy #39
+@loop:
+  sta (ZPB0),y
+  dey
+  bpl @loop
+
+  rts
+
 cmd_boot850:
   jsr boot850_bootstrap
   bcs @error
@@ -517,4 +608,21 @@ command_error: .byte 0
 
 ctrl_shift_lock_flag: .byte 0
 
-loop_count: .byte 0
+debounce_count_select: .byte 0
+select_fired: .byte 0
+
+current_theme: .byte 0
+
+;themes_bg:
+;  .byte $b2, $c2, $c2
+;themes_bg_end:
+;
+;themes_fg:
+;  .byte $be, $b6, $ce
+;themes_fg_end:
+themes_bg:
+  .byte $C2, $22, $02, $be
+themes_bg_end:
+themes_fg:
+  .byte $CE, $2E, $0E, $b2
+themes_fg_end:

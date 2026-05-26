@@ -33,6 +33,11 @@ mo_init:
   sta area2_metadata+TextArea::cursory
   sta area2_metadata+TextArea::cursorpos
 
+  lda #CURSOR_FLAG_DISABLED
+  sta area0_metadata+TextArea::use_cursor
+  sta area1_metadata+TextArea::use_cursor
+  sta area2_metadata+TextArea::use_cursor
+
   lda #0
   sta area0_metadata+TextArea::margin_top
   lda #6

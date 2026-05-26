@@ -99,6 +99,9 @@ mti_init:
   sta metadata+TextArea::cursory
   sta metadata+TextArea::cursorpos
 
+  lda #CURSOR_FLAG_ENABLED
+  sta metadata+TextArea::use_cursor
+
   lda #<mti_main_input_data
   sta metadata+TextArea::data_ptr
   lda #>mti_main_input_data
