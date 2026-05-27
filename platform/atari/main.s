@@ -29,12 +29,10 @@ DEBOUNCE_NUM_FRAMES   = 30
 .IMPORT kbd_shifted
 .IMPORT kbd_ctrld
 .IMPORT mti_init
-.IMPORT mti_set_active
 .IMPORT mti_main_input_metadata
 .IMPORT mti_tmp_dump_data
 .IMPORT mo_init
 .IMPORT mo_append
-.IMPORT mo_set_active
 .IMPORT ta_initsys
 .IMPORT ta_scr_ptr
 .IMPORT ta_move_cursor_up
@@ -48,6 +46,9 @@ DEBOUNCE_NUM_FRAMES   = 30
 .IMPORT ta_char_insert
 .IMPORT ta_line_delete
 .IMPORT ta_char_delete
+.IMPORT ta_copy_first_line
+.IMPORT ta_copy_last_line
+
 
 .ifdef DEBUG
 .IMPORT wozmon_main
@@ -325,6 +326,11 @@ cmd_char_delete:
   jsr ta_char_delete
   rts
 
+cmd_return:
+  jsr ta_copy_first_line
+  jsr mo_append
+  rts
+
 proc_kbd:
   ; TODO remove when no longer debugging
   lda SAVMSC
@@ -397,15 +403,7 @@ proc_kbd:
   jsr cmd_char_delete
   jmp @done
 @return:
-  jsr mo_set_active
-  lda #<str_success
-  sta CMDDATA0
-  lda #>str_success
-  sta CMDDATA1
-  lda #7
-  sta CMDDATA2
-  jsr mo_append
-  jsr mti_set_active
+  jsr cmd_return
 
 @done:
   rts
@@ -613,16 +611,12 @@ select_fired: .byte 0
 
 current_theme: .byte 0
 
-;themes_bg:
-;  .byte $b2, $c2, $c2
-;themes_bg_end:
-;
-;themes_fg:
-;  .byte $be, $b6, $ce
-;themes_fg_end:
 themes_bg:
   .byte $C2, $22, $02, $be
 themes_bg_end:
 themes_fg:
   .byte $CE, $2E, $0E, $b2
 themes_fg_end:
+
+tmp_buffer: .res 40
+tmp_buffer_end:

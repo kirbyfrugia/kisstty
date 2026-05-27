@@ -4,6 +4,12 @@ This will be a KISS TNC ("Keep It Simple, Stupid" Terminal Node Controller) clie
 
 If you're looking at this, you're probably one of only a few people who are into both ham radio and 8-bit computers. So, really I'm just building it for me.
 
+# How to's
+
+## Atari
+
+* To change color theme, hold SELECT for half a second or so.
+
 # Status
 
 I'm just getting started on it. I'm intending to create the Atari 800 first, then the Apple II, then the Commodore.

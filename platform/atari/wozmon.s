@@ -1,7 +1,3 @@
-; TODO: this now needs to be fixed since I'm no longer using the built in
-; editor
-
-
 ; WozMon for Atari 8-bit, ca65 port for kiss6502
 ;
 ; Original: The WOZ Monitor for the Apple 1, Steve Wozniak, 1976
@@ -156,6 +152,20 @@ wozmon_msg2_end:
 .EXPORT wozmon_main
 
 wozmon_main:
+  ; restore the screen editor
+  ldx #$00
+  lda #$03
+  sta ICCOM,X
+  lda #<editor_name
+  sta ICBAL,X
+  lda #>editor_name
+  sta ICBAH,X
+  lda #$0C
+  sta ICAX1,X
+  lda #$00
+  sta ICAX2,X
+  jsr CIOV
+
   cli                           ; re-enable IRQs so that we can have brk work
   cld                           ; clear decimal arithmetic mode
   lda #'\'
@@ -323,4 +333,8 @@ wozmon_echo:
   pla                           ; restore Y from stack
   tay                           ; and transfer to Y register
   rts                           ; return
+
+editor_name:
+    .byte "E:", $9B
+
 .endif

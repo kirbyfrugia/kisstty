@@ -6,9 +6,8 @@
 
 .IMPORT utils_dump_mem_row
 .IMPORT ta_init_textarea
-.IMPORT ta_set_metadata
+.IMPORT ta_set_metadata_ptr
 .EXPORT mti_init
-.EXPORT mti_set_active
 .EXPORT mti_tmp_dump_data
 
 MARGIN_LEFT   = 1
@@ -103,9 +102,9 @@ mti_init:
   sta metadata+TextArea::use_cursor
 
   lda #<mti_main_input_data
-  sta metadata+TextArea::data_ptr
+  sta metadata+TextArea::first_row_data_ptr
   lda #>mti_main_input_data
-  sta metadata+TextArea::data_ptr+1
+  sta metadata+TextArea::first_row_data_ptr+1
   lda #MARGIN_LEFT
   sta metadata+TextArea::margin_left
   lda #MARGIN_TOP
@@ -145,17 +144,9 @@ mti_init:
   sta CMDDATA0
   lda #>metadata
   sta CMDDATA1
-  jsr ta_set_metadata
+  jsr ta_set_metadata_ptr
   jsr ta_init_textarea
 
-  rts
-
-mti_set_active:
-  lda #<metadata
-  sta CMDDATA0
-  lda #>metadata
-  sta CMDDATA1
-  jsr ta_set_metadata
   rts
 
 metadata: .tag TextArea

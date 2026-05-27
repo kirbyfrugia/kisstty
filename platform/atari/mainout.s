@@ -6,10 +6,11 @@
 
 .IMPORT utils_dump_mem_row
 .IMPORT ta_init_textarea
-.IMPORT ta_set_metadata
+.IMPORT ta_get_metadata_ptr
+.IMPORT ta_set_metadata_ptr
 .IMPORT ta_line_append
 .EXPORT mo_init
-.EXPORT mo_set_active
+;.EXPORT mo_set_active
 .EXPORT mo_append
 
 MARGIN_LEFT   = 1
@@ -76,17 +77,17 @@ mo_init:
   sta area2_metadata+TextArea::cursor_maxy
 
   lda #<area0_data
-  sta area0_metadata+TextArea::data_ptr
+  sta area0_metadata+TextArea::first_row_data_ptr
   lda #>area0_data
-  sta area0_metadata+TextArea::data_ptr+1
+  sta area0_metadata+TextArea::first_row_data_ptr+1
   lda #<area1_data
-  sta area1_metadata+TextArea::data_ptr
+  sta area1_metadata+TextArea::first_row_data_ptr
   lda #>area1_data
-  sta area1_metadata+TextArea::data_ptr+1
+  sta area1_metadata+TextArea::first_row_data_ptr+1
   lda #<area2_data
-  sta area2_metadata+TextArea::data_ptr
+  sta area2_metadata+TextArea::first_row_data_ptr
   lda #>area2_data
-  sta area2_metadata+TextArea::data_ptr+1
+  sta area2_metadata+TextArea::first_row_data_ptr+1
 
 
   ; set pointers to table where screen row data is stored
@@ -131,38 +132,58 @@ mo_init:
   sta CMDDATA0
   lda #>area0_metadata
   sta CMDDATA1
-  jsr ta_set_metadata
+  jsr ta_set_metadata_ptr
   jsr ta_init_textarea
 
   lda #<area1_metadata
   sta CMDDATA0
   lda #>area1_metadata
   sta CMDDATA1
-  jsr ta_set_metadata
+  jsr ta_set_metadata_ptr
   jsr ta_init_textarea
 
   lda #<area2_metadata
   sta CMDDATA0
   lda #>area2_metadata
   sta CMDDATA1
-  jsr ta_set_metadata
+  jsr ta_set_metadata_ptr
   jsr ta_init_textarea
 
+  rts
+
+int_set_area2_active:
+  lda CMDDATA0
+  pha
+  lda CMDDATA1
+  pha
+
+  lda #<area2_metadata
+  sta CMDDATA0
+  lda #>area2_metadata
+  sta CMDDATA1
+  jsr ta_set_metadata_ptr
+
+  pla
+  STA CMDDATA1
+  pla
+  STA CMDDATA0
   rts
 
 ; inputs:
-;   - CMDDATA0/1 - pointer to the data to append
-;   - CMDDATA2   - number of chars. On you if you exceed
+;   - copy_buffer40
+;   - copy_buffer40_size
 mo_append:
-  jsr ta_line_append
-  rts
+  save_metadata_ptr
 
-mo_set_active:
   lda #<area2_metadata
   sta CMDDATA0
   lda #>area2_metadata
   sta CMDDATA1
-  jsr ta_set_metadata
+  jsr ta_set_metadata_ptr
+  jsr ta_line_append
+
+  restore_metadata_ptr
+  
   rts
 
 area0_metadata:             .tag TextArea
