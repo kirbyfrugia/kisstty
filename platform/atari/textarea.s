@@ -60,7 +60,8 @@
 .EXPORT ta_line_insert
 .EXPORT ta_char_insert
 .EXPORT ta_line_delete
-.EXPORT ta_line_append
+.EXPORT ta_shift_all_up
+.EXPORT ta_paste_last_line
 .EXPORT ta_char_delete
 .EXPORT ta_copy_first_line
 .EXPORT ta_copy_last_line
@@ -821,6 +822,32 @@ ta_line_append:
   jsr int_repaint
   jsr int_show_cursor
 @done:
+  rts
+
+ta_shift_all_up:
+  jsr int_hide_cursor
+  lda #0
+  sta move_line_start_line_pos
+  jsr int_shift_lines_up
+  jsr int_repaint
+  jsr int_show_cursor
+  rts
+
+; pastes over last line with copy_buffer40
+ta_paste_last_line:
+  jsr int_hide_cursor
+  ldy #0
+@loop:
+  lda copy_buffer40,y
+  sta (TA_LAST_ROW_DATA_PTR_LO),y
+  iny
+  cpy local_metadata+TextArea::width
+  beq @done
+  cpy copy_buffer40_size
+  bne @loop
+@done:
+  jsr int_repaint
+  jsr int_show_cursor
   rts
 
 ; copies the first line to copy_buffer40

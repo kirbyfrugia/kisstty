@@ -8,10 +8,12 @@
 .IMPORT ta_init_textarea
 .IMPORT ta_get_metadata_ptr
 .IMPORT ta_set_metadata_ptr
-.IMPORT ta_line_append
+.IMPORT ta_copy_first_line
+.IMPORT ta_paste_last_line
+.IMPORT ta_shift_all_up
 .EXPORT mo_init
-;.EXPORT mo_set_active
-.EXPORT mo_append
+.EXPORT mo_scroll_up
+.EXPORT mo_paste_last_line
 
 MARGIN_LEFT   = 1
 WIDTH         = 38
@@ -151,36 +153,58 @@ mo_init:
 
   rts
 
-int_set_area2_active:
-  lda CMDDATA0
-  pha
-  lda CMDDATA1
-  pha
-
-  lda #<area2_metadata
+int_set_area0_active:
+  lda #<area0_metadata
   sta CMDDATA0
-  lda #>area2_metadata
+  lda #>area0_metadata
   sta CMDDATA1
   jsr ta_set_metadata_ptr
-
-  pla
-  STA CMDDATA1
-  pla
-  STA CMDDATA0
   rts
 
-; inputs:
-;   - copy_buffer40
-;   - copy_buffer40_size
-mo_append:
-  save_metadata_ptr
+int_set_area1_active:
+  lda #<area1_metadata
+  sta CMDDATA0
+  lda #>area1_metadata
+  sta CMDDATA1
+  jsr ta_set_metadata_ptr
+  rts
 
+int_set_area2_active:
   lda #<area2_metadata
   sta CMDDATA0
   lda #>area2_metadata
   sta CMDDATA1
   jsr ta_set_metadata_ptr
-  jsr ta_line_append
+  rts
+
+mo_scroll_up:
+  save_metadata_ptr
+
+  jsr int_set_area0_active
+  jsr ta_shift_all_up
+
+  jsr int_set_area1_active
+  jsr ta_copy_first_line
+  jsr ta_shift_all_up
+
+  jsr int_set_area0_active
+  jsr ta_paste_last_line
+
+  jsr int_set_area2_active
+  jsr ta_copy_first_line
+  jsr ta_shift_all_up
+
+  jsr int_set_area1_active
+  jsr ta_paste_last_line
+  
+  restore_metadata_ptr
+  rts
+
+mo_paste_last_line:
+  save_metadata_ptr
+
+  jsr int_set_area2_active
+  jsr ta_paste_last_line
 
   restore_metadata_ptr
   

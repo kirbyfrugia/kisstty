@@ -33,6 +33,8 @@ DEBOUNCE_NUM_FRAMES   = 30
 .IMPORT mti_tmp_dump_data
 .IMPORT mo_init
 .IMPORT mo_append
+.IMPORT mo_scroll_up
+.IMPORT mo_paste_last_line
 .IMPORT ta_initsys
 .IMPORT ta_scr_ptr
 .IMPORT ta_move_cursor_up
@@ -327,8 +329,9 @@ cmd_char_delete:
   rts
 
 cmd_return:
+  jsr mo_scroll_up
   jsr ta_copy_first_line
-  jsr mo_append
+  jsr mo_paste_last_line
   rts
 
 proc_kbd:
