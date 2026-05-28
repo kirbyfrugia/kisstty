@@ -33,8 +33,9 @@ DEBOUNCE_NUM_FRAMES   = 30
 .IMPORT mti_tmp_dump_data
 .IMPORT mo_init
 .IMPORT mo_append
-.IMPORT mo_scroll_up
-.IMPORT mo_paste_last_line
+.IMPORT mo_scroll_up_four
+;.IMPORT mo_paste_last_line
+;.IMPORT mo_paste_four_lines
 .IMPORT ta_initsys
 .IMPORT ta_scr_ptr
 .IMPORT ta_move_cursor_up
@@ -43,13 +44,14 @@ DEBOUNCE_NUM_FRAMES   = 30
 .IMPORT ta_move_cursor_right
 .IMPORT ta_typechar
 .IMPORT ta_backspace
-.IMPORT ta_shift_clear
+.IMPORT ta_clear_all_data
 .IMPORT ta_line_insert
 .IMPORT ta_char_insert
 .IMPORT ta_line_delete
 .IMPORT ta_char_delete
 .IMPORT ta_copy_first_line
 .IMPORT ta_copy_last_line
+.IMPORT ta_copy_lastn_chars
 
 
 .ifdef DEBUG
@@ -309,7 +311,7 @@ cmd_backspace:
   rts
 
 cmd_shift_clear:
-  jsr ta_shift_clear
+  jsr ta_clear_all_data
   rts
 
 cmd_line_insert:
@@ -329,9 +331,12 @@ cmd_char_delete:
   rts
 
 cmd_return:
-  jsr mo_scroll_up
-  jsr ta_copy_first_line
-  jsr mo_paste_last_line
+  jsr mo_scroll_up_four
+;  jsr 
+;  jsr ta_copy_first_line
+;  jsr ta_copy_lastn_chars
+;  jsr mo_paste_last_line
+;  jsr mo_paste_four_lines
   rts
 
 proc_kbd:

@@ -9,12 +9,16 @@
 .IMPORT ta_get_metadata_ptr
 .IMPORT ta_set_metadata_ptr
 .IMPORT ta_copy_first_line
+.IMPORT ta_copy_last_n_lines
 .IMPORT ta_paste_last_line
-.IMPORT ta_shift_all_up
+.IMPORT ta_shift_all_up_n_lines
 .EXPORT mo_init
-.EXPORT mo_scroll_up
+.EXPORT mo_scroll_up_four
 .EXPORT mo_paste_last_line
 
+MARGIN_TOP_AREA0 = 0
+MARGIN_TOP_AREA1 = 6
+MARGIN_TOP_AREA2 = 12
 MARGIN_LEFT   = 1
 WIDTH         = 38
 HEIGHT        = 6
@@ -25,99 +29,9 @@ SIZE          = WIDTH * HEIGHT
 ; inputs:
 ;   CMDDATA0/1 - pointer to the upper left of the real screen
 mo_init:
-  lda #0
-  sta area0_metadata+TextArea::cursorx
-  sta area0_metadata+TextArea::cursory
-  sta area0_metadata+TextArea::cursorpos
-  sta area1_metadata+TextArea::cursorx
-  sta area1_metadata+TextArea::cursory
-  sta area1_metadata+TextArea::cursorpos
-  sta area2_metadata+TextArea::cursorx
-  sta area2_metadata+TextArea::cursory
-  sta area2_metadata+TextArea::cursorpos
-
-  lda #CURSOR_FLAG_DISABLED
-  sta area0_metadata+TextArea::use_cursor
-  sta area1_metadata+TextArea::use_cursor
-  sta area2_metadata+TextArea::use_cursor
-
-  lda #0
-  sta area0_metadata+TextArea::margin_top
-  lda #6
-  sta area1_metadata+TextArea::margin_top
-  lda #12
-  sta area2_metadata+TextArea::margin_top
-
-  lda #MARGIN_LEFT
-  sta area0_metadata+TextArea::margin_left
-  sta area1_metadata+TextArea::margin_left
-  sta area2_metadata+TextArea::margin_left
-
-  lda #WIDTH
-  sta area0_metadata+TextArea::width
-  sta area1_metadata+TextArea::width
-  sta area2_metadata+TextArea::width
-
-  lda #HEIGHT
-  sta area0_metadata+TextArea::height
-  sta area1_metadata+TextArea::height
-  sta area2_metadata+TextArea::height
-
-  lda #SIZE
-  sta area0_metadata+TextArea::size
-  sta area1_metadata+TextArea::size
-  sta area2_metadata+TextArea::size
-
-  lda #(WIDTH-1)
-  sta area0_metadata+TextArea::cursor_maxx
-  sta area1_metadata+TextArea::cursor_maxx
-  sta area2_metadata+TextArea::cursor_maxx
-
-  lda #(HEIGHT-1)
-  sta area0_metadata+TextArea::cursor_maxy
-  sta area1_metadata+TextArea::cursor_maxy
-  sta area2_metadata+TextArea::cursor_maxy
-
-  lda #<area0_data
-  sta area0_metadata+TextArea::first_row_data_ptr
-  lda #>area0_data
-  sta area0_metadata+TextArea::first_row_data_ptr+1
-  lda #<area1_data
-  sta area1_metadata+TextArea::first_row_data_ptr
-  lda #>area1_data
-  sta area1_metadata+TextArea::first_row_data_ptr+1
-  lda #<area2_data
-  sta area2_metadata+TextArea::first_row_data_ptr
-  lda #>area2_data
-  sta area2_metadata+TextArea::first_row_data_ptr+1
-
-
-  ; set pointers to table where screen row data is stored
-  lda #<area0_scr_row_ptr_table_lo
-  sta area0_metadata+TextArea::scr_row_ptr_table_lo
-  lda #>area0_scr_row_ptr_table_lo
-  sta area0_metadata+TextArea::scr_row_ptr_table_lo+1
-  lda #<area1_scr_row_ptr_table_lo
-  sta area1_metadata+TextArea::scr_row_ptr_table_lo
-  lda #>area1_scr_row_ptr_table_lo
-  sta area1_metadata+TextArea::scr_row_ptr_table_lo+1
-  lda #<area2_scr_row_ptr_table_lo
-  sta area2_metadata+TextArea::scr_row_ptr_table_lo
-  lda #>area2_scr_row_ptr_table_lo
-  sta area2_metadata+TextArea::scr_row_ptr_table_lo+1
-
-  lda #<area0_scr_row_ptr_table_hi
-  sta area0_metadata+TextArea::scr_row_ptr_table_hi
-  lda #>area0_scr_row_ptr_table_hi
-  sta area0_metadata+TextArea::scr_row_ptr_table_hi+1
-  lda #<area1_scr_row_ptr_table_hi
-  sta area1_metadata+TextArea::scr_row_ptr_table_hi
-  lda #>area1_scr_row_ptr_table_hi
-  sta area1_metadata+TextArea::scr_row_ptr_table_hi+1
-  lda #<area2_scr_row_ptr_table_hi
-  sta area2_metadata+TextArea::scr_row_ptr_table_hi
-  lda #>area2_scr_row_ptr_table_hi
-  sta area2_metadata+TextArea::scr_row_ptr_table_hi+1
+  ta_init area0_data, MARGIN_TOP_AREA0, MARGIN_LEFT, WIDTH, HEIGHT, #CURSOR_FLAG_DISABLED
+  ta_init area1_data, MARGIN_TOP_AREA1, MARGIN_LEFT, WIDTH, HEIGHT, #CURSOR_FLAG_DISABLED
+  ta_init area2_data, MARGIN_TOP_AREA2, MARGIN_LEFT, WIDTH, HEIGHT, #CURSOR_FLAG_DISABLED
 
   ; fill the data
   ldy #0
@@ -135,21 +49,18 @@ mo_init:
   lda #>area0_metadata
   sta CMDDATA1
   jsr ta_set_metadata_ptr
-  jsr ta_init_textarea
 
   lda #<area1_metadata
   sta CMDDATA0
   lda #>area1_metadata
   sta CMDDATA1
   jsr ta_set_metadata_ptr
-  jsr ta_init_textarea
 
   lda #<area2_metadata
   sta CMDDATA0
   lda #>area2_metadata
   sta CMDDATA1
   jsr ta_set_metadata_ptr
-  jsr ta_init_textarea
 
   rts
 
@@ -177,22 +88,28 @@ int_set_area2_active:
   jsr ta_set_metadata_ptr
   rts
 
-mo_scroll_up:
+mo_scroll_up_four:
+  lda #1
+  sta CMDDATA0
+
+  jsr ta_copy_last_n_lines
+  jsr ta_shift_all_up_n_lines
+
   save_metadata_ptr
 
   jsr int_set_area0_active
-  jsr ta_shift_all_up
+  jsr ta_shift_all_up_one_line
 
   jsr int_set_area1_active
   jsr ta_copy_first_line
-  jsr ta_shift_all_up
+  jsr ta_shift_all_up_one_line
 
   jsr int_set_area0_active
   jsr ta_paste_last_line
 
   jsr int_set_area2_active
   jsr ta_copy_first_line
-  jsr ta_shift_all_up
+  jsr ta_shift_all_up_one_line
 
   jsr int_set_area1_active
   jsr ta_paste_last_line
@@ -210,19 +127,9 @@ mo_paste_last_line:
   
   rts
 
-area0_metadata:             .tag TextArea
-area0_scr_row_ptr_table_lo: .res HEIGHT
-area0_scr_row_ptr_table_hi: .res HEIGHT
-area0_data:                 .res SIZE
-
-area1_metadata:             .tag TextArea
-area1_scr_row_ptr_table_lo: .res HEIGHT
-area1_scr_row_ptr_table_hi: .res HEIGHT
-area1_data:                 .res SIZE
-
-area2_metadata:             .tag TextArea
-area2_scr_row_ptr_table_lo: .res HEIGHT
-area2_scr_row_ptr_table_hi: .res HEIGHT
-area2_data:                 .res SIZE
-
-tmp_dump: .byte 0
+area0_metadata: .tag TextArea
+area0_data:     .res SIZE
+area1_metadata: .tag TextArea
+area1_data:     .res SIZE
+area2_metadata: .tag TextArea
+area2_data:     .res SIZE
