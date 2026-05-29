@@ -32,8 +32,8 @@ ATARI_SRCS      = main.s \
 		  boot850.s \
 		  globals.s \
 		  kbd.s \
-		  maintextinput.s \
-		  mainout.s \
+		  main_input.s \
+		  main_output.s \
 		  textarea.s \
 		  rs232.s \
 		  utils.s \

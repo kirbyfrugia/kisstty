@@ -10,13 +10,12 @@ RS232_CHANNEL = 32    ; channel 2 (2 * 16)
 CTRL_SHIFT_FLAG_CTRL  = %10000000
 CTRL_SHIFT_FLAG_SHIFT = %01000000
 CTRL_SHIFT_FLAG_LOWER = %00000000
-DEBOUNCE_NUM_FRAMES   = 30
+DEBOUNCE_NUM_FRAMES   = 20
 
 .IMPORT boot850_check 
 .IMPORT boot850_bootstrap 
 .IMPORT utils_atascii_to_icode
 .IMPORT utils_byte_to_scr_hex
-.IMPORT utils_dump_mem_row
 .IMPORT rs232_open
 .IMPORT rs232_close
 .IMPORT rs232_status
@@ -28,9 +27,10 @@ DEBOUNCE_NUM_FRAMES   = 30
 .IMPORT kbd_unmodified
 .IMPORT kbd_shifted
 .IMPORT kbd_ctrld
-.IMPORT mti_init
-.IMPORT mti_main_input_metadata
-.IMPORT mti_tmp_dump_data
+.IMPORT mi_init
+.IMPORT mi_main_input_metadata
+.IMPORT mi_hide_cursor
+.IMPORT mi_show_cursor
 .IMPORT mo_init
 .IMPORT mo_append
 .IMPORT mo_scroll_up
@@ -68,6 +68,8 @@ start:
   cli ; for brk to work
 .endif
   jsr init
+  jsr init_ui
+  jsr draw_main_app
   ; TODO: remove this once screen editor working
   jmp @loop
   jsr boot850_check
@@ -143,14 +145,10 @@ init:
   sta ICCOM,x
   jsr CIOV
 
-  jsr cls
-
-  jsr draw_ui
-
   jsr set_vbi_handler
   jsr ta_initsys
   jsr mo_init
-  jsr mti_init
+  jsr mi_init
   rts
 
 proc_console_keys:
@@ -461,11 +459,19 @@ next_theme:
   stx current_theme
   rts
 
-draw_ui:
+init_ui:
   ldx #0
   stx current_theme
   jsr set_theme
+  rts
 
+draw_main_menu:
+  jsr cls
+  rts
+
+draw_main_app:
+  jsr cls
+  jsr mi_show_cursor
   LINE_ABOVE_INPUT_OFFSET = 40*19
   lda SCR_PTR_LO
   clc
@@ -613,10 +619,10 @@ select_fired: .byte 0
 current_theme: .byte 0
 
 themes_bg:
-  .byte $C2, $22, $02, $be
+  .byte $02, $c2, $22, $be
 themes_bg_end:
 themes_fg:
-  .byte $CE, $2E, $0E, $b2
+  .byte $0e, $ce, $2e, $b2
 themes_fg_end:
 
 tmp_buffer: .res 40

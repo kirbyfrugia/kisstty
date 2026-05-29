@@ -54,6 +54,8 @@
 .EXPORT ta_move_cursor_down
 .EXPORT ta_move_cursor_left
 .EXPORT ta_move_cursor_right
+.EXPORT ta_hide_cursor
+.EXPORT ta_show_cursor
 .EXPORT ta_typechar
 .EXPORT ta_backspace
 .EXPORT ta_shift_clear
@@ -257,7 +259,7 @@ ta_init_textarea:
 
   jsr int_repaint
 
-  jsr int_show_cursor
+  jsr ta_show_cursor
 
   rts
 
@@ -306,7 +308,7 @@ int_update_cursor_scr_row_ptr:
 
   rts
 
-int_hide_cursor:
+ta_hide_cursor:
   lda local_metadata+TextArea::use_cursor
   beq @done
 
@@ -326,7 +328,7 @@ int_hide_cursor:
 @done:
   rts
 
-int_show_cursor:
+ta_show_cursor:
   lda local_metadata+TextArea::use_cursor
   beq @done
 
@@ -347,7 +349,7 @@ int_show_cursor:
   rts
 
 ta_move_cursor_up:
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   lda local_metadata+TextArea::cursory
   beq @wrapped
@@ -360,12 +362,12 @@ ta_move_cursor_up:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
 
-  jsr int_show_cursor
+  jsr ta_show_cursor
 
   rts
 
 ta_move_cursor_down:
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   lda local_metadata+TextArea::cursory
   cmp local_metadata+TextArea::cursor_maxy
@@ -380,7 +382,7 @@ ta_move_cursor_down:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
 
-  jsr int_show_cursor
+  jsr ta_show_cursor
 
   rts
 
@@ -392,7 +394,7 @@ ta_move_cursor_down:
 ; when we move the cursor based on arrow keys vs
 ; text changes.
 ta_move_cursor_left:
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   lda local_metadata+TextArea::cursorx
   beq @wrapped
@@ -420,12 +422,12 @@ ta_move_cursor_left:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
 @done:
-  jsr int_show_cursor
+  jsr ta_show_cursor
 
   rts
 
 ta_move_cursor_right:
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   lda local_metadata+TextArea::cursorx
   cmp local_metadata+TextArea::cursor_maxx
@@ -456,7 +458,7 @@ ta_move_cursor_right:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
 @done:
-  jsr int_show_cursor
+  jsr ta_show_cursor
 
   rts
 
@@ -499,7 +501,7 @@ ta_backspace:
   lda #' '
   sta (TA_FIRST_ROW_DATA_PTR_LO),y
   jsr int_update_screen_char
-  jsr int_show_cursor
+  jsr ta_show_cursor
   rts
 
 int_cursor_home:
@@ -619,7 +621,7 @@ int_clear_last_row:
 
 ; clears all data in the area and returns the cursor home
 ta_shift_clear:
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   lda #0
   sta update_marker_start
@@ -630,7 +632,7 @@ ta_shift_clear:
   jsr int_cursor_home
   jsr int_repaint
 
-  jsr int_show_cursor
+  jsr ta_show_cursor
   rts
 
 ; shifts all lines from the cursor line downwards
@@ -675,7 +677,7 @@ int_shift_lines_down:
 ;              - TA_SCROLL_SAVE_DISCARDED_ENABLED - saves discarded data
 ;                from top of text area to CMDDATA2
 ta_scroll_up:
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
   ldx CMDDATA4
   ; first let's see how many chars we'll be discarding
   lda #0
@@ -744,7 +746,7 @@ ta_scroll_up:
   bne @backfill_loop
 
   jsr int_repaint
-  jsr int_show_cursor
+  jsr ta_show_cursor
 @done:
   rts
 
@@ -796,13 +798,13 @@ ta_line_insert:
   cmp local_metadata+TextArea::cursor_maxy
   beq @done
 
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   jsr int_shift_lines_down
   jsr int_clear_row
   jsr int_repaint
 
-  jsr int_show_cursor
+  jsr ta_show_cursor
 @done:
   rts
 
@@ -859,12 +861,12 @@ ta_char_insert:
   cpy local_metadata+TextArea::size
   bcs @done ; at or beyond last char
 
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   jsr int_shift_chars_right
   jsr int_repaint
 
-  jsr int_show_cursor
+  jsr ta_show_cursor
 @done:
   rts
 
@@ -873,21 +875,21 @@ ta_line_delete:
   cmp local_metadata+TextArea::cursor_maxy
   beq @last_line ; on last line
 
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   jsr int_shift_lines_up_from_cursor
 @last_line:
   jsr int_clear_last_row
   jsr int_repaint
 
-  jsr int_show_cursor
+  jsr ta_show_cursor
   rts
 
 ; inputs:
 ;   - copy_buffer40
 ;   - copy_buffer40_size
 ta_line_append:
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   ; shift all lines up
   lda #0
@@ -907,22 +909,22 @@ ta_line_append:
 @copy_done:
   ; repaint the text area. it all changed
   jsr int_repaint
-  jsr int_show_cursor
+  jsr ta_show_cursor
 @done:
   rts
 
 ta_shift_all_up:
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
   lda #0
   sta move_line_start_line_pos
   jsr int_shift_lines_up
   jsr int_repaint
-  jsr int_show_cursor
+  jsr ta_show_cursor
   rts
 
 ; pastes over last line with copy_buffer40
 ta_paste_last_line:
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
   ldy #0
 @loop:
   lda copy_buffer40,y
@@ -934,7 +936,7 @@ ta_paste_last_line:
   bne @loop
 @done:
   jsr int_repaint
-  jsr int_show_cursor
+  jsr ta_show_cursor
   rts
 
 ; copies the first line to copy_buffer40
@@ -969,13 +971,13 @@ ta_char_delete:
   cpy local_metadata+TextArea::size
   beq @done ; at last char
  
-  jsr int_hide_cursor
+  jsr ta_hide_cursor
 
   jsr int_shift_chars_left
   jsr int_repaint
   jsr ta_move_cursor_left
 
-  jsr int_show_cursor
+  jsr ta_show_cursor
 @done:
   rts
 
