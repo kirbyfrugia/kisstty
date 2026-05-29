@@ -50,6 +50,8 @@ DEBOUNCE_NUM_FRAMES   = 20
 .IMPORT ta_char_delete
 .IMPORT ta_copy_first_line
 .IMPORT ta_copy_last_line
+.IMPORT mu_init
+.IMPORT mu_draw_menu
 
 
 .ifdef DEBUG
@@ -70,6 +72,7 @@ start:
   jsr init
   jsr init_ui
   jsr draw_main_app
+  ;jsr draw_main_menu
   ; TODO: remove this once screen editor working
   jmp @loop
   jsr boot850_check
@@ -149,6 +152,7 @@ init:
   jsr ta_initsys
   jsr mo_init
   jsr mi_init
+  jsr mu_init
   rts
 
 proc_console_keys:
@@ -467,6 +471,7 @@ init_ui:
 
 draw_main_menu:
   jsr cls
+  jsr mu_draw_menu
   rts
 
 draw_main_app:
