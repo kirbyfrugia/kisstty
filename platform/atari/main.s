@@ -330,8 +330,6 @@ cmd_char_delete:
 
 cmd_return:
   jsr mo_scroll_up
-  jsr ta_copy_first_line
-  jsr mo_paste_last_line
   rts
 
 proc_kbd:

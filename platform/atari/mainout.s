@@ -10,7 +10,8 @@
 .IMPORT ta_set_metadata_ptr
 .IMPORT ta_copy_first_line
 .IMPORT ta_paste_last_line
-.IMPORT ta_shift_all_up
+.IMPORT ta_shift_clear
+.IMPORT ta_scroll_up
 .EXPORT mo_init
 .EXPORT mo_scroll_up
 .EXPORT mo_paste_last_line
@@ -178,26 +179,60 @@ int_set_area2_active:
   rts
 
 mo_scroll_up:
-  save_metadata_ptr
+  save_metadata_ptr ; text input
 
+  ; TODO: replace this, shouldn't reach straight
+  ;  into text input or have this managed here at all
+  lda TA_FIRST_ROW_DATA_PTR_LO
+  pha
+  lda TA_FIRST_ROW_DATA_PTR_HI
+  pha
+
+
+  ; scroll area1 into area0
   jsr int_set_area0_active
-  jsr ta_shift_all_up
 
+  lda #<area1_data
+  sta CMDDATA0
+  lda #>area1_data
+  sta CMDDATA1
+  lda #4
+  sta CMDDATA4
+  lda #TA_SCROLL_BACKFILL_ENABLED
+  sta CMDDATA5
+  jsr ta_scroll_up
+
+  ; scroll area2 into area1
   jsr int_set_area1_active
-  jsr ta_copy_first_line
-  jsr ta_shift_all_up
 
-  jsr int_set_area0_active
-  jsr ta_paste_last_line
+  lda #<area2_data
+  sta CMDDATA0
+  lda #>area2_data
+  sta CMDDATA1
+  lda #4
+  sta CMDDATA4
+  lda #TA_SCROLL_BACKFILL_ENABLED
+  sta CMDDATA5
+  jsr ta_scroll_up
 
+  ; scroll text input into area2
   jsr int_set_area2_active
-  jsr ta_copy_first_line
-  jsr ta_shift_all_up
 
-  jsr int_set_area1_active
-  jsr ta_paste_last_line
-  
-  restore_metadata_ptr
+  pla
+  sta CMDDATA1
+  pla
+  sta CMDDATA0
+  lda #4
+  sta CMDDATA4
+  lda #TA_SCROLL_BACKFILL_ENABLED
+  sta CMDDATA5
+  jsr ta_scroll_up
+
+  ; now clear the text input
+  restore_metadata_ptr ; text input
+  jsr ta_set_metadata_ptr
+  jsr ta_shift_clear
+
   rts
 
 mo_paste_last_line:

@@ -65,6 +65,7 @@
 .EXPORT ta_char_delete
 .EXPORT ta_copy_first_line
 .EXPORT ta_copy_last_line
+.EXPORT ta_scroll_up
 
 ta_initsys:
   lda #0
@@ -661,6 +662,92 @@ int_shift_lines_down:
 @done:
   rts
 
+; scrolls the text area up by the number of lines provided.
+; backfills the new rows in the bottom with provided data.
+;
+; inputs:
+;   CMDDATA0/1 - ptr to the data to backfill from
+;   CMDDATA2/3 - ptr to mem to save discarded data (set if saving)
+;   CMDDATA4   - num lines to scroll
+;   CMDDATA5   - scroll flags
+;              - TA_SCROLL_BACKFILL_ENABLED - backfills bottom of
+;                text area with data from CMDDATA0
+;              - TA_SCROLL_SAVE_DISCARDED_ENABLED - saves discarded data
+;                from top of text area to CMDDATA2
+ta_scroll_up:
+  jsr int_hide_cursor
+  ldx CMDDATA4
+  ; first let's see how many chars we'll be discarding
+  lda #0
+  clc
+@char_loop:
+  adc local_metadata+TextArea::width
+  dex
+  bne @char_loop
+  sta scroll_num_chars_scrolled_off
+
+  ; now see how many remaining characters we need to move
+  ; to the top
+  lda local_metadata+TextArea::size
+  sec
+  sbc scroll_num_chars_scrolled_off
+  sta scroll_num_chars_remaining
+
+  lda CMDDATA5
+  and #TA_SCROLL_SAVE_DISCARDED_ENABLED 
+  beq @shift
+
+  ldy #0
+@save_discarded_loop:
+  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (CMDDATA2),y
+  iny
+  cpy scroll_num_chars_scrolled_off
+  bne @save_discarded_loop
+
+@shift:
+  ldy scroll_num_chars_scrolled_off ; start of data to pull from
+  ldx #0 ; start of data to push to
+@shift_loop:
+  lda (TA_FIRST_ROW_DATA_PTR_LO),y ; get char to shift
+  pha
+  sty move_line_tempy
+  txa
+  tay
+  pla
+  sta (TA_FIRST_ROW_DATA_PTR_LO),y ; save shifted char to new loc
+  ldy move_line_tempy
+  inx
+  iny
+  cpx scroll_num_chars_remaining
+  bne @shift_loop
+
+  lda CMDDATA5
+  and #TA_SCROLL_BACKFILL_ENABLED 
+  beq @done
+
+@backfill:
+  ldy #0
+  ldx scroll_num_chars_remaining
+@backfill_loop:
+  lda (CMDDATA0),y ; backfill char
+  pha
+  sty move_line_tempy
+  txa
+  tay
+  pla
+  sta (TA_FIRST_ROW_DATA_PTR_LO),y ; save backfill
+  ldy move_line_tempy
+  inx
+  iny
+  cpy scroll_num_chars_scrolled_off
+  bne @backfill_loop
+
+  jsr int_repaint
+  jsr int_show_cursor
+@done:
+  rts
+
 ; shifts all lines up from the provided starting point
 ; - move_line_start_line_pos - should point to start of line
 int_shift_lines_up:
@@ -948,9 +1035,14 @@ update_marker_end:   .byte 0
 
 append_tempy: .byte 0
 
-move_line_start_line_pos: .byte 0
-move_line_cursor_from:    .byte 0
-move_line_cursor_to:      .byte 0
+move_line_start_line_pos:      .byte 0
+move_line_end_line_pos:        .byte 0
+move_line_num_chars:           .byte 0
+move_line_cursor_from:         .byte 0
+move_line_cursor_to:           .byte 0
+move_line_tempy:               .byte 0
+scroll_num_chars_remaining:    .byte 0
+scroll_num_chars_scrolled_off: .byte 0
 
 init_last_row_offset:     .byte 0
 

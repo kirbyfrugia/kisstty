@@ -1,6 +1,10 @@
 .ifndef TEXT_AREA_INC
 TEXT_AREA_INC = 1
 
+TA_SCROLL_BACKFILL_ENABLED       = %10000000 ; when scrolling, backfill
+TA_SCROLL_SAVE_DISCARDED_ENABLED = %01000000 ; when scrolling, save discarded
+TA_SCROLL_JUST_SCROLL            = %00000000
+
 ; get the current metadata_ptr from the text area
 ; and push it to the stack
 .macro save_metadata_ptr
