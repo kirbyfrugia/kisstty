@@ -7,11 +7,17 @@ MAX_INPUT_LEN = 114
 WOZMON        = $9800
 RS232_CHANNEL = 32    ; channel 2 (2 * 16)
 
+MODE_CONFIG           = %10000000
+MODE_TERMINAL         = %01000000
 CTRL_SHIFT_FLAG_CTRL  = %10000000
 CTRL_SHIFT_FLAG_SHIFT = %01000000
 CTRL_SHIFT_FLAG_LOWER = %00000000
 DEBOUNCE_NUM_FRAMES   = 20
 
+.IMPORT g_kbd_key_pressed
+.IMPORT g_kbdcode_raw
+.IMPORT g_kbdcode_raw_stripped
+.IMPORT g_kbdcode_atascii
 .IMPORT boot850_check 
 .IMPORT boot850_bootstrap 
 .IMPORT utils_atascii_to_icode
@@ -51,7 +57,9 @@ DEBOUNCE_NUM_FRAMES   = 20
 .IMPORT ta_copy_first_line
 .IMPORT ta_copy_last_line
 .IMPORT mu_init
-.IMPORT mu_draw_menu
+.IMPORT mu_activate
+.IMPORT mu_tick
+.IMPORT mu_config_done
 
 
 .ifdef DEBUG
@@ -70,48 +78,127 @@ start:
   cli ; for brk to work
 .endif
   jsr init
-  jsr init_ui
-  jsr draw_main_app
-  ;jsr draw_main_menu
   ; TODO: remove this once screen editor working
-  jmp @loop
+  jmp main_loop
   jsr boot850_check
   bcc @rhandler_loaded
 @bootstrap850:
   jsr boot850_bootstrap
   bcc @rhandler_loaded
   ;print_str str_850error
-  jmp @main
 @rhandler_loaded:
   ;print_str str_850loaded
-@main:
-  ;print_str str_supported_commands
-  ;print_str str_commands
 @loop:
-  jsr proc_console_keys
-  jsr inkbd
   jmp @loop
 
+terminal_tick:
+  lda select_fired
+  beq @check_start
+  lda #0
+  sta select_fired
+  jsr next_theme
+@check_start:
+  lda start_fired
+  beq @handle_tick
+  lda #0
+  sta start_fired
+  lda #MODE_CONFIG
+  sta switch_mode
+  jmp @done
+@handle_tick:
+  jsr proc_kbd
+@done:
+  rts
+
+config_tick:
+  jsr mu_tick 
+  lda mu_config_done
+  beq @done
+  lda #MODE_TERMINAL
+  sta switch_mode
+@done:
+  rts
+
+main_loop:
+  lda switch_mode
+  beq @check_kbd
+  sta current_mode
+  cmp #MODE_TERMINAL
+  beq @switch_to_terminal
+  jsr cls
+  jsr mu_activate
+  lda #0
+  sta switch_mode
+  jmp @check_kbd
+@switch_to_terminal:
+  lda #0
+  sta switch_mode
+  jsr cls
+  jsr draw_terminal
+@check_kbd:
+  jsr inkbd
+  lda current_mode
+  and #MODE_CONFIG
+  bne @config
+@terminal:
+  jsr terminal_tick
+  jmp @next_tick
+@config:
+  jsr config_tick
+@next_tick:
+  jmp main_loop
+
+
+; called every vertical blank
 vbi_handler:
+; do some basic debouncing of presses.
+; implemented a very simple version.
+; A better version would probably put
+; a delay before re-firing instead
+; of a delay before firing.
 
-@select_key_handler:
+; CONSOL Bits (active low):
+;   2 - option
+;   1 - select
+;   0 - start
+
+@check_select:
   lda CONSOL
-  and #%00000010   ; SELECT key, active low
+  and #%00000010
   bne @select_up
-
-  inc debounce_count_select
+@select_down:
   lda debounce_count_select
-  cmp #DEBOUNCE_NUM_FRAMES
-  bne @select_done
+  bne @check_start ; debouncing
   lda #1
   sta select_fired
-  lda #0
+  lda #DEBOUNCE_NUM_FRAMES
   sta debounce_count_select
-  jmp @select_done
+  jmp @check_start
 @select_up:
-  lda #0
-  sta debounce_count_select
-@select_done:
+  lda debounce_count_select
+  beq @check_start
+  dec debounce_count_select
+
+@check_start:
+  lda CONSOL
+  and #%00000001
+  bne @start_up
+@start_down:
+  lda debounce_count_start
+  bne @check_option
+  lda #1
+  sta start_fired
+  lda #DEBOUNCE_NUM_FRAMES
+  sta debounce_count_start
+  jmp @check_option
+@start_debouncing:
+  jmp @check_option
+@start_up:
+  lda debounce_count_start
+  beq @check_option
+  dec debounce_count_start
+
+@check_option:
 @done:
   jmp XITVBV ; hand control back to OS
 
@@ -148,40 +235,42 @@ init:
   sta ICCOM,x
   jsr CIOV
 
+
+  lda #0
+  sta debounce_count_select
+  sta debounce_count_start
+
   jsr set_vbi_handler
   jsr ta_initsys
   jsr mo_init
   jsr mi_init
   jsr mu_init
-  rts
 
-proc_console_keys:
-  lda select_fired
-  beq @select_handled
-  jsr next_theme
-  lda #0
-  sta select_fired
-@select_handled:
-@done:
+  lda #MODE_CONFIG
+  sta switch_mode
+
+  jsr init_ui
+
   rts
 
 ; Keyboard behavior described in the Atari OS User Manual Page 47
 inkbd:
   lda CH
   cmp #$ff
-  beq @no_key_pressed
-  sta user_input_kbdcode_raw  ; with ctrl/shift bits
-  lda #$ff
-  sta CH
-  jmp @key_pressed
+  bne @key_pressed
 
-@no_key_pressed:
+  lda #0
+  sta g_kbd_key_pressed
   jmp @done
 
 @key_pressed:
+  sta g_kbdcode_raw  ; with ctrl/shift bits
+  lda #$ff
+  sta CH
+  sta g_kbd_key_pressed
   ; first let's handle ctrl-lock and shift-lock
   ; presses
-  lda user_input_kbdcode_raw
+  lda g_kbdcode_raw
   cmp #$3c
   beq @lock_lower
   cmp #$bc
@@ -203,11 +292,11 @@ inkbd:
   jmp @done
 
 @not_a_lock_key:
-  lda user_input_kbdcode_raw
+  lda g_kbdcode_raw
   and #%00111111
-  sta user_input_kbdcode_char ; stripped of ctrl/shift bits
+  sta g_kbdcode_raw_stripped ; stripped of ctrl/shift bits
 
-  lda user_input_kbdcode_raw
+  lda g_kbdcode_raw
   ; Bit 7 is 1 if ctrl key pressed
   ; Bit 6 is 1 if shift key pressed
   and #%11000000
@@ -218,23 +307,23 @@ inkbd:
   and #%10000000
   bne @control_pressed
 
-  lda user_input_kbdcode_raw
+  lda g_kbdcode_raw
   and #%01000000
   bne @shift_pressed
 
 @lower_case:
   ; if here, lower case, but we need to check
   ; ctrl lock or shift lock are on
-  ldx user_input_kbdcode_char
+  ldx g_kbdcode_raw_stripped
   lda kbd_unmodified,x
-  sta user_input_atascii
+  sta g_kbdcode_atascii
 
   ; ignore for non-alphas according to spec (OS User's manual)
   cmp #$61 ;#'A'
-  bcc @processed
+  bcc @done
 
   cmp #$7b ;#'['
-  bcs @processed
+  bcs @done
 
   ; now check to see if CTRL lock
   lda ctrl_shift_lock_flag
@@ -244,38 +333,28 @@ inkbd:
   lda ctrl_shift_lock_flag
   and #CTRL_SHIFT_FLAG_SHIFT
   bne @shift_locked
-  jmp @processed
+  jmp @done
 
 @shift_locked:
-  ldx user_input_kbdcode_char
-  ;lda user_input_kbdcode_char
-  ;ora #CTRL_SHIFT_FLAG_SHIFT ; add the shift bit
-  ;sta user_input_kbdcode_char
-  ;tax
+  ldx g_kbdcode_raw_stripped
   lda kbd_shifted,x
-  sta user_input_atascii
-  jmp @processed
+  sta g_kbdcode_atascii
+  jmp @done
 @control_locked:
-  ldx user_input_kbdcode_char
-  ;lda user_input_kbdcode_char
-  ;ora #CTRL_SHIFT_FLAG_CTRL; add the ctrl bit
-  ;sta user_input_kbdcode_char
-  ;tax
+  ldx g_kbdcode_raw_stripped
   lda kbd_ctrld,x
-  sta user_input_atascii
-  jmp @processed
+  sta g_kbdcode_atascii
+  jmp @done
 @shift_pressed:
   ; if here, shift pressed
-  ldx user_input_kbdcode_char
+  ldx g_kbdcode_raw_stripped
   lda kbd_shifted,x
-  sta user_input_atascii
-  jmp @processed
+  sta g_kbdcode_atascii
+  jmp @done
 @control_pressed:
-  ldx user_input_kbdcode_char
+  ldx g_kbdcode_raw_stripped
   lda kbd_ctrld,x
-  sta user_input_atascii
-@processed:
-  jsr proc_kbd
+  sta g_kbdcode_atascii
 @done:
   rts
 
@@ -300,7 +379,7 @@ cmd_move_cursor_right:
   rts
 
 cmd_typechar:
-  lda user_input_atascii
+  lda g_kbdcode_atascii
   beq @done
   jsr ta_typechar
 @done:
@@ -335,19 +414,21 @@ cmd_return:
   rts
 
 proc_kbd:
-  ; TODO remove when no longer debugging
-  lda SAVMSC
-  sta CMDDATA0
-  lda SAVMSC+1
-  sta CMDDATA1
-  ldy #0
-  lda user_input_kbdcode_raw 
-  jsr utils_byte_to_scr_hex
-  ldy #3
-  lda ctrl_shift_lock_flag
-  jsr utils_byte_to_scr_hex
+  lda g_kbd_key_pressed
+  beq @done
+;  ; TODO remove when no longer debugging
+;  lda SAVMSC
+;  sta CMDDATA0
+;  lda SAVMSC+1
+;  sta CMDDATA1
+;  ldy #0
+;  lda g_kbdcode_raw 
+;  jsr utils_byte_to_scr_hex
+;  ldy #3
+;  lda ctrl_shift_lock_flag
+;  jsr utils_byte_to_scr_hex
 
-  lda user_input_kbdcode_raw 
+  lda g_kbdcode_raw 
   cmp #$8e
   beq @up_arrow
   cmp #$8f
@@ -407,7 +488,6 @@ proc_kbd:
   jmp @done
 @return:
   jsr cmd_return
-
 @done:
   rts
 
@@ -469,13 +549,7 @@ init_ui:
   jsr set_theme
   rts
 
-draw_main_menu:
-  jsr cls
-  jsr mu_draw_menu
-  rts
-
-draw_main_app:
-  jsr cls
+draw_terminal:
   jsr mi_show_cursor
   LINE_ABOVE_INPUT_OFFSET = 40*19
   lda SCR_PTR_LO
@@ -609,19 +683,17 @@ str_error_putchr:
   .byte "Error on putchr: "
 str_error_putchr_end:
 
-user_input_kbdcode_raw: .byte 0
-user_input_kbdcode_char: .byte 0
-user_input_atascii: .byte 0
-user_input_buf: .res 256
-output_buf: .byte $9b,$9b
-command_error: .byte 0
-
-ctrl_shift_lock_flag: .byte 0
-
+user_input_buf:        .res 256
+output_buf:            .byte $9b,$9b
+command_error:         .byte 0
+ctrl_shift_lock_flag:  .byte 0
 debounce_count_select: .byte 0
-select_fired: .byte 0
-
-current_theme: .byte 0
+debounce_count_start:  .byte 0
+select_fired:          .byte 0
+start_fired:           .byte 0
+current_theme:         .byte 0
+current_mode:          .byte 0
+switch_mode:           .byte 0
 
 themes_bg:
   .byte $02, $c2, $22, $be
@@ -630,5 +702,3 @@ themes_fg:
   .byte $0e, $ce, $2e, $b2
 themes_fg_end:
 
-tmp_buffer: .res 40
-tmp_buffer_end:

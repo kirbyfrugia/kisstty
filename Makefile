@@ -36,6 +36,7 @@ ATARI_SRCS      = main.s \
 		  main_input.s \
 		  main_output.s \
 		  textarea.s \
+		  terminal.s \
 		  rs232.s \
 		  utils.s \
 		  wozmon.s

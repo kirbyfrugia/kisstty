@@ -5,15 +5,24 @@
 .INCLUDE "config.inc"
 .INCLUDE "macros.inc"
 
+.IMPORT g_kbd_key_pressed
+.IMPORT g_kbdcode_raw
+.IMPORT g_kbdcode_raw_stripped
+.IMPORT g_kbdcode_atascii
 .IMPORT utils_atascii_to_icode
 .EXPORT mu_init
-.EXPORT mu_draw_menu
+.EXPORT mu_activate
+.EXPORT mu_tick
+.EXPORT mu_config_done
 
 .SEGMENT "CODE"
 
 TOP_MENU_MARGIN_TOP  = 2
 
 mu_init:
+  lda #0
+  sta mu_config_done
+
   MENU_BAUD_OFFSET = TOP_MENU_MARGIN_TOP * SCREEN_WIDTH + 2
   lda #<MENU_BAUD_OFFSET
   clc
@@ -78,8 +87,32 @@ int_draw_single_menu:
 @row_done:
   rts
 
-mu_draw_menu:
+mu_activate:
+  lda #0
+  sta mu_config_done
+
   draw_menu baud_menu
+  rts
+
+int_cmd_return:
+  lda #1
+  sta mu_config_done
+  rts
+
+int_handle_kbd:
+  lda g_kbd_key_pressed
+  beq @done
+  lda g_kbdcode_raw
+  cmp #$0c
+  beq @return
+  bne @done
+@return:
+  jsr int_cmd_return
+@done:
+  rts
+
+mu_tick:
+  jsr int_handle_kbd
   rts
 
 baud_menu:            .tag Menu
@@ -94,3 +127,5 @@ baud_menu_item_baud6: .byte "  9600"
 baud_menu_item_baud7: .byte " 19200"
 
 menu_cursor: .byte $00
+
+mu_config_done: .byte 0
