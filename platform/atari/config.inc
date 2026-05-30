@@ -10,56 +10,45 @@ CONFIG_INC = 1
 .endstruct
 
 .struct Menu
-  pos_ptr            .word
-  menu_and_items_ptr .word
+  scr_pos_ptr        .word
+  header_ptr         .word
+  menu_items_ptr     .word
   num_items          .byte
-  width              .byte
+  border_width       .byte
   selected_item      .byte
 .endstruct
 
+.macro make_menu menu, header, menu_items, n_items, b_width, scr_pos_offset
+  lda #<scr_pos_offset
+  clc
+  adc SCR_PTR_LO
+  sta menu+Menu::scr_pos_ptr
+  lda #>scr_pos_offset
+  adc SCR_PTR_HI
+  sta menu+Menu::scr_pos_ptr+1
+
+  lda #<header
+  sta menu+Menu::header_ptr
+  lda #>header
+  sta menu+Menu::header_ptr+1
+
+  lda #<menu_items
+  sta menu+Menu::menu_items_ptr
+  lda #>menu_items
+  sta menu+Menu::menu_items_ptr+1
+
+  lda #n_items
+  sta menu+Menu::num_items
+  lda #b_width
+  sta menu+Menu::border_width
+.endmacro
+
 .macro draw_menu menu
-  lda menu+Menu::pos_ptr
-  sta CMDDATA0
-  lda menu+Menu::pos_ptr+1
-  sta CMDDATA1
-  lda menu+Menu::menu_and_items_ptr
-  sta CMDDATA2
-  lda menu+Menu::menu_and_items_ptr+1
-  sta CMDDATA3
-  lda menu+Menu::num_items
-  clc
-  adc #2 ; header + border rows
-  sta CMDDATA4
-  lda menu+Menu::width
-  sta CMDDATA5
-  lda menu+Menu::width
-  clc
-  adc #2
-  sta CMDDATA6
-  jsr int_draw_menu_border
-
-  ; menu items
-  lda menu+Menu::pos_ptr
-  clc
-  adc #(SCREEN_WIDTH)
-  adc #1
-  sta CMDDATA0
-  lda menu+Menu::pos_ptr+1
-  adc #0
-  sta CMDDATA1
-  lda menu+Menu::menu_and_items_ptr
-  clc
-  adc menu+Menu::width
-  sta CMDDATA2
-  lda menu+Menu::menu_and_items_ptr+1
-  adc #0
-  sta CMDDATA3
-  lda menu+Menu::num_items
-  sta CMDDATA4
-  lda menu+Menu::width
-  sta CMDDATA5
-  jsr int_draw_menu_items
-
+  lda #<menu
+  sta CFG_MENU_PTR_LO
+  lda #>menu
+  sta CFG_MENU_PTR_HI
+  jsr int_draw_menu
 .endmacro
 
 .endif

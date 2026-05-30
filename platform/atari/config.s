@@ -16,109 +16,61 @@
 .EXPORT cfg_config_done
 
 .SEGMENT "CODE"
+.LINECONT +
 
-TOP_MENU_MARGIN_TOP = 1
+MENU_MARGIN_TOP = 1
 
 cfg_init:
   lda #0
   sta cfg_config_done
 
-  MENU_BAUD_OFFSET = TOP_MENU_MARGIN_TOP * SCREEN_WIDTH + 1
-  lda #<MENU_BAUD_OFFSET
-  clc
-  adc SCR_PTR_LO
-  sta baud_menu+Menu::pos_ptr
-  lda #>MENU_BAUD_OFFSET
-  adc SCR_PTR_HI
-  sta baud_menu+Menu::pos_ptr+1
+  OFFSET       .set MENU_MARGIN_TOP * SCREEN_WIDTH + 1
+  NUM_ITEMS    .set 8
+  BORDER_WIDTH .set 8
+  make_menu baud_menu, baud_menu_header, baud_menu_items, \
+            NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  lda #<baud_menu_and_items
-  sta baud_menu+Menu::menu_and_items_ptr
-  lda #>baud_menu_and_items
-  sta baud_menu+Menu::menu_and_items_ptr+1
+  OFFSET       .set MENU_MARGIN_TOP * SCREEN_WIDTH + 10
+  NUM_ITEMS    .set 4
+  BORDER_WIDTH .set 8
+  make_menu data_menu, data_menu_header, data_menu_items, \
+            NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  lda #8
-  sta baud_menu+Menu::num_items
-  lda #6
-  sta baud_menu+Menu::width
+  OFFSET .set (MENU_MARGIN_TOP+6) * SCREEN_WIDTH + 10
+  NUM_ITEMS    .set 2
+  BORDER_WIDTH .set 8
+  make_menu stop_menu, stop_menu_header, stop_menu_items, \
+            NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  MENU_DATA_OFFSET = TOP_MENU_MARGIN_TOP * SCREEN_WIDTH + 10
-  lda #<MENU_DATA_OFFSET
-  clc
-  adc SCR_PTR_LO
-  sta data_menu+Menu::pos_ptr
-  lda #>MENU_DATA_OFFSET
-  adc SCR_PTR_HI
-  sta data_menu+Menu::pos_ptr+1
+  OFFSET .set MENU_MARGIN_TOP * SCREEN_WIDTH + 19
+  NUM_ITEMS    .set 2
+  BORDER_WIDTH .set 10
+  make_menu duplex_menu, duplex_menu_header, duplex_menu_items, \
+            NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  lda #<data_menu_and_items
-  sta data_menu+Menu::menu_and_items_ptr
-  lda #>data_menu_and_items
-  sta data_menu+Menu::menu_and_items_ptr+1
+  OFFSET .set (MENU_MARGIN_TOP+4) * SCREEN_WIDTH + 19
+  NUM_ITEMS    .set 3
+  BORDER_WIDTH .set 10
+  make_menu trans_menu, trans_menu_header, trans_menu_items, \
+            NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  lda #4
-  sta data_menu+Menu::num_items
-  lda #11
-  sta data_menu+Menu::width
+  OFFSET .set MENU_MARGIN_TOP * SCREEN_WIDTH + 30
+  NUM_ITEMS    .set 2
+  BORDER_WIDTH .set 7
+  make_menu crx_menu, crx_menu_header, crx_menu_items, \
+            NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  MENU_STOP_OFFSET = (TOP_MENU_MARGIN_TOP+6) * SCREEN_WIDTH + 10
-  lda #<MENU_STOP_OFFSET
-  clc
-  adc SCR_PTR_LO
-  sta stop_menu+Menu::pos_ptr
-  lda #>MENU_STOP_OFFSET
-  adc SCR_PTR_HI
-  sta stop_menu+Menu::pos_ptr+1
+  OFFSET .set (MENU_MARGIN_TOP+4) * SCREEN_WIDTH + 30
+  NUM_ITEMS    .set 2
+  BORDER_WIDTH .set 7
+  make_menu cts_menu, cts_menu_header, cts_menu_items, \
+            NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  lda #<stop_menu_and_items
-  sta stop_menu+Menu::menu_and_items_ptr
-  lda #>stop_menu_and_items
-  sta stop_menu+Menu::menu_and_items_ptr+1
-
-  lda #2
-  sta stop_menu+Menu::num_items
-  lda #11
-  sta stop_menu+Menu::width
-
-
-  MENU_TRANSLATION_OFFSET = TOP_MENU_MARGIN_TOP * SCREEN_WIDTH + 24
-  lda #<MENU_TRANSLATION_OFFSET
-  clc
-  adc SCR_PTR_LO
-  sta trans_menu+Menu::pos_ptr
-  lda #>MENU_TRANSLATION_OFFSET
-  adc SCR_PTR_HI
-  sta trans_menu+Menu::pos_ptr+1
-
-  lda #<trans_menu_and_items
-  sta trans_menu+Menu::menu_and_items_ptr
-  lda #>trans_menu_and_items
-  sta trans_menu+Menu::menu_and_items_ptr+1
-
-  lda #3
-  sta trans_menu+Menu::num_items
-  lda #7
-  sta trans_menu+Menu::width
-
-  MENU_CTRL_OFFSET = (TOP_MENU_MARGIN_TOP+5) * SCREEN_WIDTH + 24
-  lda #<MENU_CTRL_OFFSET
-  clc
-  adc SCR_PTR_LO
-  sta ctrl_menu+Menu::pos_ptr
-  lda #>MENU_CTRL_OFFSET
-  adc SCR_PTR_HI
-  sta ctrl_menu+Menu::pos_ptr+1
-
-  lda #<ctrl_menu_and_items
-  sta ctrl_menu+Menu::menu_and_items_ptr
-  lda #>ctrl_menu_and_items
-  sta ctrl_menu+Menu::menu_and_items_ptr+1
-
-  lda #7
-  sta ctrl_menu+Menu::num_items
-  lda #12
-  sta ctrl_menu+Menu::width
-
+  OFFSET .set (MENU_MARGIN_TOP+8) * SCREEN_WIDTH + 30 
+  NUM_ITEMS    .set 2
+  BORDER_WIDTH .set 7
+  make_menu dsr_menu, dsr_menu_header, dsr_menu_items, \
+            NUM_ITEMS, BORDER_WIDTH, OFFSET
 
   rts
 
@@ -129,121 +81,126 @@ int_highlight_menu_item:
   rts
 
 
+; draws a menu
+; note: assumes <256 chars worth of menu item data
+;
 ; inputs:
-;   CMDDATA0/1 - pointer to screen location for upper border
-;   CMDDATA2/3 - pointer to menu heading
-;   CMDDATA4   - height of border
-;   CMDDATA5   - width of header
-;   CMDDATA6   - end column of border
-int_draw_menu_border:
+;   CFG_MENU_PTR_LO/HI - pointer to menu struct
+;
+int_draw_menu:
+  ldy #Menu::scr_pos_ptr
+  lda (CFG_MENU_PTR_LO),y
+  sta CFG_MENU_SCR_PTR_LO
+  iny
+  lda (CFG_MENU_PTR_LO),y
+  sta CFG_MENU_SCR_PTR_HI
+
+  ldy #Menu::border_width
+  lda (CFG_MENU_PTR_LO),y
+  sta draw_menu_border_width
+
+  ldy #Menu::num_items
+  lda (CFG_MENU_PTR_LO),y
+  sta draw_menu_num_items
+
+@top_border:
   ldy #0
   lda #$51 ; upper left corner
-  sta (CMDDATA0),y
+  sta (CFG_MENU_SCR_PTR_LO),y
+  lda #$52 ; horizontal bar
+@top_loop:
+  iny
+  sta (CFG_MENU_SCR_PTR_LO),y
+  cpy draw_menu_border_width
+  bne @top_loop
+  lda #$45 ; upper right corner
+  sta (CFG_MENU_SCR_PTR_LO),y
+
+@header:
+  ; header data -> CFG_MENU_DATA_PTR_LO
+  ldy #Menu::header_ptr
+  lda (CFG_MENU_PTR_LO),y
+  sta CFG_MENU_DATA_PTR_LO
+  iny
+  lda (CFG_MENU_PTR_LO),y
+  sta CFG_MENU_DATA_PTR_HI
+
+  ldy #0
 @header_loop:
-  lda (CMDDATA2),y
+  lda (CFG_MENU_DATA_PTR_LO),y
+  beq @header_loop_done
   jsr utils_atascii_to_icode
   iny
-  sta (CMDDATA0),y
-  cpy CMDDATA5
-  bne @header_loop
-  iny
-  lda #$52 ; horizontal bar
-@header_loop_remainder:
-  sta (CMDDATA0),y
-  iny
-  cpy CMDDATA6
-  bne @header_loop_remainder
-
-  lda #$45 ; upper right corner
-  sta (CMDDATA0),y
-
-  lda CMDDATA0
+  sta (CFG_MENU_SCR_PTR_LO),y
+  jmp @header_loop
+@header_loop_done:
+  ; move to next row for menu items
+  lda CFG_MENU_SCR_PTR_LO
   clc
   adc #SCREEN_WIDTH
-  sta CMDDATA0
-  lda CMDDATA1
+  sta CFG_MENU_SCR_PTR_LO
+  lda CFG_MENU_SCR_PTR_HI
   adc #0
-  sta CMDDATA1
+  sta CFG_MENU_SCR_PTR_HI
+  
+  ; menu item data -> CFG_MENU_DATA_PTR_LO
+  ldy #Menu::menu_items_ptr
+  lda (CFG_MENU_PTR_LO),y
+  sta CFG_MENU_DATA_PTR_LO
+  iny
+  lda (CFG_MENU_PTR_LO),y
+  sta CFG_MENU_DATA_PTR_HI
 
-  ldx #1
-@middle_loop:
-  lda #$41 ; vertical left bar
+  ldx #0
+  stx draw_menu_data_offset
+@menu_item_rows_loop:
   ldy #0
-  sta (CMDDATA0),y
-  tya
-  clc
-  adc CMDDATA6
-  tay
+  lda #$41 ; vertical left bar
+  sta (CFG_MENU_SCR_PTR_LO),y
+  iny
+@menu_item_loop:
+  sty draw_menu_tempy ; offset on current line
+  ldy draw_menu_data_offset 
+  lda (CFG_MENU_DATA_PTR_LO),y
+  beq @menu_item_done ; null terminator
+  jsr utils_atascii_to_icode
+  ldy draw_menu_tempy
+  sta (CFG_MENU_SCR_PTR_LO),y
+  iny
+  inc draw_menu_data_offset 
+  jmp @menu_item_loop
+@menu_item_done:
+  ldy draw_menu_border_width
   lda #$44 ; vertical right bar
-  sta (CMDDATA0),y
-  inx
-  cpx CMDDATA4
-  beq @middle_loop_done
+  sta (CFG_MENU_SCR_PTR_LO),y
 
-  lda CMDDATA0
+  inc draw_menu_data_offset 
+  lda CFG_MENU_SCR_PTR_LO
   clc
   adc #SCREEN_WIDTH
-  sta CMDDATA0
-  lda CMDDATA1
+  sta CFG_MENU_SCR_PTR_LO
+  lda CFG_MENU_SCR_PTR_HI
   adc #0
-  sta CMDDATA1
-  jmp @middle_loop
-@middle_loop_done:
+  sta CFG_MENU_SCR_PTR_HI
+
+  inx
+  cpx draw_menu_num_items
+  beq @menu_item_rows_loop_done
+  bne @menu_item_rows_loop
+@menu_item_rows_loop_done:
+
   ldy #0
   lda #$5a ; lower left corner
-  sta (CMDDATA0),y
-  iny
+  sta (CFG_MENU_SCR_PTR_LO),y
   lda #$52 ; horizontal bar
-@bottom_loop:
-  sta (CMDDATA0),y
+@btm_loop:
   iny
-  cpy CMDDATA6
-  bne @bottom_loop
+  sta (CFG_MENU_SCR_PTR_LO),y
+  cpy draw_menu_border_width
+  bne @btm_loop
   lda #$43 ; lower right corner
-  sta (CMDDATA0),y
+  sta (CFG_MENU_SCR_PTR_LO),y
 
-  rts
-
-; inputs:
-;   CMDDATA0/1 - pointer to screen location for upper left char
-;   CMDDATA2/3 - pointer to item strings
-;   CMDDATA4   - num menu items
-;   CMDDATA5   - width of each item
-int_draw_menu_items:
-  ldx #0
-@row_loop:
-  lda #$00
-  ldy #0
-  sta (CMDDATA0),y
-@col_loop:
-  lda (CMDDATA2),y
-  jsr utils_atascii_to_icode
-  sta (CMDDATA0),y
-  iny
-  cpy CMDDATA5
-  bne @col_loop
-@col_done:
-  inx
-  cpx CMDDATA4
-  beq @done
-
-  lda CMDDATA0
-  clc
-  adc #SCREEN_WIDTH
-  sta CMDDATA0
-  lda CMDDATA1
-  adc #0
-  sta CMDDATA1
-
-  lda CMDDATA2
-  clc
-  adc CMDDATA5
-  sta CMDDATA2
-  lda CMDDATA3
-  adc #0
-  sta CMDDATA3
-  jmp @row_loop
-@done:
   rts
 
 cfg_activate:
@@ -254,7 +211,10 @@ cfg_activate:
   draw_menu data_menu
   draw_menu stop_menu
   draw_menu trans_menu
-  draw_menu ctrl_menu
+  draw_menu crx_menu
+  draw_menu cts_menu
+  draw_menu dsr_menu
+  draw_menu duplex_menu
   rts
 
 int_cmd_return:
@@ -279,49 +239,75 @@ cfg_tick:
   rts
 
 baud_menu:             .tag Menu
-baud_menu_and_items:   .byte "[B]aud"
-baud_menu_item_baud0:  .byte " 300  "
-baud_menu_item_baud1:  .byte " 600  "
-baud_menu_item_baud2:  .byte " 1200 "
-baud_menu_item_baud3:  .byte " 1800 "
-baud_menu_item_baud4:  .byte " 2400 "
-baud_menu_item_baud5:  .byte " 4800 "
-baud_menu_item_baud6:  .byte " 9600 "
-baud_menu_item_baud7:  .byte " 19200"
+baud_menu_header:      .byte "[B]aud",$00
+baud_menu_items:
+baud_menu_item_baud0:  .byte " 300  ",$00
+baud_menu_item_baud1:  .byte " 600  ",$00
+baud_menu_item_baud2:  .byte " 1200 ",$00
+baud_menu_item_baud3:  .byte " 1800 ",$00
+baud_menu_item_baud4:  .byte " 2400 ",$00
+baud_menu_item_baud5:  .byte " 4800 ",$00
+baud_menu_item_baud6:  .byte " 9600 ",$00
+baud_menu_item_baud7:  .byte " 19200",$00
 
 data_menu:             .tag Menu
-data_menu_and_items:   .byte "[D]ata Size"
-data_menu_item_word5:  .byte " 5 bits    "
-data_menu_item_word6:  .byte " 6 bits    "
-data_menu_item_word7:  .byte " 7 bits    "
-data_menu_item_word8:  .byte " 8 bits    "
+data_menu_header:      .byte "[D]ata",$00
+data_menu_items:
+data_menu_item_word5:  .byte " 5 bit",$00
+data_menu_item_word6:  .byte " 6 bit",$00
+data_menu_item_word7:  .byte " 7 bit",$00
+data_menu_item_word8:  .byte " 8 bit",$00
 
 stop_menu:             .tag Menu
-stop_menu_and_items:   .byte "[S]top bits"
-stop_menu_item_word1:  .byte " 1 bit     "
-stop_menu_item_word2:  .byte " 2 bits    "
+stop_menu_header:      .byte "[S]top",$00
+stop_menu_items:
+stop_menu_item_word1:  .byte " 1 bit",$00
+stop_menu_item_word2:  .byte " 2 bit",$00
 
 trans_menu:            .tag Menu
-trans_menu_and_items:  .byte "[T]rans"
-trans_menu_item_none:  .byte " None  "
-trans_menu_item_light: .byte " Light "
-trans_menu_item_heavy: .byte " Heavy "
+trans_menu_header:     .byte "[T]rans",$00
+trans_menu_items:
+trans_menu_item_none:  .byte " None ",$00
+trans_menu_item_light: .byte " Light",$00
+trans_menu_item_heavy: .byte " Heavy",$00
 
-ctrl_menu:             .tag Menu
-ctrl_menu_and_items:   .byte "[C]ontrol   "
-ctrl_menu_item0:       .byte " CRX        "
-ctrl_menu_item1:       .byte " CTS        "
-ctrl_menu_item2:       .byte " CTS+CRX    "
-ctrl_menu_item3:       .byte " DSR        "
-ctrl_menu_item4:       .byte " DSR+CRX    "
-ctrl_menu_item5:       .byte " DSR+CTS    "
-ctrl_menu_item6:       .byte " DSR+CTS+CRX"
+crx_menu:              .tag Menu
+crx_menu_header:       .byte "CR[X]",$00
+crx_menu_items:
+crx_menu_item_on:      .byte " ON ",$00
+crx_menu_item_off:     .byte " OFF",$00
+
+cts_menu:              .tag Menu
+cts_menu_header:       .byte "[C]TS",$00
+cts_menu_items:
+cts_menu_item_on:      .byte " ON ",$00
+cts_menu_item_off:     .byte " OFF",$00
+
+dsr_menu:              .tag Menu
+dsr_menu_header:       .byte "DS[R]",$00
+dsr_menu_items:
+dsr_menu_item_on:      .byte " ON ",$00
+dsr_menu_item_off:     .byte " OFF",$00
+
+duplex_menu:           .tag Menu
+duplex_menu_header:    .byte "Du[p]lex",$00
+duplex_menu_items:
+duplex_menu_item_full: .byte " Full",$00
+duplex_menu_item_half: .byte " Half",$00
 
 parity_menu:           .tag Menu
-parity_menu_and_items: .byte "[P]arity"
-parity_menu_item_none: .byte " None   "
-parity_menu_item_even: .byte " Even   "
-parity_menu_item_odd:  .byte " Odd    "
-parity_menu_item_one:  .byte " One    "
+parity_menu_header:    .byte "[P]arity",$00
+parity_menu_items:
+parity_menu_item_none: .byte " None",$00
+parity_menu_item_even: .byte " Even",$00
+parity_menu_item_odd:  .byte " Odd ",$00
+parity_menu_item_one:  .byte " One ",$00
+
+draw_menu_data_offset:  .byte 0
+draw_menu_tempy:        .byte 0
+draw_menu_border_width: .byte 0
+draw_menu_num_items:    .byte 0
+draw_menu_end_column:   .byte 0
+draw_menu_data_length:  .byte 0
 
 cfg_config_done: .byte 0
