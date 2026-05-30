@@ -24,59 +24,68 @@ cfg_init:
   lda #0
   sta cfg_config_done
 
-  OFFSET       .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 2
-  NUM_ITEMS    .set 10
-  BORDER_WIDTH .set 8
+  OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 2
+  NUM_ITEMS     .set 10
+  BORDER_WIDTH  .set 8
+  SELECTED_ITEM .set 2
   make_menu baud_menu, baud_menu_header, baud_menu_items, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
+            SELECTED_ITEM, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET       .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 11
-  NUM_ITEMS    .set 4
-  BORDER_WIDTH .set 10
+  OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 11
+  NUM_ITEMS     .set 4
+  BORDER_WIDTH  .set 10
+  SELECTED_ITEM .set 3
   make_menu data_menu, data_menu_header, data_menu_items, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
+            SELECTED_ITEM, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET       .set (MENU_MARGIN_TOP+7) * SCREEN_WIDTH + 11
-  NUM_ITEMS    .set 2
-  BORDER_WIDTH .set 10
+  OFFSET        .set (MENU_MARGIN_TOP+7) * SCREEN_WIDTH + 11
+  NUM_ITEMS     .set 2
+  BORDER_WIDTH  .set 10
+  SELECTED_ITEM .set 0
   make_menu stop_menu, stop_menu_header, stop_menu_items, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
+            SELECTED_ITEM, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET       .set (MENU_MARGIN_TOP+11) * SCREEN_WIDTH + 11
-  NUM_ITEMS    .set 2
-  BORDER_WIDTH .set 10
+  OFFSET        .set (MENU_MARGIN_TOP+11) * SCREEN_WIDTH + 11
+  NUM_ITEMS     .set 2
+  BORDER_WIDTH  .set 10
+  SELECTED_ITEM .set 0
   make_menu duplex_menu, duplex_menu_header, duplex_menu_items, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
+            SELECTED_ITEM, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET       .set (MENU_MARGIN_TOP+9) * SCREEN_WIDTH + 22
-  NUM_ITEMS    .set 3
-  BORDER_WIDTH .set 15
+  OFFSET        .set (MENU_MARGIN_TOP+9) * SCREEN_WIDTH + 22
+  NUM_ITEMS     .set 3
+  BORDER_WIDTH  .set 15
+  SELECTED_ITEM .set 0
   make_menu trans_menu, trans_menu_header, trans_menu_items, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
+            SELECTED_ITEM, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET       .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 22
-  NUM_ITEMS    .set 2
-  BORDER_WIDTH .set 7
+  OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 22
+  NUM_ITEMS     .set 2
+  BORDER_WIDTH  .set 7
+  SELECTED_ITEM .set 1
   make_menu cts_menu, cts_menu_header, cts_menu_items, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
+            SELECTED_ITEM, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET       .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 30
-  NUM_ITEMS    .set 2
-  BORDER_WIDTH .set 7
+  OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 30
+  NUM_ITEMS     .set 2
+  BORDER_WIDTH  .set 7
+  SELECTED_ITEM .set 1
   make_menu dsr_menu, dsr_menu_header, dsr_menu_items, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
+            SELECTED_ITEM, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET       .set (MENU_MARGIN_TOP+5) * SCREEN_WIDTH + 22
-  NUM_ITEMS    .set 2
-  BORDER_WIDTH .set 7
+  OFFSET        .set (MENU_MARGIN_TOP+5) * SCREEN_WIDTH + 22
+  NUM_ITEMS     .set 2
+  BORDER_WIDTH  .set 7
+  SELECTED_ITEM .set 1
   make_menu dtr_menu, dtr_menu_header, dtr_menu_items, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
+            SELECTED_ITEM, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET       .set (MENU_MARGIN_TOP+5) * SCREEN_WIDTH + 30
-  NUM_ITEMS    .set 2
-  BORDER_WIDTH .set 7
+  OFFSET        .set (MENU_MARGIN_TOP+5) * SCREEN_WIDTH + 30
+  NUM_ITEMS     .set 2
+  BORDER_WIDTH  .set 7
+  SELECTED_ITEM .set 1
   make_menu rts_menu, rts_menu_header, rts_menu_items, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
+            SELECTED_ITEM, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
   OFFSET       .set (MENU_MARGIN_TOP+17) * SCREEN_WIDTH + 1
   BAUD         .set 8
@@ -140,13 +149,6 @@ cfg_init:
               TRANSLATION, OFFSET 
 
   rts
-
-int_dehighlight_menu_item:
-  rts
-
-int_highlight_menu_item:
-  rts
-
 
 ; draws a menu
 ; note: assumes <256 chars worth of menu item data
@@ -219,7 +221,7 @@ int_draw_menu:
   sta CFG_DATA_PTR_HI
 
   ldx #0
-  stx draw_menu_data_offset
+  stx menu_data_offset
 @menu_item_rows_loop:
   ldy #0
   lda #$41 ; vertical left bar
@@ -228,21 +230,21 @@ int_draw_menu:
   iny
 @menu_item_loop:
   sty draw_menu_tempy ; offset on current line
-  ldy draw_menu_data_offset 
+  ldy menu_data_offset 
   lda (CFG_DATA_PTR_LO),y
   beq @menu_item_done ; null terminator
   jsr utils_atascii_to_icode
   ldy draw_menu_tempy
   sta (CFG_SCR_PTR_LO),y
   iny
-  inc draw_menu_data_offset 
+  inc menu_data_offset 
   jmp @menu_item_loop
 @menu_item_done:
   ldy draw_menu_border_width
   lda #$44 ; vertical right bar
   sta (CFG_SCR_PTR_LO),y
 
-  inc draw_menu_data_offset 
+  inc menu_data_offset 
   lda CFG_SCR_PTR_LO
   clc
   adc #SCREEN_WIDTH
@@ -359,14 +361,23 @@ cfg_activate:
   sta cfg_config_done
 
   draw_menu baud_menu
+  highlight_selected baud_menu
   draw_menu data_menu
+  highlight_selected data_menu
   draw_menu stop_menu
+  highlight_selected stop_menu
   draw_menu trans_menu
+  highlight_selected trans_menu
   draw_menu cts_menu
+  highlight_selected cts_menu
   draw_menu dsr_menu
+  highlight_selected dsr_menu
   draw_menu dtr_menu
+  highlight_selected dtr_menu
   draw_menu rts_menu
+  highlight_selected rts_menu
   draw_menu duplex_menu
+  highlight_selected duplex_menu
 
   draw_preset preset_direwolf
   draw_preset preset_slow
@@ -377,7 +388,89 @@ cfg_activate:
 
   rts
 
-int_cmd_return:
+; inputs:
+;   CFG_PTR_LO/HI    - pointer to menu struct
+int_highlight_selected_menu_item:
+  ldy #Menu::scr_pos_ptr
+  lda (CFG_PTR_LO),y
+  clc
+  adc #SCREEN_WIDTH
+  sta CFG_SCR_PTR_LO
+  iny
+  lda (CFG_PTR_LO),y
+  adc #0
+  sta CFG_SCR_PTR_HI
+
+  ldy #Menu::menu_items_ptr
+  lda (CFG_PTR_LO),y
+  sta CFG_DATA_PTR_LO
+  iny
+  lda (CFG_PTR_LO),y
+  sta CFG_DATA_PTR_HI
+
+  ldy #Menu::selected_item
+  lda (CFG_PTR_LO),y
+  sta menu_item_selected
+
+  ldy #Menu::border_width
+  lda (CFG_PTR_LO),y
+  sta menu_item_border_width
+
+  ldy #Menu::num_items
+  lda (CFG_PTR_LO),y
+  sta menu_item_num_items
+
+  ldx #0
+@menu_item_rows_loop:
+  cpx menu_item_selected
+  beq @menu_item_match
+
+  ; if here, this is not the row, but let's
+  ; make sure we de-highlight it if needed
+  ldy #1
+  lda (CFG_SCR_PTR_LO),y
+  and #%10000000 ; check if msb set on first char
+  beq @menu_item_row_done ; was not highlighted
+@dehighlight_loop:
+  lda (CFG_SCR_PTR_LO),y
+  and #%01111111
+  sta (CFG_SCR_PTR_LO),y
+  iny
+  cpy menu_item_border_width
+  bne @dehighlight_loop
+  beq @menu_item_row_done
+@menu_item_match:
+  ldy #1
+@highlight_loop:
+  lda (CFG_SCR_PTR_LO),y
+  ora #%10000000
+  sta (CFG_SCR_PTR_LO),y
+  iny
+  cpy menu_item_border_width
+  bne @highlight_loop
+@menu_item_row_done:
+  inx
+  cpx menu_item_num_items
+  beq @done
+  lda CFG_SCR_PTR_LO
+  clc
+  adc #SCREEN_WIDTH
+  sta CFG_SCR_PTR_LO
+  lda CFG_SCR_PTR_HI
+  adc #0
+  sta CFG_SCR_PTR_HI
+  jmp @menu_item_rows_loop
+@done:
+  rts
+
+
+
+int_cmd_cancel:
+  lda #1
+  sta cfg_config_done
+  rts
+
+int_cmd_accept:
   lda #1
   sta cfg_config_done
   rts
@@ -386,11 +479,15 @@ int_handle_kbd:
   lda g_kbd_key_pressed
   beq @done
   lda g_kbdcode_raw
+  cmp #$1c
+  beq @escape
   cmp #$0c
   beq @return
   bne @done
+@escape:
+  jsr int_cmd_cancel
 @return:
-  jsr int_cmd_return
+  jsr int_cmd_accept
 @done:
   rts
 
@@ -485,11 +582,17 @@ top_banner:             .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
                         .byte 'E'|$80,'S'|$80,'C'|$80,"cancel "
                         .byte 'R'|$80,'E'|$80,'T'|$80,"terminal"
                         .byte $00
-draw_menu_data_offset:  .byte 0
 draw_menu_tempy:        .byte 0
 draw_menu_border_width: .byte 0
 draw_menu_num_items:    .byte 0
 draw_menu_end_column:   .byte 0
 draw_menu_data_length:  .byte 0
+
+menu_data_offset:       .byte 0
+menu_item_selected:     .byte 0
+menu_item_num_items:    .byte 0
+menu_item_border_width: .byte 0
+
+highlight_border_width: .byte 0
 
 cfg_config_done: .byte 0

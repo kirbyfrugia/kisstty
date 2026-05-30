@@ -34,7 +34,7 @@ CONFIG_INC = 1
   translation .byte
 .endstruct
 
-.macro make_menu menu, header, menu_items, n_items, b_width, scr_pos_offset
+.macro make_menu menu, header, menu_items, s_item, n_items, b_width, scr_pos_offset
   lda #<scr_pos_offset
   clc
   adc SCR_PTR_LO
@@ -53,6 +53,8 @@ CONFIG_INC = 1
   lda #>menu_items
   sta menu+Menu::menu_items_ptr+1
 
+  lda #s_item
+  sta menu+Menu::selected_item
   lda #n_items
   sta menu+Menu::num_items
   lda #b_width
@@ -65,6 +67,14 @@ CONFIG_INC = 1
   lda #>menu
   sta CFG_PTR_HI
   jsr int_draw_menu
+.endmacro
+
+.macro highlight_selected menu
+  lda #<menu
+  sta CFG_PTR_LO
+  lda #>menu
+  sta CFG_PTR_HI
+  jsr int_highlight_selected_menu_item
 .endmacro
 
 .macro make_preset preset, _label, _baud, _data_bits, \
