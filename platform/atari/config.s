@@ -24,51 +24,51 @@ cfg_init:
   lda #0
   sta cfg_config_done
 
-  OFFSET       .set MENU_MARGIN_TOP * SCREEN_WIDTH + 1
-  NUM_ITEMS    .set 8
+  OFFSET       .set (MENU_MARGIN_TOP+0) * SCREEN_WIDTH + 2
+  NUM_ITEMS    .set 10
   BORDER_WIDTH .set 8
   make_menu baud_menu, baud_menu_header, baud_menu_items, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET       .set MENU_MARGIN_TOP * SCREEN_WIDTH + 10
+  OFFSET       .set (MENU_MARGIN_TOP+0) * SCREEN_WIDTH + 11
   NUM_ITEMS    .set 4
   BORDER_WIDTH .set 8
   make_menu data_menu, data_menu_header, data_menu_items, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET .set (MENU_MARGIN_TOP+6) * SCREEN_WIDTH + 10
+  OFFSET       .set (MENU_MARGIN_TOP+6) * SCREEN_WIDTH + 11
   NUM_ITEMS    .set 2
   BORDER_WIDTH .set 8
   make_menu stop_menu, stop_menu_header, stop_menu_items, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET .set MENU_MARGIN_TOP * SCREEN_WIDTH + 19
+  OFFSET       .set (MENU_MARGIN_TOP+0) * SCREEN_WIDTH + 20
   NUM_ITEMS    .set 2
   BORDER_WIDTH .set 10
   make_menu duplex_menu, duplex_menu_header, duplex_menu_items, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET .set (MENU_MARGIN_TOP+4) * SCREEN_WIDTH + 19
+  OFFSET       .set (MENU_MARGIN_TOP+4) * SCREEN_WIDTH + 20
   NUM_ITEMS    .set 3
   BORDER_WIDTH .set 10
   make_menu trans_menu, trans_menu_header, trans_menu_items, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET .set MENU_MARGIN_TOP * SCREEN_WIDTH + 30
+  OFFSET       .set (MENU_MARGIN_TOP+0) * SCREEN_WIDTH + 31
   NUM_ITEMS    .set 2
-  BORDER_WIDTH .set 7
+  BORDER_WIDTH .set 6
   make_menu crx_menu, crx_menu_header, crx_menu_items, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET .set (MENU_MARGIN_TOP+4) * SCREEN_WIDTH + 30
+  OFFSET       .set (MENU_MARGIN_TOP+4) * SCREEN_WIDTH + 31
   NUM_ITEMS    .set 2
-  BORDER_WIDTH .set 7
+  BORDER_WIDTH .set 6
   make_menu cts_menu, cts_menu_header, cts_menu_items, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET .set (MENU_MARGIN_TOP+8) * SCREEN_WIDTH + 30 
+  OFFSET       .set (MENU_MARGIN_TOP+8) * SCREEN_WIDTH + 31
   NUM_ITEMS    .set 2
-  BORDER_WIDTH .set 7
+  BORDER_WIDTH .set 6
   make_menu dsr_menu, dsr_menu_header, dsr_menu_items, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
@@ -158,6 +158,7 @@ int_draw_menu:
   lda #$41 ; vertical left bar
   sta (CFG_MENU_SCR_PTR_LO),y
   iny
+  iny
 @menu_item_loop:
   sty draw_menu_tempy ; offset on current line
   ldy draw_menu_data_offset 
@@ -238,70 +239,72 @@ cfg_tick:
   jsr int_handle_kbd
   rts
 
-baud_menu:             .tag Menu
-baud_menu_header:      .byte "[B]aud",$00
+baud_menu:                .tag Menu
+baud_menu_header:         .byte "[B]aud",$00
 baud_menu_items:
-baud_menu_item_baud0:  .byte " 300  ",$00
-baud_menu_item_baud1:  .byte " 600  ",$00
-baud_menu_item_baud2:  .byte " 1200 ",$00
-baud_menu_item_baud3:  .byte " 1800 ",$00
-baud_menu_item_baud4:  .byte " 2400 ",$00
-baud_menu_item_baud5:  .byte " 4800 ",$00
-baud_menu_item_baud6:  .byte " 9600 ",$00
-baud_menu_item_baud7:  .byte " 19200",$00
+baud_menu_item_baud50:    .byte "50",$00
+baud_menu_item_baud110:   .byte "110",$00
+baud_menu_item_baud300:   .byte "300",$00
+baud_menu_item_baud600:   .byte "600",$00
+baud_menu_item_baud1200:  .byte "120",$00
+baud_menu_item_baud1800:  .byte "1800",$00
+baud_menu_item_baud2400:  .byte "2400",$00
+baud_menu_item_baud4800:  .byte "4800",$00
+baud_menu_item_baud9600:  .byte "9600",$00
+baud_menu_item_baud19200: .byte "19200",$00
 
-data_menu:             .tag Menu
-data_menu_header:      .byte "[D]ata",$00
+data_menu:                .tag Menu
+data_menu_header:         .byte "[D]ata",$00
 data_menu_items:
-data_menu_item_word5:  .byte " 5 bit",$00
-data_menu_item_word6:  .byte " 6 bit",$00
-data_menu_item_word7:  .byte " 7 bit",$00
-data_menu_item_word8:  .byte " 8 bit",$00
+data_menu_item_word5:     .byte "5 bit",$00
+data_menu_item_word6:     .byte "6 bit",$00
+data_menu_item_word7:     .byte "7 bit",$00
+data_menu_item_word8:     .byte "8 bit",$00
 
-stop_menu:             .tag Menu
-stop_menu_header:      .byte "[S]top",$00
+stop_menu:                .tag Menu
+stop_menu_header:         .byte "[S]top",$00
 stop_menu_items:
-stop_menu_item_word1:  .byte " 1 bit",$00
-stop_menu_item_word2:  .byte " 2 bit",$00
+stop_menu_item_word1:     .byte "1 bit",$00
+stop_menu_item_word2:     .byte "2 bit",$00
 
-trans_menu:            .tag Menu
-trans_menu_header:     .byte "[T]rans",$00
+trans_menu:               .tag Menu
+trans_menu_header:        .byte "[T]rans",$00
 trans_menu_items:
-trans_menu_item_none:  .byte " None ",$00
-trans_menu_item_light: .byte " Light",$00
-trans_menu_item_heavy: .byte " Heavy",$00
+trans_menu_item_none:     .byte "None",$00
+trans_menu_item_light:    .byte "Light",$00
+trans_menu_item_heavy:    .byte "Heavy",$00
 
-crx_menu:              .tag Menu
-crx_menu_header:       .byte "CR[X]",$00
+crx_menu:                 .tag Menu
+crx_menu_header:          .byte "CR[X]",$00
 crx_menu_items:
-crx_menu_item_on:      .byte " ON ",$00
-crx_menu_item_off:     .byte " OFF",$00
+crx_menu_item_on:         .byte "ON",$00
+crx_menu_item_off:        .byte "OFF",$00
 
-cts_menu:              .tag Menu
-cts_menu_header:       .byte "[C]TS",$00
+cts_menu:                 .tag Menu
+cts_menu_header:          .byte "[C]TS",$00
 cts_menu_items:
-cts_menu_item_on:      .byte " ON ",$00
-cts_menu_item_off:     .byte " OFF",$00
+cts_menu_item_on:         .byte "ON",$00
+cts_menu_item_off:        .byte "OFF",$00
 
-dsr_menu:              .tag Menu
-dsr_menu_header:       .byte "DS[R]",$00
+dsr_menu:                 .tag Menu
+dsr_menu_header:          .byte "DS[R]",$00
 dsr_menu_items:
-dsr_menu_item_on:      .byte " ON ",$00
-dsr_menu_item_off:     .byte " OFF",$00
+dsr_menu_item_on:         .byte "ON",$00
+dsr_menu_item_off:        .byte "OFF",$00
 
-duplex_menu:           .tag Menu
-duplex_menu_header:    .byte "Du[p]lex",$00
+duplex_menu:              .tag Menu
+duplex_menu_header:       .byte "D[U]plex",$00
 duplex_menu_items:
-duplex_menu_item_full: .byte " Full",$00
-duplex_menu_item_half: .byte " Half",$00
+duplex_menu_item_full:    .byte "Full",$00
+duplex_menu_item_half:    .byte "Half",$00
 
-parity_menu:           .tag Menu
-parity_menu_header:    .byte "[P]arity",$00
+parity_menu:              .tag Menu
+parity_menu_header:       .byte "[P]arity",$00
 parity_menu_items:
-parity_menu_item_none: .byte " None",$00
-parity_menu_item_even: .byte " Even",$00
-parity_menu_item_odd:  .byte " Odd ",$00
-parity_menu_item_one:  .byte " One ",$00
+parity_menu_item_none:    .byte "None",$00
+parity_menu_item_even:    .byte "Even",$00
+parity_menu_item_odd:     .byte "Odd",$00
+parity_menu_item_one:     .byte "One",$00
 
 draw_menu_data_offset:  .byte 0
 draw_menu_tempy:        .byte 0
