@@ -41,6 +41,85 @@ cfg_init:
   sta baud_menu+Menu::num_items
   lda #6
   sta baud_menu+Menu::width
+
+  MENU_DATA_OFFSET = TOP_MENU_MARGIN_TOP * SCREEN_WIDTH + 10
+  lda #<MENU_DATA_OFFSET
+  clc
+  adc SCR_PTR_LO
+  sta data_menu+Menu::pos_ptr
+  lda #>MENU_DATA_OFFSET
+  adc SCR_PTR_HI
+  sta data_menu+Menu::pos_ptr+1
+
+  lda #<data_menu_and_items
+  sta data_menu+Menu::menu_and_items_ptr
+  lda #>data_menu_and_items
+  sta data_menu+Menu::menu_and_items_ptr+1
+
+  lda #4
+  sta data_menu+Menu::num_items
+  lda #11
+  sta data_menu+Menu::width
+
+  MENU_STOP_OFFSET = (TOP_MENU_MARGIN_TOP+6) * SCREEN_WIDTH + 10
+  lda #<MENU_STOP_OFFSET
+  clc
+  adc SCR_PTR_LO
+  sta stop_menu+Menu::pos_ptr
+  lda #>MENU_STOP_OFFSET
+  adc SCR_PTR_HI
+  sta stop_menu+Menu::pos_ptr+1
+
+  lda #<stop_menu_and_items
+  sta stop_menu+Menu::menu_and_items_ptr
+  lda #>stop_menu_and_items
+  sta stop_menu+Menu::menu_and_items_ptr+1
+
+  lda #2
+  sta stop_menu+Menu::num_items
+  lda #11
+  sta stop_menu+Menu::width
+
+
+  MENU_TRANSLATION_OFFSET = TOP_MENU_MARGIN_TOP * SCREEN_WIDTH + 24
+  lda #<MENU_TRANSLATION_OFFSET
+  clc
+  adc SCR_PTR_LO
+  sta trans_menu+Menu::pos_ptr
+  lda #>MENU_TRANSLATION_OFFSET
+  adc SCR_PTR_HI
+  sta trans_menu+Menu::pos_ptr+1
+
+  lda #<trans_menu_and_items
+  sta trans_menu+Menu::menu_and_items_ptr
+  lda #>trans_menu_and_items
+  sta trans_menu+Menu::menu_and_items_ptr+1
+
+  lda #3
+  sta trans_menu+Menu::num_items
+  lda #7
+  sta trans_menu+Menu::width
+
+  MENU_CTRL_OFFSET = (TOP_MENU_MARGIN_TOP+5) * SCREEN_WIDTH + 24
+  lda #<MENU_CTRL_OFFSET
+  clc
+  adc SCR_PTR_LO
+  sta ctrl_menu+Menu::pos_ptr
+  lda #>MENU_CTRL_OFFSET
+  adc SCR_PTR_HI
+  sta ctrl_menu+Menu::pos_ptr+1
+
+  lda #<ctrl_menu_and_items
+  sta ctrl_menu+Menu::menu_and_items_ptr
+  lda #>ctrl_menu_and_items
+  sta ctrl_menu+Menu::menu_and_items_ptr+1
+
+  lda #7
+  sta ctrl_menu+Menu::num_items
+  lda #12
+  sta ctrl_menu+Menu::width
+
+
   rts
 
 int_dehighlight_menu_item:
@@ -172,6 +251,10 @@ cfg_activate:
   sta cfg_config_done
 
   draw_menu baud_menu
+  draw_menu data_menu
+  draw_menu stop_menu
+  draw_menu trans_menu
+  draw_menu ctrl_menu
   rts
 
 int_cmd_return:
@@ -195,19 +278,50 @@ cfg_tick:
   jsr int_handle_kbd
   rts
 
-baud_menu:            .tag Menu
-baud_menu_and_items:  .byte "[B]aud"
-baud_menu_item_baud0: .byte " 300  "
-baud_menu_item_baud1: .byte " 600  "
-baud_menu_item_baud2: .byte " 1200 "
-baud_menu_item_baud3: .byte " 1800 "
-baud_menu_item_baud4: .byte " 2400 "
-baud_menu_item_baud5: .byte " 4800 "
-baud_menu_item_baud6: .byte " 9600 "
-baud_menu_item_baud7: .byte " 19200"
+baud_menu:             .tag Menu
+baud_menu_and_items:   .byte "[B]aud"
+baud_menu_item_baud0:  .byte " 300  "
+baud_menu_item_baud1:  .byte " 600  "
+baud_menu_item_baud2:  .byte " 1200 "
+baud_menu_item_baud3:  .byte " 1800 "
+baud_menu_item_baud4:  .byte " 2400 "
+baud_menu_item_baud5:  .byte " 4800 "
+baud_menu_item_baud6:  .byte " 9600 "
+baud_menu_item_baud7:  .byte " 19200"
 
-draw_menu_border_end: .byte $00
+data_menu:             .tag Menu
+data_menu_and_items:   .byte "[D]ata Size"
+data_menu_item_word5:  .byte " 5 bits    "
+data_menu_item_word6:  .byte " 6 bits    "
+data_menu_item_word7:  .byte " 7 bits    "
+data_menu_item_word8:  .byte " 8 bits    "
 
-menu_cursor: .byte $00
+stop_menu:             .tag Menu
+stop_menu_and_items:   .byte "[S]top bits"
+stop_menu_item_word1:  .byte " 1 bit     "
+stop_menu_item_word2:  .byte " 2 bits    "
+
+trans_menu:            .tag Menu
+trans_menu_and_items:  .byte "[T]rans"
+trans_menu_item_none:  .byte " None  "
+trans_menu_item_light: .byte " Light "
+trans_menu_item_heavy: .byte " Heavy "
+
+ctrl_menu:             .tag Menu
+ctrl_menu_and_items:   .byte "[C]ontrol   "
+ctrl_menu_item0:       .byte " CRX        "
+ctrl_menu_item1:       .byte " CTS        "
+ctrl_menu_item2:       .byte " CTS+CRX    "
+ctrl_menu_item3:       .byte " DSR        "
+ctrl_menu_item4:       .byte " DSR+CRX    "
+ctrl_menu_item5:       .byte " DSR+CTS    "
+ctrl_menu_item6:       .byte " DSR+CTS+CRX"
+
+parity_menu:           .tag Menu
+parity_menu_and_items: .byte "[P]arity"
+parity_menu_item_none: .byte " None   "
+parity_menu_item_even: .byte " Even   "
+parity_menu_item_odd:  .byte " Odd    "
+parity_menu_item_one:  .byte " One    "
 
 cfg_config_done: .byte 0
