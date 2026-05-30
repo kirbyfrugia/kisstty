@@ -44,11 +44,11 @@ mo_init:
   sta area1_metadata+TextArea::use_cursor
   sta area2_metadata+TextArea::use_cursor
 
-  lda #0
+  lda #1
   sta area0_metadata+TextArea::margin_top
-  lda #6
+  lda #7
   sta area1_metadata+TextArea::margin_top
-  lda #12
+  lda #13
   sta area2_metadata+TextArea::margin_top
 
   lda #MARGIN_LEFT

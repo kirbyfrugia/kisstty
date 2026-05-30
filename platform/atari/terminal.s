@@ -45,16 +45,50 @@ trm_init:
   jsr mi_init
   rts
 
-trm_activate:
-  jsr mi_show_cursor
-  LINE_ABOVE_INPUT_OFFSET = 40*19
+int_draw_ui:
+  lda SCR_PTR_LO
+  sta ZPB0
+  lda SCR_PTR_HI
+  sta ZPB1
+
+  ldy #(SCREEN_WIDTH-1)
+  lda #' '
+  eor #$80
+  jsr utils_atascii_to_icode
+@top_bar_loop:
+  sta (ZPB0),y
+  dey
+  bpl @top_bar_loop
+
+  lda SCR_PTR_LO
+  clc
+  adc #1
+  sta ZPB0
+  lda SCR_PTR_HI
+  adc #0
+  sta ZPB1
+
+  ldy #0
+@top_banner_loop:
+  lda top_banner,y
+  beq @top_banner_done
+  eor #$80
+  jsr utils_atascii_to_icode
+  sta (ZPB0),y
+  iny
+  jmp @top_banner_loop
+@top_banner_done:
+
+  LINE_ABOVE_INPUT_OFFSET .set SCREEN_WIDTH*19
+
   lda SCR_PTR_LO
   clc
   adc #<LINE_ABOVE_INPUT_OFFSET
   sta ZPB0
-  LDA SCR_PTR_HI
+  lda SCR_PTR_HI
   adc #>LINE_ABOVE_INPUT_OFFSET
   sta ZPB1
+
 
   lda #$52 ; horizontal bar
   ldy #39
@@ -63,6 +97,12 @@ trm_activate:
   dey
   bpl @loop
 
+
+  rts
+
+trm_activate:
+  jsr mi_show_cursor
+  jsr int_draw_ui
   jsr mo_repaint
   jsr mi_repaint
   jsr mi_show_cursor
@@ -205,4 +245,6 @@ int_handle_kbd:
 @done:
   rts
 
-
+top_banner:             .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
+                        .byte 'S'|$80,'T'|$80,'A'|$80,'R'|$80,'T'|$80,"config "
+                        .byte $00
