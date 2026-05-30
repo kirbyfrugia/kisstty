@@ -40,12 +40,12 @@ TA_FIRST_ROW_SCR_ROW_PTR_LO = $9c ; pointer to the mem location of the start of 
 TA_FIRST_ROW_SCR_ROW_PTR_HI = $9d
 TA_LAST_ROW_SCR_ROW_PTR_LO  = $9e ; pointer to the mem location of the start of the last row of the screen
 TA_LAST_ROW_SCR_ROW_PTR_HI  = $9f
-CFG_MENU_PTR_LO             = $a0
-CFG_MENU_PTR_HI             = $a1
-CFG_MENU_SCR_PTR_LO         = $a2
-CFG_MENU_SCR_PTR_HI         = $a3
-CFG_MENU_DATA_PTR_LO        = $a4
-CFG_MENU_DATA_PTR_HI        = $a5
+CFG_PTR_LO             = $a0
+CFG_PTR_HI             = $a1
+CFG_SCR_PTR_LO         = $a2
+CFG_SCR_PTR_HI         = $a3
+CFG_DATA_PTR_LO        = $a4
+CFG_DATA_PTR_HI        = $a5
 
 ; wozmon uses $CB-FA
 
