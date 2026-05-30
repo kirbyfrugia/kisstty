@@ -33,33 +33,14 @@ DEBOUNCE_NUM_FRAMES   = 20
 .IMPORT kbd_unmodified
 .IMPORT kbd_shifted
 .IMPORT kbd_ctrld
-.IMPORT mi_init
-.IMPORT mi_main_input_metadata
-.IMPORT mi_hide_cursor
-.IMPORT mi_show_cursor
-.IMPORT mo_init
-.IMPORT mo_append
-.IMPORT mo_scroll_up
-.IMPORT mo_paste_last_line
 .IMPORT ta_initsys
-.IMPORT ta_scr_ptr
-.IMPORT ta_move_cursor_up
-.IMPORT ta_move_cursor_down
-.IMPORT ta_move_cursor_left
-.IMPORT ta_move_cursor_right
-.IMPORT ta_typechar
-.IMPORT ta_backspace
-.IMPORT ta_shift_clear
-.IMPORT ta_line_insert
-.IMPORT ta_char_insert
-.IMPORT ta_line_delete
-.IMPORT ta_char_delete
-.IMPORT ta_copy_first_line
-.IMPORT ta_copy_last_line
-.IMPORT mu_init
-.IMPORT mu_activate
-.IMPORT mu_tick
-.IMPORT mu_config_done
+.IMPORT cfg_init
+.IMPORT cfg_activate
+.IMPORT cfg_tick
+.IMPORT cfg_config_done
+.IMPORT trm_init
+.IMPORT trm_activate
+.IMPORT trm_tick
 
 
 .ifdef DEBUG
@@ -92,12 +73,6 @@ start:
   jmp @loop
 
 terminal_tick:
-  lda select_fired
-  beq @check_start
-  lda #0
-  sta select_fired
-  jsr next_theme
-@check_start:
   lda start_fired
   beq @handle_tick
   lda #0
@@ -106,13 +81,13 @@ terminal_tick:
   sta switch_mode
   jmp @done
 @handle_tick:
-  jsr proc_kbd
+  jsr trm_tick
 @done:
   rts
 
 config_tick:
-  jsr mu_tick 
-  lda mu_config_done
+  jsr cfg_tick 
+  lda cfg_config_done
   beq @done
   lda #MODE_TERMINAL
   sta switch_mode
@@ -120,21 +95,29 @@ config_tick:
   rts
 
 main_loop:
+  lda select_fired
+  beq @check_mode
+  lda #0
+  sta select_fired
+  jsr next_theme
+@check_mode:
   lda switch_mode
   beq @check_kbd
   sta current_mode
   cmp #MODE_TERMINAL
   beq @switch_to_terminal
   jsr cls
-  jsr mu_activate
+  jsr cfg_activate
   lda #0
   sta switch_mode
   jmp @check_kbd
 @switch_to_terminal:
   lda #0
   sta switch_mode
+  sta select_fired
+  sta start_fired
   jsr cls
-  jsr draw_terminal
+  jsr trm_activate
 @check_kbd:
   jsr inkbd
   lda current_mode
@@ -242,9 +225,8 @@ init:
 
   jsr set_vbi_handler
   jsr ta_initsys
-  jsr mo_init
-  jsr mi_init
-  jsr mu_init
+  jsr cfg_init
+  jsr trm_init
 
   lda #MODE_CONFIG
   sta switch_mode
@@ -358,139 +340,6 @@ inkbd:
 @done:
   rts
 
-cmd_move_cursor_up:
-  jsr ta_move_cursor_up
-  rts
-
-cmd_move_cursor_down:
-  jsr ta_move_cursor_down
-  rts
-
-cmd_move_cursor_left:
-  lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
-  sta CMDDATA0
-  jsr ta_move_cursor_left
-  rts
-
-cmd_move_cursor_right:
-  lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
-  sta CMDDATA0
-  jsr ta_move_cursor_right
-  rts
-
-cmd_typechar:
-  lda g_kbdcode_atascii
-  beq @done
-  jsr ta_typechar
-@done:
-  rts
-
-cmd_backspace:
-  jsr ta_backspace
-  rts
-
-cmd_shift_clear:
-  jsr ta_shift_clear
-  rts
-
-cmd_line_insert:
-  jsr ta_line_insert
-  rts
-
-cmd_char_insert:
-  jsr ta_char_insert
-  rts
-
-cmd_line_delete:
-  jsr ta_line_delete
-  rts
-
-cmd_char_delete:
-  jsr ta_char_delete
-  rts
-
-cmd_return:
-  jsr mo_scroll_up
-  rts
-
-proc_kbd:
-  lda g_kbd_key_pressed
-  beq @done
-;  ; TODO remove when no longer debugging
-;  lda SAVMSC
-;  sta CMDDATA0
-;  lda SAVMSC+1
-;  sta CMDDATA1
-;  ldy #0
-;  lda g_kbdcode_raw 
-;  jsr utils_byte_to_scr_hex
-;  ldy #3
-;  lda ctrl_shift_lock_flag
-;  jsr utils_byte_to_scr_hex
-
-  lda g_kbdcode_raw 
-  cmp #$8e
-  beq @up_arrow
-  cmp #$8f
-  beq @down_arrow
-  cmp #$86
-  beq @left_arrow
-  cmp #$87
-  beq @right_arrow
-  cmp #$0c
-  beq @return
-  cmp #$34
-  beq @backspace
-  cmp #$76 ; shift+clear ($b4 on atari 800 emulator)
-  beq @shift_clear
-  cmp #$b6 ; ctrl+clear
-  beq @shift_clear
-  cmp #$77 ; shift+insert on atari ($7c on atari800 emulator)
-  beq @line_insert
-  cmp #$b7 ; ctrl+insert
-  beq @char_insert
-  cmp #$74 ; shift+delete bs
-  beq @line_delete
-  cmp #$b4 ; ctrl+delete bs
-  beq @char_delete
-@output:
-  jsr cmd_typechar
-  jmp @done
-@up_arrow:
-  jmp cmd_move_cursor_up
-  jmp @done
-@down_arrow:
-  jmp cmd_move_cursor_down
-  jmp @done
-@left_arrow:
-  jmp cmd_move_cursor_left
-  jmp @done
-@right_arrow:
-  jmp cmd_move_cursor_right
-  jmp @done
-@backspace:
-  jsr cmd_backspace
-  jmp @done
-@shift_clear:
-  jsr cmd_shift_clear
-  jmp @done
-@line_insert:
-  jsr cmd_line_insert
-  jmp @done
-@char_insert:
-  jsr cmd_char_insert
-  jmp @done
-@line_delete:
-  jsr cmd_line_delete
-  jmp @done
-@char_delete:
-  jsr cmd_char_delete
-  jmp @done
-@return:
-  jsr cmd_return
-@done:
-  rts
-
 cls:
   lda SCR_PTR_LO
   sta ZPB0
@@ -527,7 +376,6 @@ set_theme:
   sta COLOR2
   lda themes_fg,x
   sta COLOR1
-
   rts
 
 next_theme:
@@ -547,26 +395,6 @@ init_ui:
   ldx #0
   stx current_theme
   jsr set_theme
-  rts
-
-draw_terminal:
-  jsr mi_show_cursor
-  LINE_ABOVE_INPUT_OFFSET = 40*19
-  lda SCR_PTR_LO
-  clc
-  adc #<LINE_ABOVE_INPUT_OFFSET
-  sta ZPB0
-  LDA SCR_PTR_HI
-  adc #>LINE_ABOVE_INPUT_OFFSET
-  sta ZPB1
-
-  lda #$52 ; horizontal bar
-  ldy #39
-@loop:
-  sta (ZPB0),y
-  dey
-  bpl @loop
-
   rts
 
 cmd_boot850:

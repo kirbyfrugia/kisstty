@@ -68,6 +68,7 @@
 .EXPORT ta_copy_first_line
 .EXPORT ta_copy_last_line
 .EXPORT ta_scroll_up
+.EXPORT ta_repaint
 
 ta_initsys:
   lda #0
@@ -257,7 +258,7 @@ ta_init_textarea:
   jsr int_update_cursor_pos
   jsr int_update_cursor_scr_row_ptr
 
-  jsr int_repaint
+  jsr ta_repaint
 
   jsr ta_show_cursor
 
@@ -531,7 +532,7 @@ int_clear_data:
 ; repaints the entire screen area for the input
 ; box. Useful when data changes. Not so efficient,
 ; but I'll worry about that later.
-int_repaint:
+ta_repaint:
   ; lo byte pointer to first row
   lda local_metadata+TextArea::scr_row_ptr_table_lo
   sta CMDDATA0
@@ -630,7 +631,7 @@ ta_shift_clear:
   jsr int_clear_data
 
   jsr int_cursor_home
-  jsr int_repaint
+  jsr ta_repaint
 
   jsr ta_show_cursor
   rts
@@ -745,7 +746,7 @@ ta_scroll_up:
   cpy scroll_num_chars_scrolled_off
   bne @backfill_loop
 
-  jsr int_repaint
+  jsr ta_repaint
   jsr ta_show_cursor
 @done:
   rts
@@ -802,7 +803,7 @@ ta_line_insert:
 
   jsr int_shift_lines_down
   jsr int_clear_row
-  jsr int_repaint
+  jsr ta_repaint
 
   jsr ta_show_cursor
 @done:
@@ -864,7 +865,7 @@ ta_char_insert:
   jsr ta_hide_cursor
 
   jsr int_shift_chars_right
-  jsr int_repaint
+  jsr ta_repaint
 
   jsr ta_show_cursor
 @done:
@@ -880,7 +881,7 @@ ta_line_delete:
   jsr int_shift_lines_up_from_cursor
 @last_line:
   jsr int_clear_last_row
-  jsr int_repaint
+  jsr ta_repaint
 
   jsr ta_show_cursor
   rts
@@ -908,7 +909,7 @@ ta_line_append:
   bne @loop
 @copy_done:
   ; repaint the text area. it all changed
-  jsr int_repaint
+  jsr ta_repaint
   jsr ta_show_cursor
 @done:
   rts
@@ -918,7 +919,7 @@ ta_shift_all_up:
   lda #0
   sta move_line_start_line_pos
   jsr int_shift_lines_up
-  jsr int_repaint
+  jsr ta_repaint
   jsr ta_show_cursor
   rts
 
@@ -935,7 +936,7 @@ ta_paste_last_line:
   cpy copy_buffer40_size
   bne @loop
 @done:
-  jsr int_repaint
+  jsr ta_repaint
   jsr ta_show_cursor
   rts
 
@@ -974,7 +975,7 @@ ta_char_delete:
   jsr ta_hide_cursor
 
   jsr int_shift_chars_left
-  jsr int_repaint
+  jsr ta_repaint
   jsr ta_move_cursor_left
 
   jsr ta_show_cursor

@@ -9,7 +9,9 @@
 .IMPORT ta_set_metadata_ptr
 .IMPORT ta_hide_cursor
 .IMPORT ta_show_cursor
+.IMPORT ta_repaint
 .EXPORT mi_init
+.EXPORT mi_repaint
 .EXPORT mi_hide_cursor
 .EXPORT mi_show_cursor
 
@@ -86,6 +88,10 @@ mi_hide_cursor:
 
 mi_show_cursor:
   jsr ta_show_cursor
+  rts
+
+mi_repaint:
+  jsr ta_repaint
   rts
 
 metadata: .tag TextArea
