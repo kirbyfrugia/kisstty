@@ -13,6 +13,7 @@
 .IMPORT g_kbdcode_raw_stripped
 .IMPORT g_kbdcode_atascii
 .IMPORT utils_atascii_to_icode
+.IMPORT cfg_saved_config
 .IMPORT mi_init
 .IMPORT mi_metadata
 .IMPORT mi_data

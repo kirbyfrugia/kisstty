@@ -1,0 +1,16 @@
+.ifndef TERMINAL_INC
+TERMINAL_INC = 1
+
+.enum TERMINAL_MODE
+  CHAR = %10000000
+  LINE = %00000000
+.endenum
+
+.enum TERMINAL_PROTOCOL
+  TERMINAL = %10000000
+  APRS     = %01000000
+  RTTY     = %00100000
+.endenum
+
+.endif
+

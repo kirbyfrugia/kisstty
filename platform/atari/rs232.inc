@@ -16,10 +16,10 @@ RS232_INC = 1
   B600    = %00001001
   B1200   = %00001010
   B1800   = %00001011
-  B2400   = $00001100
-  B4800   = $00001101
-  B9600   = $00001110
-  B19200  = $00001111 ; not supported by straight 850
+  B2400   = %00001100
+  B4800   = %00001101
+  B9600   = %00001110
+  B19200  = %00001111 ; not supported by straight 850
 .endenum
 
 
@@ -31,8 +31,8 @@ RS232_INC = 1
 .endenum
 
 .enum RS232_STOPBITS
-  N0 = %10000000
   N1 = %00000000
+  N2 = %10000000
 .endenum
 
 .enum RS232_FLOWCONTROL
@@ -47,18 +47,10 @@ RS232_INC = 1
   NONE  = %00100000
 .endenum
 
-.enum RS232_PARITY_INPUT
-  IGNORE_NO_CHANGE = %00000000
-  ODD_AND_CLEAR    = %00000100
-  EVEN_AND_CLEAR   = %00001000
-  IGNORE_AND_CLEAR = %00001100
-.endenum
-
-.enum RS232_PARITY_OUTPUT
-  NOCHANGE = %00000000
-  ODD      = %00000001
-  EVEN     = %00000010
-  ONE      = %00000011
+.enum RS232_PARITY
+  NONE  = %00000000
+  EVEN  = %00001000
+  ODD   = %00000100
 .endenum
 
 .enum RS232_LINE_FEED
@@ -66,22 +58,42 @@ RS232_INC = 1
   APPEND_LF    = %01000000
 .endenum
 
-.enum RS232_CONTROL_DTR
+.enum RS232_DSR
+  OFF = %00000000
+  ON  = %00000100
+.endenum
+
+.enum RS232_CTS
+  OFF = %00000000
+  ON  = %00000010
+.endenum
+
+.enum RS232_CRX
+  OFF = %00000000
+  ON  = %00000001
+.endenum
+
+.enum RS232_DTR
   NO_CHANGE = %00000000
   OFF       = %10000000
   ON        = %11000000
 .endenum
 
-.enum RS232_CONTROL_RTS
+.enum RS232_RTS
   NO_CHANGE = %00000000
   OFF       = %00100000
   ON        = %00110000
 .endenum
 
-.enum RS232_CONTROL_XMT
+.enum RS232_XMT
   NO_CHANGE = %00000000
   SPACE     = %00000010
   MARK      = %00000011
+.endenum
+
+.enum RS232_DUPLEX
+  FULL = %10000000
+  HALF = %00000000
 .endenum
 
 .endif

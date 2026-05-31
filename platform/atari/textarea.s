@@ -92,13 +92,13 @@ ta_initsys:
 ;   CMDDATA0/1 - ptr to the source metadata struct
 ta_set_metadata_ptr:
   lda TA_METADATA_PTR_HI
-  bne @swap
+  bne swap
   lda TA_METADATA_PTR_LO
-  beq @noswap
-@swap:
+  beq noswap
+swap:
   copy_struct_abs_to_zp local_metadata, TA_METADATA_PTR_LO, TextArea
 
-@noswap:
+noswap:
   copy_struct_zp_to_abs CMDDATA0, local_metadata, TextArea
   
   lda CMDDATA0
