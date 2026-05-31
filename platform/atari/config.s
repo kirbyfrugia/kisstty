@@ -41,12 +41,11 @@ cfg_init:
   make_preset preset1, preset1_config, \
               preset1_label, OFFSET 
 
-  
-  OFFSET       .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 13
-  BAUD         .set 4
+  OFFSET       .set (MENU_MARGIN_TOP+20) * SCREEN_WIDTH + 1
+  BAUD         .set 3
   DATA_BITS    .set 2
   STOP_BITS    .set 0
-  PARITY       .set 0
+  PARITY       .set 1
   DUPLEX       .set 0
   CTS          .set 1
   DSR          .set 1
@@ -59,8 +58,8 @@ cfg_init:
   make_preset preset2, preset2_config, \
               preset2_label, OFFSET 
 
-  OFFSET       .set (MENU_MARGIN_TOP+20) * SCREEN_WIDTH + 1
-  BAUD         .set 8
+  OFFSET       .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 13
+  BAUD         .set 6
   DATA_BITS    .set 3
   STOP_BITS    .set 0
   PARITY       .set 0
@@ -77,7 +76,7 @@ cfg_init:
               preset3_label, OFFSET 
 
   OFFSET       .set (MENU_MARGIN_TOP+20) * SCREEN_WIDTH + 13
-  BAUD         .set 9
+  BAUD         .set 7
   DATA_BITS    .set 3
   STOP_BITS    .set 0
   PARITY       .set 0
@@ -369,25 +368,17 @@ cfg_activate:
   sta cfg_config_done
 
   draw_menu baud_menu
-  highlight_selected baud_menu
   draw_menu parity_menu
-  highlight_selected parity_menu
   draw_menu data_menu
-  highlight_selected data_menu
   draw_menu stop_menu
-  highlight_selected stop_menu
   draw_menu trans_menu
-  highlight_selected trans_menu
   draw_menu cts_menu
-  highlight_selected cts_menu
   draw_menu dsr_menu
-  highlight_selected dsr_menu
   draw_menu dtr_menu
-  highlight_selected dtr_menu
   draw_menu rts_menu
-  highlight_selected rts_menu
   draw_menu duplex_menu
-  highlight_selected duplex_menu
+
+  jsr int_highlight_all_selected
 
   draw_preset preset1
   draw_preset preset3
@@ -396,6 +387,19 @@ cfg_activate:
 
   jsr int_draw_banners
 
+  rts
+
+int_highlight_all_selected:
+  highlight_selected baud_menu
+  highlight_selected parity_menu
+  highlight_selected data_menu
+  highlight_selected stop_menu
+  highlight_selected trans_menu
+  highlight_selected cts_menu
+  highlight_selected dsr_menu
+  highlight_selected dtr_menu
+  highlight_selected rts_menu
+  highlight_selected duplex_menu
   rts
 
 ; inputs:
@@ -483,15 +487,63 @@ int_cmd_cancel:
   rts
 
 int_cmd_preset1:
+  copy_struct_abs_to_abs preset1_config, cfg_config, Config
+  jsr int_highlight_all_selected
   rts
 
 int_cmd_preset2:
+  copy_struct_abs_to_abs preset2_config, cfg_config, Config
+  jsr int_highlight_all_selected
   rts
 
 int_cmd_preset3:
+  copy_struct_abs_to_abs preset3_config, cfg_config, Config
+  jsr int_highlight_all_selected
   rts
 
 int_cmd_preset4:
+  copy_struct_abs_to_abs preset4_config, cfg_config, Config
+  jsr int_highlight_all_selected
+  rts
+
+int_cmd_baud:
+  handle_menu_next baud_menu, cfg_config+Config::baud
+  rts
+
+int_cmd_parity:
+  handle_menu_next parity_menu, cfg_config+Config::parity
+  rts
+
+int_cmd_data:
+  handle_menu_next data_menu, cfg_config+Config::data_bits
+  rts
+
+int_cmd_stop:
+  handle_menu_next stop_menu, cfg_config+Config::stop_bits
+  rts
+
+int_cmd_duplex:
+  handle_menu_next duplex_menu, cfg_config+Config::duplex
+  rts
+
+int_cmd_cts:
+  handle_menu_next cts_menu, cfg_config+Config::cts
+  rts
+
+int_cmd_dsr:
+  handle_menu_next dsr_menu, cfg_config+Config::dsr
+  rts
+
+int_cmd_dtr:
+  handle_menu_next dtr_menu, cfg_config+Config::dtr
+  rts
+
+int_cmd_rets:
+  handle_menu_next rts_menu, cfg_config+Config::rets
+  rts
+
+int_cmd_translation:
+  handle_menu_next trans_menu, cfg_config+Config::translation
   rts
 
 int_cmd_accept:
@@ -501,15 +553,84 @@ int_cmd_accept:
 
 int_handle_kbd:
   lda g_kbd_key_pressed
-  beq @done
+  bne @valid_key
+  jmp @done
+@valid_key:
   lda g_kbdcode_raw
+  cmp #$15
+  beq @baud
+  cmp #$0a
+  beq @parity
+  cmp #$3a
+  beq @data
+  cmp #$08
+  beq @stop
+  cmp #$0b
+  beq @duplex
+  cmp #$12
+  beq @cts
+  cmp #$3e
+  beq @dsr
+  cmp #$2d
+  beq @dtr
+  cmp #$28
+  beq @rets
+  cmp #$00
+  beq @translation
+  cmp #$1f
+  beq @one
+  cmp #$1e
+  beq @two
+  cmp #$1a
+  beq @three
+  cmp #$18
+  beq @four
   cmp #$1c
   beq @escape
   cmp #$0c
   beq @return
   bne @done
+@baud:
+  jsr int_cmd_baud
+  jmp @done
+@parity:
+  jsr int_cmd_parity
+  jmp @done
+@data:
+  jsr int_cmd_data
+  jmp @done
+@stop:
+  jsr int_cmd_stop
+  jmp @done
+@duplex:
+  jsr int_cmd_duplex
+  jmp @done
+@cts:
+  jsr int_cmd_cts
+  jmp @done
+@dsr:
+  jsr int_cmd_dsr
+  jmp @done
+@dtr:
+  jsr int_cmd_dtr
+  jmp @done
+@rets:
+  jsr int_cmd_rets
+  jmp @done
+@translation:
+  jsr int_cmd_translation
+  jmp @done
 @one:
   jsr int_cmd_preset1
+  jmp @done
+@two:
+  jsr int_cmd_preset2
+  jmp @done
+@three:
+  jsr int_cmd_preset3
+  jmp @done
+@four:
+  jsr int_cmd_preset4
   jmp @done
 @escape:
   jsr int_cmd_cancel
@@ -544,7 +665,7 @@ data_menu_item_word7:     .byte "7 bit",$00
 data_menu_item_word8:     .byte "8 bit",$00
 
 stop_menu:                .tag Menu
-stop_menu_header:         .byte "Sto",'P'|$80,$00
+stop_menu_header:         .byte "St",'O'|$80,"p",$00
 stop_menu_items:
 stop_menu_item_word1:     .byte "1 bit",$00
 stop_menu_item_word2:     .byte "2 bit",$00

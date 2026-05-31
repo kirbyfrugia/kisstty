@@ -126,4 +126,15 @@ CONFIG_INC = 1
   jsr int_draw_preset
 .endmacro
 
+.macro handle_menu_next _menu, _config
+  inc _config
+  lda _config
+  cmp _menu+Menu::num_items
+  bcc @selected
+  lda #0
+  sta _config
+@selected:
+  highlight_selected _menu
+.endmacro
+
 .endif
