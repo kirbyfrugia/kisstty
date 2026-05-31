@@ -874,34 +874,6 @@ ta_line_delete:
   jsr ta_show_cursor
   rts
 
-; inputs:
-;   - copy_buffer40
-;   - copy_buffer40_size
-ta_line_append:
-  jsr ta_hide_cursor
-
-  ; shift all lines up
-  lda #0
-  sta move_line_start_line_pos
-  jsr int_shift_lines_up
-
-  lda copy_buffer40_size
-  beq @copy_done; nothing to copy
-
-  ldy #0
-@loop:
-  lda copy_buffer40,y
-  sta (TA_LAST_ROW_DATA_PTR_LO),y
-  iny
-  cpy copy_buffer40_size
-  bne @loop
-@copy_done:
-  ; repaint the text area. it all changed
-  jsr ta_repaint
-  jsr ta_show_cursor
-@done:
-  rts
-
 ta_shift_all_up:
   jsr ta_hide_cursor
   lda #0

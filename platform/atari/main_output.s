@@ -4,6 +4,8 @@
 .INCLUDE "textarea.inc"
 .SEGMENT "CODE"
 
+.IMPORT copy_buffer40
+.IMPORT copy_buffer40_size
 .IMPORT utils_dump_mem_row
 .IMPORT ta_init_textarea
 .IMPORT ta_get_metadata_ptr
@@ -13,6 +15,7 @@
 .IMPORT ta_scroll_up
 .EXPORT mo_init
 .EXPORT mo_append
+.EXPORT mo_append_line_from_copy_buffer40
 .EXPORT mo_repaint
 
 MARGIN_LEFT   = 1
@@ -191,6 +194,9 @@ mo_repaint:
 
 ; appends N lines to the output
 ;
+; warn: you should make sure the input and
+;       output lines are the same length
+;
 ; inputs:
 ;   CMDDATA0/1 - pointer to the data to append
 ;   CMDDATA4   - num lines to ppend
@@ -235,6 +241,31 @@ mo_append:
 
   rts
 
+
+; appends data to the output area. will
+; blank out anything beyond copy_buffer40_size
+; inputs:
+;   copy_buffer40, copy_buffer40_size (num chars)
+mo_append_line_from_copy_buffer40:
+  lda #' '
+  ldy copy_buffer40_size
+@fill:
+  cpy #40
+  bcs @fill_done
+  sta copy_buffer40,y
+  iny
+  bne @fill
+@fill_done:
+  lda #<copy_buffer40
+  sta CMDDATA0
+  lda #>copy_buffer40
+  sta CMDDATA1
+  lda #1
+  sta CMDDATA4
+  jsr mo_append
+
+  rts
+
 area0_metadata:             .tag TextArea
 area0_scr_row_ptr_table_lo: .res HEIGHT
 area0_scr_row_ptr_table_hi: .res HEIGHT
@@ -250,4 +281,3 @@ area2_scr_row_ptr_table_lo: .res HEIGHT
 area2_scr_row_ptr_table_hi: .res HEIGHT
 area2_data:                 .res SIZE
 
-tmp_dump: .byte 0

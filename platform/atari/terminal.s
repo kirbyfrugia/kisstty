@@ -6,6 +6,8 @@
 .INCLUDE "macros.inc"
 .INCLUDE "textarea.inc"
 
+.IMPORT copy_buffer40
+.IMPORT copy_buffer40_size
 .IMPORT g_kbd_key_pressed
 .IMPORT g_kbdcode_raw
 .IMPORT g_kbdcode_raw_stripped
@@ -22,7 +24,7 @@
 .IMPORT mo_repaint
 .IMPORT mo_append
 .IMPORT mo_scroll_up
-.IMPORT mo_paste_last_line
+.IMPORT mo_append_line_from_copy_buffer40
 .IMPORT ta_scr_ptr
 .IMPORT ta_move_cursor_up
 .IMPORT ta_move_cursor_down
@@ -41,7 +43,7 @@
 .EXPORT trm_init
 .EXPORT trm_activate
 .EXPORT trm_tick
-.EXPORT trm_append
+.EXPORT trm_append_line_from_copy_buffer40
 
 .SEGMENT "CODE"
 
@@ -108,16 +110,44 @@ int_draw_ui:
 trm_activate:
   jsr mi_show_cursor
   jsr int_draw_ui
+
   jsr mo_repaint
   jsr mi_repaint
   jsr mi_show_cursor
+
+  pha_metadata_ptr
+  ; TODO: remove this
+  ldy #0
+@loop:
+  lda welcome,y
+  beq @loop_done
+  sta copy_buffer40,y
+  iny
+  jmp @loop
+@loop_done:
+  sty copy_buffer40_size
+  jsr mo_append_line_from_copy_buffer40
+
+  pla_metadata_ptr
+  jsr ta_set_metadata_ptr
+ 
   rts
 
 trm_tick:
   jsr int_handle_kbd
   rts
 
-trm_append:
+; appends data to the output area. will
+; blank out anything beyond copy_buffer40_size
+; inputs:
+;   copy_buffer40, copy_buffer40_size (num chars)
+trm_append_line_from_copy_buffer40:
+  pha_metadata_ptr
+  jsr mo_append_line_from_copy_buffer40
+
+  pla_metadata_ptr
+  jsr ta_set_metadata_ptr
+
   rts
 
 int_cmd_move_cursor_up:
@@ -268,3 +298,5 @@ int_handle_kbd:
 top_banner:             .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
                         .byte 'S'|$80,'T'|$80,'A'|$80,'R'|$80,'T'|$80,"config "
                         .byte $00
+
+welcome: .byte "Welcome!",$00
