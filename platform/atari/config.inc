@@ -2,6 +2,53 @@
 CONFIG_INC = 1
 .LINECONT +
 
+.define CFG_MENU_BAUD_50    0
+.define CFG_MENU_BAUD_300   1
+.define CFG_MENU_BAUD_600   2
+.define CFG_MENU_BAUD_1200  3
+.define CFG_MENU_BAUD_2400  4
+.define CFG_MENU_BAUD_4800  5
+.define CFG_MENU_BAUD_9600  6
+.define CFG_MENU_BAUD_19200 7
+
+.define CFG_MENU_DATA_5BIT 0
+.define CFG_MENU_DATA_6BIT 1
+.define CFG_MENU_DATA_7BIT 2
+.define CFG_MENU_DATA_8BIT 3
+
+.define CFG_MENU_STOP_1BIT 0
+.define CFG_MENU_STOP_2BIT 1
+
+.define CFG_MENU_TRANS_NONE  0
+.define CFG_MENU_TRANS_LIGHT 1
+.define CFG_MENU_TRANS_HEAVY 2
+
+.define CFG_MENU_CTS_OFF 0
+.define CFG_MENU_CTS_ON  1
+
+.define CFG_MENU_DSR_OFF 0
+.define CFG_MENU_DSR_ON  1
+
+.define CFG_MENU_DTR_OFF 0
+.define CFG_MENU_DTR_ON  1
+
+.define CFG_MENU_RTS_OFF 0
+.define CFG_MENU_RTS_ON  1
+
+.define CFG_MENU_DUPLEX_FULL 0
+.define CFG_MENU_DUPLEX_HALF 1
+
+.define CFG_MENU_PARITY_NONE 0
+.define CFG_MENU_PARITY_EVEN 1
+.define CFG_MENU_PARITY_ODD  2
+.define CFG_MENU_PARITY_ONE  3
+
+.define CFG_MENU_MODE_CHARACTER 0
+.define CFG_MENU_MODE_LINE      1
+
+.define CFG_MENU_PROTOCOL_TERM 0
+.define CFG_MENU_PROTOCOL_APRS 1
+
 .struct Menu
   scr_pos_ptr        .word
   header_ptr         .word
@@ -12,6 +59,8 @@ CONFIG_INC = 1
 .endstruct
 
 .struct Config
+  protocol    .byte
+  mode        .byte
   baud        .byte
   data_bits   .byte
   stop_bits   .byte
@@ -73,9 +122,13 @@ CONFIG_INC = 1
   jsr int_highlight_selected_menu_item
 .endmacro
 
-.macro make_config  config, _baud, _data_bits, \
+.macro make_config  config, _protocol, _mode, _baud, _data_bits, \
                    _stop_bits, _parity, _duplex, _cts,\
                    _dsr, _dtr, _rets, _translation
+  lda #_protocol
+  sta config+Config::protocol
+  lda #_mode
+  sta config+Config::mode
   lda #_baud
   sta config+Config::baud
   lda #_data_bits

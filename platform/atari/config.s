@@ -24,76 +24,76 @@ cfg_init:
   lda #0
   sta cfg_config_done
 
-  OFFSET       .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 1
-  BAUD         .set 1
-  DATA_BITS    .set 3
-  STOP_BITS    .set 0
-  PARITY       .set 0
-  DUPLEX       .set 0
-  CTS          .set 0
-  DSR          .set 0
-  DTR          .set 1
-  RETS         .set 1
-  TRANSLATION  .set 0
-  make_config preset1_config, BAUD, DATA_BITS, \
-              STOP_BITS, PARITY, DUPLEX, CTS, DSR, DTR, RETS, \
-              TRANSLATION
-  make_preset preset1, preset1_config, \
-              preset1_label, OFFSET 
-
   OFFSET       .set (MENU_MARGIN_TOP+20) * SCREEN_WIDTH + 1
-  BAUD         .set 3
-  DATA_BITS    .set 2
-  STOP_BITS    .set 0
-  PARITY       .set 1
-  DUPLEX       .set 0
-  CTS          .set 1
-  DSR          .set 1
-  DTR          .set 1
-  RETS         .set 1
-  TRANSLATION  .set 0
-  make_config preset2_config, BAUD, DATA_BITS, \
-              STOP_BITS, PARITY, DUPLEX, CTS, DSR, DTR, RETS, \
-              TRANSLATION
-  make_preset preset2, preset2_config, \
-              preset2_label, OFFSET 
+  make_config preset_fastchar_config, \
+                  CFG_MENU_PROTOCOL_TERM, \
+                  CFG_MENU_MODE_CHARACTER, \
+                  CFG_MENU_BAUD_9600, \
+                  CFG_MENU_DATA_8BIT, \
+                  CFG_MENU_STOP_1BIT, \
+                  CFG_MENU_PARITY_NONE, \
+                  CFG_MENU_DUPLEX_FULL, \
+                  CFG_MENU_CTS_ON, \
+                  CFG_MENU_DSR_OFF, \
+                  CFG_MENU_DTR_ON, \
+                  CFG_MENU_RTS_ON, \
+                  CFG_MENU_TRANS_NONE
+  make_preset preset_fastchar, preset_fastchar_config, \
+              preset_fastchar_label, OFFSET 
 
-  OFFSET       .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 13
-  BAUD         .set 6
-  DATA_BITS    .set 3
-  STOP_BITS    .set 0
-  PARITY       .set 0
-  DUPLEX       .set 0
-  CTS          .set 0
-  DSR          .set 0
-  DTR          .set 0
-  RETS         .set 0
-  TRANSLATION  .set 0
-  make_config preset3_config, BAUD, DATA_BITS, \
-              STOP_BITS, PARITY, DUPLEX, CTS, DSR, DTR, RETS, \
-              TRANSLATION
-  make_preset preset3, preset3_config, \
-              preset3_label, OFFSET 
+  OFFSET       .set (MENU_MARGIN_TOP+21) * SCREEN_WIDTH + 1
+  make_config preset_fastline_config, \
+                  CFG_MENU_PROTOCOL_TERM, \
+                  CFG_MENU_MODE_LINE, \
+                  CFG_MENU_BAUD_9600, \
+                  CFG_MENU_DATA_8BIT, \
+                  CFG_MENU_STOP_1BIT, \
+                  CFG_MENU_PARITY_NONE, \
+                  CFG_MENU_DUPLEX_FULL, \
+                  CFG_MENU_CTS_ON, \
+                  CFG_MENU_DSR_OFF, \
+                  CFG_MENU_DTR_ON, \
+                  CFG_MENU_RTS_ON, \
+                  CFG_MENU_TRANS_NONE
+  make_preset preset_fastline, preset_fastline_config, \
+              preset_fastline_label, OFFSET 
 
   OFFSET       .set (MENU_MARGIN_TOP+20) * SCREEN_WIDTH + 13
-  BAUD         .set 7
-  DATA_BITS    .set 3
-  STOP_BITS    .set 0
-  PARITY       .set 0
-  DUPLEX       .set 0
-  CTS          .set 0
-  DSR          .set 0
-  DTR          .set 1
-  RETS         .set 1
-  TRANSLATION  .set 0
-  make_config preset4_config, BAUD, DATA_BITS, \
-              STOP_BITS, PARITY, DUPLEX, CTS, DSR, DTR, RETS, \
-              TRANSLATION
-  make_preset preset4, preset4_config, \
-              preset4_label, OFFSET 
+  make_config preset_vintage_config, \
+                  CFG_MENU_PROTOCOL_TERM, \
+                  CFG_MENU_MODE_CHARACTER, \
+                  CFG_MENU_BAUD_1200, \
+                  CFG_MENU_DATA_7BIT, \
+                  CFG_MENU_STOP_1BIT, \
+                  CFG_MENU_PARITY_EVEN, \
+                  CFG_MENU_DUPLEX_FULL, \
+                  CFG_MENU_CTS_ON, \
+                  CFG_MENU_DSR_ON, \
+                  CFG_MENU_DTR_ON, \
+                  CFG_MENU_RTS_ON, \
+                  CFG_MENU_TRANS_NONE
+  make_preset preset_vintage, preset_vintage_config, \
+              preset_vintage_label, OFFSET 
+
+  OFFSET       .set (MENU_MARGIN_TOP+21) * SCREEN_WIDTH + 13
+  make_config preset_APRS_config, \
+                  CFG_MENU_PROTOCOL_APRS, \
+                  CFG_MENU_MODE_CHARACTER, \
+                  CFG_MENU_BAUD_9600, \
+                  CFG_MENU_DATA_8BIT, \
+                  CFG_MENU_STOP_1BIT, \
+                  CFG_MENU_PARITY_NONE, \
+                  CFG_MENU_DUPLEX_FULL, \
+                  CFG_MENU_CTS_ON, \
+                  CFG_MENU_DSR_OFF, \
+                  CFG_MENU_DTR_ON, \
+                  CFG_MENU_RTS_ON, \
+                  CFG_MENU_TRANS_NONE
+  make_preset preset_APRS, preset_APRS_config, \
+              preset_APRS_label, OFFSET 
 
   ; default config
-  copy_struct_abs_to_abs preset2_config, cfg_saved_config, Config
+  copy_struct_abs_to_abs preset_fastline_config, cfg_saved_config, Config
 
   OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 2
   NUM_ITEMS     .set 8
@@ -154,6 +154,18 @@ cfg_init:
   BORDER_WIDTH  .set 7
   make_menu rts_menu, rts_menu_header, rts_menu_items, \
             Config::rets, NUM_ITEMS, BORDER_WIDTH, OFFSET
+
+  OFFSET        .set (MENU_MARGIN_TOP+15) * SCREEN_WIDTH + 11
+  NUM_ITEMS     .set 2
+  BORDER_WIDTH  .set 10
+  make_menu mode_menu, mode_menu_header, mode_menu_items, \
+            Config::mode, NUM_ITEMS, BORDER_WIDTH, OFFSET
+
+  OFFSET        .set (MENU_MARGIN_TOP+14) * SCREEN_WIDTH + 26
+  NUM_ITEMS     .set 3
+  BORDER_WIDTH  .set 11
+  make_menu protocol_menu, protocol_menu_header, protocol_menu_items, \
+            Config::protocol, NUM_ITEMS, BORDER_WIDTH, OFFSET
 
   rts
 
@@ -342,7 +354,7 @@ int_draw_banners:
   jmp @top_banner_loop
 @top_banner_done:
 
-  OFFSET .set (MENU_MARGIN_TOP+18) * SCREEN_WIDTH + 1
+  OFFSET .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 1
   lda SCR_PTR_LO
   clc
   adc #<OFFSET
@@ -379,13 +391,15 @@ cfg_activate:
   draw_menu dtr_menu
   draw_menu rts_menu
   draw_menu duplex_menu
+  draw_menu mode_menu
+  draw_menu protocol_menu
 
   jsr int_highlight_all_selected
 
-  draw_preset preset1
-  draw_preset preset3
-  draw_preset preset2
-  draw_preset preset4
+  draw_preset preset_fastchar
+  draw_preset preset_vintage
+  draw_preset preset_fastline
+  draw_preset preset_APRS
 
   jsr int_draw_banners
 
@@ -402,6 +416,8 @@ int_highlight_all_selected:
   highlight_selected dtr_menu
   highlight_selected rts_menu
   highlight_selected duplex_menu
+  highlight_selected mode_menu
+  highlight_selected protocol_menu
   rts
 
 ; inputs:
@@ -488,23 +504,23 @@ int_cmd_cancel:
   sta cfg_config_done
   rts
 
-int_cmd_preset1:
-  copy_struct_abs_to_abs preset1_config, cfg_draft_config, Config
+int_cmd_preset_fastchar:
+  copy_struct_abs_to_abs preset_fastchar_config, cfg_draft_config, Config
   jsr int_highlight_all_selected
   rts
 
-int_cmd_preset2:
-  copy_struct_abs_to_abs preset2_config, cfg_draft_config, Config
+int_cmd_preset_fastline:
+  copy_struct_abs_to_abs preset_fastline_config, cfg_draft_config, Config
   jsr int_highlight_all_selected
   rts
 
-int_cmd_preset3:
-  copy_struct_abs_to_abs preset3_config, cfg_draft_config, Config
+int_cmd_preset_vintage:
+  copy_struct_abs_to_abs preset_vintage_config, cfg_draft_config, Config
   jsr int_highlight_all_selected
   rts
 
-int_cmd_preset4:
-  copy_struct_abs_to_abs preset4_config, cfg_draft_config, Config
+int_cmd_preset_APRS:
+  copy_struct_abs_to_abs preset_APRS_config, cfg_draft_config, Config
   jsr int_highlight_all_selected
   rts
 
@@ -548,6 +564,14 @@ int_cmd_translation:
   handle_menu_next trans_menu, cfg_draft_config+Config::translation
   rts
 
+int_cmd_mode:
+  handle_menu_next mode_menu, cfg_draft_config+Config::mode
+  rts
+
+int_cmd_protocol:
+  handle_menu_next protocol_menu, cfg_draft_config+Config::protocol
+  rts
+
 int_cmd_accept:
   lda #1
   sta cfg_config_done
@@ -580,6 +604,10 @@ int_handle_kbd:
   beq @rets
   cmp #$00
   beq @translation
+  cmp #$25
+  beq @mode
+  cmp #$32
+  beq @protocol
   cmp #$1f
   beq @one
   cmp #$1e
@@ -623,17 +651,23 @@ int_handle_kbd:
 @translation:
   jsr int_cmd_translation
   jmp @done
+@mode:
+  jsr int_cmd_mode
+  jmp @done
+@protocol:
+  jsr int_cmd_protocol
+  jmp @done
 @one:
-  jsr int_cmd_preset1
+  jsr int_cmd_preset_fastchar
   jmp @done
 @two:
-  jsr int_cmd_preset2
+  jsr int_cmd_preset_fastline
   jmp @done
 @three:
-  jsr int_cmd_preset3
+  jsr int_cmd_preset_vintage
   jmp @done
 @four:
-  jsr int_cmd_preset4
+  jsr int_cmd_preset_APRS
   jmp @done
 @escape:
   jsr int_cmd_cancel
@@ -718,19 +752,32 @@ parity_menu_item_even:    .byte "Even",$00
 parity_menu_item_odd:     .byte "Odd",$00
 parity_menu_item_one:     .byte "One",$00
 
-presets:        .byte "Serial presets:",$00
-preset1:        .tag Preset
-preset1_config: .tag Config
-preset1_label:  .byte '1'|$80,"8-N-1 300",$00
-preset2:        .tag Preset
-preset2_config: .tag Config
-preset2_label:  .byte '2'|$80,"7-E-1 1200",$00
-preset3:        .tag Preset
-preset3_config: .tag Config
-preset3_label:  .byte '3'|$80,"8-N-1 9600",$00
-preset4:        .tag Preset
-preset4_config: .tag Config
-preset4_label:  .byte '4'|$80,"8-N-1 19200",$00
+mode_menu:                .tag Menu
+mode_menu_header:         .byte 'M'|$80,"ode",$00
+mode_menu_items:
+mode_menu_item_char:      .byte "Char",$00
+mode_menu_item_line:      .byte "Line",$00
+
+protocol_menu:            .tag Menu
+protocol_menu_header:     .byte '0'|$80,"Protocol",$00
+protocol_menu_items:
+protocol_menu_item_term:  .byte "Terminal",$00
+protocol_menu_item_aprs:  .byte "APRS",$00
+protocol_menu_item_rtty:  .byte "RTTY",$00
+
+presets:        .byte "Presets:",$00
+preset_fastchar:        .tag Preset
+preset_fastchar_config: .tag Config
+preset_fastchar_label:  .byte '1'|$80,"Fast Char",$00
+preset_fastline:        .tag Preset
+preset_fastline_config: .tag Config
+preset_fastline_label:  .byte '2'|$80,"Fast Line",$00
+preset_vintage:         .tag Preset
+preset_vintage_config:  .tag Config
+preset_vintage_label:   .byte '3'|$80,"Slow Char",$00
+preset_APRS:            .tag Preset
+preset_APRS_config:     .tag Config
+preset_APRS_label:      .byte '4'|$80,"APRS",$00
 
 
 top_banner:             .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
@@ -750,6 +797,6 @@ menu_item_border_width: .byte 0
 
 highlight_border_width: .byte 0
 
-cfg_draft_config:         .tag Config
-cfg_saved_config:             .tag Config
+cfg_draft_config:       .tag Config
+cfg_saved_config:       .tag Config
 cfg_config_done:        .byte 0
