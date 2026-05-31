@@ -4,6 +4,7 @@
 .INCLUDE "common.inc"
 .INCLUDE "config.inc"
 .INCLUDE "macros.inc"
+.INCLUDE "textarea.inc"
 
 .IMPORT g_kbd_key_pressed
 .IMPORT g_kbdcode_raw
@@ -11,6 +12,8 @@
 .IMPORT g_kbdcode_atascii
 .IMPORT utils_atascii_to_icode
 .IMPORT mi_init
+.IMPORT mi_metadata
+.IMPORT mi_data
 .IMPORT mi_repaint
 .IMPORT mi_main_input_metadata
 .IMPORT mi_hide_cursor
@@ -34,9 +37,11 @@
 .IMPORT ta_char_delete
 .IMPORT ta_copy_first_line
 .IMPORT ta_copy_last_line
+.IMPORT ta_set_metadata_ptr
 .EXPORT trm_init
 .EXPORT trm_activate
 .EXPORT trm_tick
+.EXPORT trm_append
 
 .SEGMENT "CODE"
 
@@ -112,6 +117,9 @@ trm_tick:
   jsr int_handle_kbd
   rts
 
+trm_append:
+  rts
+
 int_cmd_move_cursor_up:
   jsr ta_move_cursor_up
   rts
@@ -164,7 +172,19 @@ int_cmd_char_delete:
   rts
 
 int_cmd_return:
-  jsr mo_scroll_up
+  pha_metadata_ptr
+
+  lda #<mi_data
+  sta CMDDATA0
+  lda #>mi_data
+  sta CMDDATA1
+  lda mi_metadata+TextArea::height
+  sta CMDDATA4
+  jsr mo_append
+
+  pla_metadata_ptr
+  jsr ta_set_metadata_ptr
+  jsr ta_shift_clear
   rts
 
 int_handle_kbd:

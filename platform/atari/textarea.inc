@@ -7,19 +7,18 @@ TA_SCROLL_JUST_SCROLL            = %00000000
 
 ; get the current metadata_ptr from the text area
 ; and push it to the stack
-.macro save_metadata_ptr
+.macro pha_metadata_ptr
   lda TA_METADATA_PTR_LO
   pha
   lda TA_METADATA_PTR_HI
   pha
 .endmacro
 
-.macro restore_metadata_ptr
+.macro pla_metadata_ptr
   pla
   sta CMDDATA1
   pla
   sta CMDDATA0
-  jsr ta_set_metadata_ptr
 .endmacro
 
 .struct TextArea

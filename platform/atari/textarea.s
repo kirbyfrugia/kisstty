@@ -48,7 +48,6 @@
 .IMPORT copy_buffer40_size
 .EXPORT ta_initsys
 .EXPORT ta_init_textarea
-.EXPORT ta_get_metadata_ptr
 .EXPORT ta_set_metadata_ptr
 .EXPORT ta_move_cursor_up
 .EXPORT ta_move_cursor_down
@@ -84,17 +83,6 @@ ta_initsys:
   sta TA_FIRST_ROW_SCR_ROW_PTR_HI
   sta TA_LAST_ROW_SCR_ROW_PTR_LO
   sta TA_LAST_ROW_SCR_ROW_PTR_HI
-  rts
-
-; gets the pointer to the current metadata struct.
-; useful if you want to swap yourself in and out.
-; outputs:
-;   CMDDATA0/1 pointer to the metadata
-ta_get_metadata_ptr:
-  lda TA_METADATA_PTR_LO
-  sta CMDDATA0
-  lda TA_METADATA_PTR_HI
-  sta CMDDATA1
   rts
 
 ; swaps out which text area we're working on.

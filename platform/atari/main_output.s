@@ -8,15 +8,12 @@
 .IMPORT ta_init_textarea
 .IMPORT ta_get_metadata_ptr
 .IMPORT ta_set_metadata_ptr
-.IMPORT ta_copy_first_line
-.IMPORT ta_paste_last_line
 .IMPORT ta_repaint
 .IMPORT ta_shift_clear
 .IMPORT ta_scroll_up
 .EXPORT mo_init
+.EXPORT mo_append
 .EXPORT mo_repaint
-.EXPORT mo_scroll_up
-.EXPORT mo_paste_last_line
 
 MARGIN_LEFT   = 1
 WIDTH         = 38
@@ -181,26 +178,27 @@ int_set_area2_active:
   rts
 
 mo_repaint:
-  save_metadata_ptr ; text input
+  pha_metadata_ptr
   jsr int_set_area0_active
   jsr ta_repaint
   jsr int_set_area1_active
   jsr ta_repaint
   jsr int_set_area2_active
   jsr ta_repaint
-  restore_metadata_ptr ; text input
+  pla_metadata_ptr
+  jsr ta_set_metadata_ptr
   rts
 
-mo_scroll_up:
-  save_metadata_ptr ; text input
-
-  ; TODO: replace this, shouldn't reach straight
-  ;  into text input or have this managed here at all
-  lda TA_FIRST_ROW_DATA_PTR_LO
+; appends N lines to the output
+;
+; inputs:
+;   CMDDATA0/1 - pointer to the data to append
+;   CMDDATA4   - num lines to ppend
+mo_append:
+  lda CMDDATA0
   pha
-  lda TA_FIRST_ROW_DATA_PTR_HI
+  lda CMDDATA1
   pha
-
 
   ; scroll area1 into area0
   jsr int_set_area0_active
@@ -209,8 +207,6 @@ mo_scroll_up:
   sta CMDDATA0
   lda #>area1_data
   sta CMDDATA1
-  lda #4
-  sta CMDDATA4
   lda #TA_SCROLL_BACKFILL_ENABLED
   sta CMDDATA5
   jsr ta_scroll_up
@@ -222,40 +218,21 @@ mo_scroll_up:
   sta CMDDATA0
   lda #>area2_data
   sta CMDDATA1
-  lda #4
-  sta CMDDATA4
   lda #TA_SCROLL_BACKFILL_ENABLED
   sta CMDDATA5
   jsr ta_scroll_up
 
-  ; scroll text input into area2
+  ; scroll input into area2
   jsr int_set_area2_active
 
   pla
   sta CMDDATA1
   pla
   sta CMDDATA0
-  lda #4
-  sta CMDDATA4
   lda #TA_SCROLL_BACKFILL_ENABLED
   sta CMDDATA5
   jsr ta_scroll_up
 
-  ; now clear the text input
-  restore_metadata_ptr ; text input
-  jsr ta_set_metadata_ptr
-  jsr ta_shift_clear
-
-  rts
-
-mo_paste_last_line:
-  save_metadata_ptr
-
-  jsr int_set_area2_active
-  jsr ta_paste_last_line
-
-  restore_metadata_ptr
-  
   rts
 
 area0_metadata:             .tag TextArea
