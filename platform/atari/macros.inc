@@ -19,6 +19,15 @@ MACROS_INC = 1
   bpl @zp_to_abs_loop
 .endmacro
 
+.macro copy_struct_abs_to_abs  src_addr, dst_addr, struct_type
+  ldy #.sizeof(struct_type) - 1
+@abs_to_abs_loop:
+  lda src_addr,y
+  sta dst_addr,y
+  dey
+  bpl @abs_to_abs_loop
+.endmacro
+
 ; inverts a string on screen (bg/fg swap)
 .macro invstr str
   .repeat .strlen(str), i
