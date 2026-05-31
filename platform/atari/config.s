@@ -93,7 +93,7 @@ cfg_init:
               preset4_label, OFFSET 
 
   ; default config
-  copy_struct_abs_to_abs preset2_config, cfg_config, Config
+  copy_struct_abs_to_abs preset2_config, cfg_saved_config, Config
 
   OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 2
   NUM_ITEMS     .set 8
@@ -367,6 +367,8 @@ cfg_activate:
   lda #0
   sta cfg_config_done
 
+  copy_struct_abs_to_abs cfg_saved_config, cfg_draft_config, Config
+
   draw_menu baud_menu
   draw_menu parity_menu
   draw_menu data_menu
@@ -425,7 +427,7 @@ int_highlight_selected_menu_item:
   ldy #Menu::config_index
   lda (CFG_PTR_LO),y
   tay
-  lda cfg_config,y
+  lda cfg_draft_config,y
   sta menu_item_selected
 
   ldy #Menu::border_width
@@ -487,68 +489,69 @@ int_cmd_cancel:
   rts
 
 int_cmd_preset1:
-  copy_struct_abs_to_abs preset1_config, cfg_config, Config
+  copy_struct_abs_to_abs preset1_config, cfg_draft_config, Config
   jsr int_highlight_all_selected
   rts
 
 int_cmd_preset2:
-  copy_struct_abs_to_abs preset2_config, cfg_config, Config
+  copy_struct_abs_to_abs preset2_config, cfg_draft_config, Config
   jsr int_highlight_all_selected
   rts
 
 int_cmd_preset3:
-  copy_struct_abs_to_abs preset3_config, cfg_config, Config
+  copy_struct_abs_to_abs preset3_config, cfg_draft_config, Config
   jsr int_highlight_all_selected
   rts
 
 int_cmd_preset4:
-  copy_struct_abs_to_abs preset4_config, cfg_config, Config
+  copy_struct_abs_to_abs preset4_config, cfg_draft_config, Config
   jsr int_highlight_all_selected
   rts
 
 int_cmd_baud:
-  handle_menu_next baud_menu, cfg_config+Config::baud
+  handle_menu_next baud_menu, cfg_draft_config+Config::baud
   rts
 
 int_cmd_parity:
-  handle_menu_next parity_menu, cfg_config+Config::parity
+  handle_menu_next parity_menu, cfg_draft_config+Config::parity
   rts
 
 int_cmd_data:
-  handle_menu_next data_menu, cfg_config+Config::data_bits
+  handle_menu_next data_menu, cfg_draft_config+Config::data_bits
   rts
 
 int_cmd_stop:
-  handle_menu_next stop_menu, cfg_config+Config::stop_bits
+  handle_menu_next stop_menu, cfg_draft_config+Config::stop_bits
   rts
 
 int_cmd_duplex:
-  handle_menu_next duplex_menu, cfg_config+Config::duplex
+  handle_menu_next duplex_menu, cfg_draft_config+Config::duplex
   rts
 
 int_cmd_cts:
-  handle_menu_next cts_menu, cfg_config+Config::cts
+  handle_menu_next cts_menu, cfg_draft_config+Config::cts
   rts
 
 int_cmd_dsr:
-  handle_menu_next dsr_menu, cfg_config+Config::dsr
+  handle_menu_next dsr_menu, cfg_draft_config+Config::dsr
   rts
 
 int_cmd_dtr:
-  handle_menu_next dtr_menu, cfg_config+Config::dtr
+  handle_menu_next dtr_menu, cfg_draft_config+Config::dtr
   rts
 
 int_cmd_rets:
-  handle_menu_next rts_menu, cfg_config+Config::rets
+  handle_menu_next rts_menu, cfg_draft_config+Config::rets
   rts
 
 int_cmd_translation:
-  handle_menu_next trans_menu, cfg_config+Config::translation
+  handle_menu_next trans_menu, cfg_draft_config+Config::translation
   rts
 
 int_cmd_accept:
   lda #1
   sta cfg_config_done
+  copy_struct_abs_to_abs cfg_draft_config, cfg_saved_config, Config
   rts
 
 int_handle_kbd:
@@ -747,6 +750,6 @@ menu_item_border_width: .byte 0
 
 highlight_border_width: .byte 0
 
-cfg_old_config:         .tag Config
-cfg_config:             .tag Config
+cfg_draft_config:         .tag Config
+cfg_saved_config:             .tag Config
 cfg_config_done:        .byte 0
