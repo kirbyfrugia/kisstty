@@ -6,8 +6,6 @@
 .INCLUDE "macros.inc"
 .INCLUDE "textarea.inc"
 
-.SEGMENT "CODE"
-
 .IMPORT cfg_saved_config
 .IMPORT copy_buffer40
 .IMPORT copy_buffer40_size
@@ -43,12 +41,14 @@
 .IMPORT ta_char_delete
 .IMPORT ta_copy_first_line
 .IMPORT ta_copy_last_line
-.IMPORT ta_set_metadata_ptr
+.IMPORT ta_push_context
+.IMPORT ta_pop_context
 .EXPORT trm_init
 .EXPORT trm_activate
 .EXPORT trm_tick
 .EXPORT trm_append_line_from_copy_buffer40
 
+.SEGMENT "CODE"
 
 trm_init:
   jsr mo_init
@@ -118,7 +118,7 @@ trm_activate:
   jsr mi_repaint
   jsr mi_show_cursor
 
-  pha_metadata_ptr
+  jsr ta_push_context
   ; TODO: remove this
   ldy #0
 @loop:
@@ -131,8 +131,7 @@ trm_activate:
   sty copy_buffer40_size
   jsr mo_append_line_from_copy_buffer40
 
-  pla_metadata_ptr
-  jsr ta_set_metadata_ptr
+  jsr ta_pop_context
  
   rts
 
@@ -145,12 +144,9 @@ trm_tick:
 ; inputs:
 ;   copy_buffer40, copy_buffer40_size (num chars)
 trm_append_line_from_copy_buffer40:
-  pha_metadata_ptr
+  jsr ta_push_context
   jsr mo_append_line_from_copy_buffer40
-
-  pla_metadata_ptr
-  jsr ta_set_metadata_ptr
-
+  jsr ta_pop_context
   rts
 
 int_cmd_move_cursor_up:
@@ -205,7 +201,7 @@ int_cmd_char_delete:
   rts
 
 int_cmd_return:
-  pha_metadata_ptr
+  jsr ta_push_context
 
   lda #<mi_data
   sta CMDDATA0
@@ -215,8 +211,7 @@ int_cmd_return:
   sta CMDDATA4
   jsr mo_append
 
-  pla_metadata_ptr
-  jsr ta_set_metadata_ptr
+  jsr ta_pop_context
   jsr ta_shift_clear
   rts
 

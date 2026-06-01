@@ -37,14 +37,14 @@
 .INCLUDE "common.inc"
 .INCLUDE "config.inc"
 .INCLUDE "textarea.inc"
-.SEGMENT "CODE"
 
 .IMPORT copy_buffer40
 .IMPORT copy_buffer40_size
 .IMPORT utils_dump_mem_row
 .IMPORT ta_init_textarea
-.IMPORT ta_get_metadata_ptr
-.IMPORT ta_set_metadata_ptr
+.IMPORT ta_set_context
+.IMPORT ta_push_context
+.IMPORT ta_pop_context
 .IMPORT ta_repaint
 .IMPORT ta_shift_clear
 .IMPORT ta_scroll_up
@@ -53,10 +53,11 @@
 .EXPORT mo_append_line_from_copy_buffer40
 .EXPORT mo_repaint
 
-MARGIN_LEFT   = 1
-WIDTH         = 38
-HEIGHT        = 6
-SIZE          = WIDTH * HEIGHT
+.SEGMENT "CODE"
+.define MARGIN_LEFT   1
+.define WIDTH         38
+.define HEIGHT        6
+.define SIZE          WIDTH * HEIGHT
 
 ; initializes the text output area
 ;
@@ -172,21 +173,21 @@ mo_init:
   sta CMDDATA0
   lda #>area0_metadata
   sta CMDDATA1
-  jsr ta_set_metadata_ptr
+  jsr ta_set_context
   jsr ta_init_textarea
 
   lda #<area1_metadata
   sta CMDDATA0
   lda #>area1_metadata
   sta CMDDATA1
-  jsr ta_set_metadata_ptr
+  jsr ta_set_context
   jsr ta_init_textarea
 
   lda #<area2_metadata
   sta CMDDATA0
   lda #>area2_metadata
   sta CMDDATA1
-  jsr ta_set_metadata_ptr
+  jsr ta_set_context
   jsr ta_init_textarea
 
   rts
@@ -196,7 +197,7 @@ int_set_area0_active:
   sta CMDDATA0
   lda #>area0_metadata
   sta CMDDATA1
-  jsr ta_set_metadata_ptr
+  jsr ta_set_context
   rts
 
 int_set_area1_active:
@@ -204,7 +205,7 @@ int_set_area1_active:
   sta CMDDATA0
   lda #>area1_metadata
   sta CMDDATA1
-  jsr ta_set_metadata_ptr
+  jsr ta_set_context
   rts
 
 int_set_area2_active:
@@ -212,19 +213,18 @@ int_set_area2_active:
   sta CMDDATA0
   lda #>area2_metadata
   sta CMDDATA1
-  jsr ta_set_metadata_ptr
+  jsr ta_set_context
   rts
 
 mo_repaint:
-  pha_metadata_ptr
+  jsr ta_push_context
   jsr int_set_area0_active
   jsr ta_repaint
   jsr int_set_area1_active
   jsr ta_repaint
   jsr int_set_area2_active
   jsr ta_repaint
-  pla_metadata_ptr
-  jsr ta_set_metadata_ptr
+  jsr ta_pop_context
   rts
 
 ; appends N lines to the output

@@ -2,11 +2,10 @@
 .INCLUDE "common.inc"
 .INCLUDE "config.inc"
 .INCLUDE "textarea.inc"
-.SEGMENT "CODE"
 
 .IMPORT utils_dump_mem_row
 .IMPORT ta_init_textarea
-.IMPORT ta_set_metadata_ptr
+.IMPORT ta_set_context
 .IMPORT ta_hide_cursor
 .IMPORT ta_show_cursor
 .IMPORT ta_repaint
@@ -17,11 +16,13 @@
 .EXPORT mi_metadata
 .EXPORT mi_data
 
-MARGIN_LEFT   = 1
-MARGIN_TOP    = 20
-WIDTH         = 38
-HEIGHT        = 4
-SIZE          = WIDTH * HEIGHT
+.SEGMENT "CODE"
+
+.define MARGIN_LEFT   1
+.define MARGIN_TOP    20
+.define WIDTH         38
+.define HEIGHT        4
+.define SIZE          WIDTH * HEIGHT
 
 ; initializes the text input area
 ;
@@ -56,14 +57,14 @@ mi_init:
   sta mi_metadata+TextArea::cursor_maxy
 
   ; set pointers to table where screen row data is stored
-  lda #<input_scr_rows_lo
+  lda #<int_scr_row_ptr_table_lo
   sta mi_metadata+TextArea::scr_row_ptr_table_lo
-  lda #>input_scr_rows_lo
+  lda #>int_scr_row_ptr_table_lo
   sta mi_metadata+TextArea::scr_row_ptr_table_lo+1
 
-  lda #<input_scr_rows_hi
+  lda #<int_scr_row_ptr_table_hi
   sta mi_metadata+TextArea::scr_row_ptr_table_hi
-  lda #>input_scr_rows_hi
+  lda #>int_scr_row_ptr_table_hi
   sta mi_metadata+TextArea::scr_row_ptr_table_hi+1
 
   ; fill the data
@@ -79,7 +80,7 @@ mi_init:
   sta CMDDATA0
   lda #>mi_metadata
   sta CMDDATA1
-  jsr ta_set_metadata_ptr
+  jsr ta_set_context
   jsr ta_init_textarea
 
   rts
@@ -96,7 +97,7 @@ mi_repaint:
   jsr ta_repaint
   rts
 
-mi_metadata:        .tag TextArea
-input_scr_rows_lo:  .res HEIGHT
-input_scr_rows_hi:  .res HEIGHT
-mi_data:            .res SIZE
+mi_metadata:              .tag TextArea
+int_scr_row_ptr_table_lo: .res HEIGHT
+int_scr_row_ptr_table_hi: .res HEIGHT
+mi_data:                  .res SIZE

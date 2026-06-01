@@ -7,48 +7,58 @@
 ;
 ; It supports readonly and editable.
 ;
-; The logic needed for everything is contained in this file.
-; To use it, make an EXACT copy of the struct at the bottom of the file,
-; and any time you want to call a function from this file,
-; just make sure that it's operating on a copy of your metadata.
+; # About textarea contexts.
 ;
-; General usage 
-;   For performance reasons, this component operates on an
-;   internal copy of the data. It will only update the src
-;   if you explicitly tell it to or if you swap out the
-;   component.
-; 
-;   You don't own your data once you set the metadata, so you
-;   should not expect it to be current unless you swap it out
-;   or you explicity ask for it to copy it.
+; The ta_* routines do all operations on a TextArea struct
+; in the zero page.
 ;
-;   ta_initsys           - initializes this handler. call once.
-;   ta_set_metadata_ptr  - copies your metadata to local storage here
-;                          and keeps a pointer to your metadata.
-;                        - copies local data to the prior source.
-;   ta_init_textarea     - used to initialize the text area once you
-;                          know where on the screen it will be
-;   ta_*                 - functions that operate on the component.
+; To do operations on your TextArea, you set the context. The
+; context is simply a pointer to a text area.
 ;
-; Commands take arguments from CMDDATA.*
-;   NOTE: there is heavy usage of CMDDATA.* vars internally,
-;         so there's no guarantee that the data in these
-;         won't be modified when you call any function here.
+; For the purposes of this explanation, there are two contexts to
+; keep in mind:
+; * Existing context: the context currently applied to the text area
+; * New context: the context you are setting for the text area.
+;
+; When setting the context, the following happens:
+; 1. It copies zero page TextArea to existing context ptr
+;    location. It copies the full TextArea struct.
+; 2. It then copies the new TextArea to the ZP TextArea.
+; 3. It then updates its pointer to the location of the new
+;    TextArea so that it can do Step (1) if the context
+;    is changed again.
+;
+; There may be times where you want to swap out the existing context,
+; set a new context, and swap back in the prior context. For example,
+; during scrolling activities, you might want to scroll all the text
+; areas up by one and restore the context from prior to the scroll.
+;
+; Here's How:
+; 1. Call ta_push_context, which will save a pointer
+;    to the existing TextArea.
+; 2. Call ta_set_context, which will update the text area
+;    to point to the new location (saving data first)
+; 3. Do all your operations.
+; 4. Call ta_pop_context, which will restore the context
+;    and TextArea from the pushed location.
+; Note: it's not actually a stack operation. You can only
+;       push and pop one context.
 ;
 .SETCPU "6502"
 .INCLUDE "common.inc"
 .INCLUDE "config.inc"
 .INCLUDE "macros.inc"
 .INCLUDE "textarea.inc"
-.SEGMENT "CODE"
 
 .IMPORT utils_atascii_to_icode
 .IMPORT utils_dump_mem_row
 .IMPORT copy_buffer40
 .IMPORT copy_buffer40_size
-.EXPORT ta_initsys
+.EXPORT ta_init_context
+.EXPORT ta_set_context
+.EXPORT ta_push_context
+.EXPORT ta_pop_context
 .EXPORT ta_init_textarea
-.EXPORT ta_set_metadata_ptr
 .EXPORT ta_move_cursor_up
 .EXPORT ta_move_cursor_down
 .EXPORT ta_move_cursor_left
@@ -69,71 +79,132 @@
 .EXPORT ta_scroll_up
 .EXPORT ta_repaint
 
-ta_initsys:
+.segment "ZEROPAGE"
+context_ptr_lo:       .res 1
+context_ptr_hi:       .res 1
+context_ptr_saved_lo: .res 1
+context_ptr_saved_hi: .res 1
+local_metadata:       .tag TextArea
+
+.segment "CODE"
+cursor_row_scr_ptr_lo    = local_metadata+TextArea::cursor_row_scr_ptr
+cursor_row_scr_ptr_hi    = local_metadata+TextArea::cursor_row_scr_ptr+1
+first_row_data_ptr_lo    = local_metadata+TextArea::first_row_data_ptr
+first_row_data_ptr_hi    = local_metadata+TextArea::first_row_data_ptr+1
+last_row_data_ptr_lo     = local_metadata+TextArea::last_row_data_ptr
+last_row_data_ptr_hi     = local_metadata+TextArea::last_row_data_ptr+1
+first_row_scr_ptr_lo     = local_metadata+TextArea::first_row_scr_row_ptr
+first_row_scr_ptr_hi     = local_metadata+TextArea::first_row_scr_row_ptr+1
+last_row_scr_ptr_lo      = local_metadata+TextArea::last_row_scr_row_ptr
+last_row_scr_ptr_hi      = local_metadata+TextArea::last_row_scr_row_ptr+1
+
+
+; just makes sure that 
+ta_init_context:
   lda #0
-  sta TA_METADATA_PTR_LO
-  sta TA_METADATA_PTR_HI
-  sta TA_FIRST_ROW_DATA_PTR_LO 
-  sta TA_FIRST_ROW_DATA_PTR_HI 
-  sta TA_LAST_ROW_DATA_PTR_LO 
-  sta TA_LAST_ROW_DATA_PTR_HI 
-  sta TA_CURSOR_SCR_ROW_PTR_LO
-  sta TA_CURSOR_SCR_ROW_PTR_HI
-  sta TA_FIRST_ROW_SCR_ROW_PTR_LO
-  sta TA_FIRST_ROW_SCR_ROW_PTR_HI
-  sta TA_LAST_ROW_SCR_ROW_PTR_LO
-  sta TA_LAST_ROW_SCR_ROW_PTR_HI
+  sta context_ptr_lo
+  sta context_ptr_hi
+  sta context_ptr_saved_lo
+  sta context_ptr_saved_hi
   rts
 
-; swaps out which text area we're working on.
-; updates prior struct with latest data.
+; sets the context for the text area to the TextArea
+; pointed to by CMDDATA0/1. Make sure that you called
+; ta_init_context first or you might get some garbage.
 ;
 ; inputs:
-;   CMDDATA0/1 - ptr to the source metadata struct
-ta_set_metadata_ptr:
-  lda TA_METADATA_PTR_HI
-  bne swap
-  lda TA_METADATA_PTR_LO
-  beq noswap
-swap:
-  copy_struct_abs_to_zp local_metadata, TA_METADATA_PTR_LO, TextArea
-
-noswap:
-  copy_struct_zp_to_abs CMDDATA0, local_metadata, TextArea
-  
+;   CMDDATA0/1 - pointer to a text area
+ta_set_context:
+  lda context_ptr_hi
+  bne cache_exists
+  lda context_ptr_lo
+  beq no_cache
+cache_exists:
+  ; copy our local cache to the existing source TextArea
+  copy_struct_abs_to_zp local_metadata, context_ptr_lo, TextArea
+no_cache:
+  ; update our pointer to the new text area
   lda CMDDATA0
-  sta TA_METADATA_PTR_LO
+  sta context_ptr_lo
   lda CMDDATA1
-  sta TA_METADATA_PTR_HI
+  sta context_ptr_hi
 
-  lda local_metadata+TextArea::first_row_data_ptr
-  sta TA_FIRST_ROW_DATA_PTR_LO 
-  lda local_metadata+TextArea::first_row_data_ptr+1
-  sta TA_FIRST_ROW_DATA_PTR_HI
-
-  lda local_metadata+TextArea::last_row_data_ptr
-  sta TA_LAST_ROW_DATA_PTR_LO 
-  lda local_metadata+TextArea::last_row_data_ptr+1
-  sta TA_LAST_ROW_DATA_PTR_HI
-
-  lda local_metadata+TextArea::cursor_scr_row_ptr
-  sta TA_CURSOR_SCR_ROW_PTR_LO
-  lda local_metadata+TextArea::cursor_scr_row_ptr+1
-  sta TA_CURSOR_SCR_ROW_PTR_HI
-
-  lda local_metadata+TextArea::first_row_scr_row_ptr
-  sta TA_FIRST_ROW_SCR_ROW_PTR_LO
-  lda local_metadata+TextArea::first_row_scr_row_ptr+1
-  sta TA_FIRST_ROW_SCR_ROW_PTR_HI
-
-  lda local_metadata+TextArea::last_row_scr_row_ptr
-  sta TA_LAST_ROW_SCR_ROW_PTR_LO
-  lda local_metadata+TextArea::last_row_scr_row_ptr+1
-  sta TA_LAST_ROW_SCR_ROW_PTR_HI
-
-  ;jsr debug_dump_data
-
+  ; copy data from the new TextArea to the local cache in
+  ; the zero page.
+  copy_struct_zp_to_abs context_ptr_lo, local_metadata, TextArea
   rts
+
+; saves the existing context ptr so that it can
+; be reused. First updates the source TextArea with
+; what is currently in the cache.
+ta_push_context:
+  copy_struct_abs_to_zp local_metadata, context_ptr_lo, TextArea
+  lda context_ptr_lo
+  sta context_ptr_saved_lo
+  lda context_ptr_hi
+  sta context_ptr_saved_hi
+  rts
+
+; restores pushed context to the local cache. Updates
+; the context pointer and the cached data.
+ta_pop_context:
+  copy_struct_abs_to_zp local_metadata, context_ptr_lo, TextArea
+  copy_struct_zp_to_abs context_ptr_saved_lo, local_metadata, TextArea
+  lda context_ptr_saved_lo
+  sta context_ptr_lo
+  lda context_ptr_saved_hi
+  sta context_ptr_hi
+  rts
+
+;; swaps out which text area we're working on.
+;; updates prior struct with latest data.
+;;
+;; inputs:
+;;   CMDDATA0/1 - ptr to the source metadata struct
+;ta_set_metadata_ptr:
+;  lda source_metadata_ptr_hi
+;  bne swap
+;  lda source_metadata_ptr_lo
+;  beq noswap
+;swap:
+;  copy_struct_abs_to_zp local_metadata, source_metadata_ptr_lo, TextArea
+;
+;noswap:
+;  copy_struct_zp_to_abs CMDDATA0, local_metadata, TextArea
+;  
+;  lda CMDDATA0
+;  sta source_metadata_ptr_lo
+;  lda CMDDATA1
+;  sta source_metadata_ptr_hi
+;
+;  lda local_metadata+TextArea::first_row_data_ptr
+;  sta first_row_data_ptr_lo 
+;  lda local_metadata+TextArea::first_row_data_ptr+1
+;  sta first_row_data_ptr_hi
+;
+;  lda local_metadata+TextArea::last_row_data_ptr
+;  sta last_row_data_ptr_lo 
+;  lda local_metadata+TextArea::last_row_data_ptr+1
+;  sta last_row_data_ptr_hi
+;
+;  lda local_metadata+TextArea::cursor_row_scr_ptr
+;  sta cursor_row_scr_ptr_lo
+;  lda local_metadata+TextArea::cursor_row_scr_ptr+1
+;  sta cursor_row_scr_ptr_hi
+;
+;  lda local_metadata+TextArea::first_row_scr_row_ptr
+;  sta first_row_scr_ptr_lo
+;  lda local_metadata+TextArea::first_row_scr_row_ptr+1
+;  sta first_row_scr_ptr_hi
+;
+;  lda local_metadata+TextArea::last_row_scr_row_ptr
+;  sta last_row_scr_ptr_lo
+;  lda local_metadata+TextArea::last_row_scr_row_ptr+1
+;  sta last_row_scr_ptr_hi
+;
+;  ;jsr debug_dump_data
+;
+;  rts
 
 ; initializes a text area, sets appropriate screen pointers
 ;
@@ -194,10 +265,8 @@ ta_init_textarea:
 
   ; set base pointer to start of screen area
   lda CMDDATA4
-  sta TA_SCR_PTR_LO
   sta local_metadata+TextArea::first_row_scr_row_ptr
   lda CMDDATA5
-  sta TA_SCR_PTR_HI
   sta local_metadata+TextArea::first_row_scr_row_ptr+1
 
   ; now update all our row pointers
@@ -209,11 +278,11 @@ ta_init_textarea:
   lda CMDDATA5
   sta (CMDDATA2),y
   sta local_metadata+TextArea::last_row_scr_row_ptr+1
-  sta TA_LAST_ROW_SCR_ROW_PTR_HI
+  sta last_row_scr_ptr_hi
   lda CMDDATA4
   sta (CMDDATA0),y
   sta local_metadata+TextArea::last_row_scr_row_ptr
-  sta TA_LAST_ROW_SCR_ROW_PTR_LO
+  sta last_row_scr_ptr_lo
 
   clc
   adc #SCREEN_WIDTH
@@ -230,21 +299,21 @@ ta_init_textarea:
   sta init_last_row_offset
 
   lda local_metadata+TextArea::first_row_data_ptr
-  sta TA_FIRST_ROW_DATA_PTR_LO
+  sta first_row_data_ptr_lo
   clc
   adc init_last_row_offset
   sta local_metadata+TextArea::last_row_data_ptr
-  sta TA_LAST_ROW_DATA_PTR_LO
+  sta last_row_data_ptr_lo
 
   lda local_metadata+TextArea::first_row_data_ptr+1
-  sta TA_FIRST_ROW_DATA_PTR_LO+1
+  sta first_row_data_ptr_lo+1
   adc #0
   sta local_metadata+TextArea::last_row_data_ptr+1
-  sta TA_LAST_ROW_DATA_PTR_LO+1
+  sta last_row_data_ptr_lo+1
  
 
   jsr int_update_cursor_pos
-  jsr int_update_cursor_scr_row_ptr
+  jsr int_update_cursor_row_scr_ptr
 
   jsr ta_repaint
 
@@ -274,7 +343,7 @@ int_update_cursor_pos:
 ; updates the ptr to point to the scr row that the cursor is on
 ; TODO: probably shouldn't overwrite CMDDATA* in int_ functions
 ;       so as not to introduce unexpected behaviors
-int_update_cursor_scr_row_ptr:
+int_update_cursor_row_scr_ptr:
   ldy local_metadata+TextArea::cursory
 
   ; get the pointer to where we store the screen row pointers
@@ -284,16 +353,16 @@ int_update_cursor_scr_row_ptr:
   lda local_metadata+TextArea::scr_row_ptr_table_lo+1
   sta CMDDATA3
   lda (CMDDATA2),y
-  sta local_metadata+TextArea::cursor_scr_row_ptr
-  sta TA_CURSOR_SCR_ROW_PTR_LO
+  sta local_metadata+TextArea::cursor_row_scr_ptr
+  sta cursor_row_scr_ptr_lo
 
   lda local_metadata+TextArea::scr_row_ptr_table_hi
   sta CMDDATA4
   lda local_metadata+TextArea::scr_row_ptr_table_hi+1
   sta CMDDATA5
   lda (CMDDATA4),y
-  sta local_metadata+TextArea::cursor_scr_row_ptr+1
-  sta TA_CURSOR_SCR_ROW_PTR_HI
+  sta local_metadata+TextArea::cursor_row_scr_ptr+1
+  sta cursor_row_scr_ptr_hi
 
   rts
 
@@ -301,9 +370,9 @@ ta_hide_cursor:
   lda local_metadata+TextArea::use_cursor
   beq @done
 
-  lda local_metadata+TextArea::cursor_scr_row_ptr
+  lda local_metadata+TextArea::cursor_row_scr_ptr
   sta CMDDATA2
-  lda local_metadata+TextArea::cursor_scr_row_ptr+1
+  lda local_metadata+TextArea::cursor_row_scr_ptr+1
   sta CMDDATA3
 
   lda local_metadata+TextArea::margin_left
@@ -321,9 +390,9 @@ ta_show_cursor:
   lda local_metadata+TextArea::use_cursor
   beq @done
 
-  lda local_metadata+TextArea::cursor_scr_row_ptr
+  lda local_metadata+TextArea::cursor_row_scr_ptr
   sta CMDDATA2
-  lda local_metadata+TextArea::cursor_scr_row_ptr+1
+  lda local_metadata+TextArea::cursor_row_scr_ptr+1
   sta CMDDATA3
 
   lda local_metadata+TextArea::margin_left
@@ -349,7 +418,7 @@ ta_move_cursor_up:
   sta local_metadata+TextArea::cursory
 @updated:
   jsr int_update_cursor_pos
-  jsr int_update_cursor_scr_row_ptr
+  jsr int_update_cursor_row_scr_ptr
 
   jsr ta_show_cursor
 
@@ -369,7 +438,7 @@ ta_move_cursor_down:
   sta local_metadata+TextArea::cursory
 @updated:
   jsr int_update_cursor_pos
-  jsr int_update_cursor_scr_row_ptr
+  jsr int_update_cursor_row_scr_ptr
 
   jsr ta_show_cursor
 
@@ -409,7 +478,7 @@ ta_move_cursor_left:
   sta local_metadata+TextArea::cursorx
 @updated:
   jsr int_update_cursor_pos
-  jsr int_update_cursor_scr_row_ptr
+  jsr int_update_cursor_row_scr_ptr
 @done:
   jsr ta_show_cursor
 
@@ -445,7 +514,7 @@ ta_move_cursor_right:
   sta local_metadata+TextArea::cursorx
 @updated:
   jsr int_update_cursor_pos
-  jsr int_update_cursor_scr_row_ptr
+  jsr int_update_cursor_row_scr_ptr
 @done:
   jsr ta_show_cursor
 
@@ -455,7 +524,7 @@ ta_move_cursor_right:
 ; the current row
 int_update_screen_char:
   ldy local_metadata+TextArea::cursorpos
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  lda (first_row_data_ptr_lo),y
   jsr utils_atascii_to_icode
   pha
   lda local_metadata+TextArea::margin_left
@@ -463,7 +532,7 @@ int_update_screen_char:
   adc local_metadata+TextArea::cursorx
   tay
   pla
-  sta (TA_CURSOR_SCR_ROW_PTR_LO),y
+  sta (cursor_row_scr_ptr_lo),y
   rts
 
 ; sets the character at the current cursor location provided in A.
@@ -473,7 +542,7 @@ int_update_screen_char:
 ;   - A the character
 ta_typechar:
   ldy local_metadata+TextArea::cursorpos
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
   jsr int_update_screen_char
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
   sta CMDDATA0
@@ -488,7 +557,7 @@ ta_backspace:
   jsr ta_move_cursor_left
   ldy local_metadata+TextArea::cursorpos
   lda #' '
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
   jsr int_update_screen_char
   jsr ta_show_cursor
   rts
@@ -499,7 +568,7 @@ int_cursor_home:
   sta local_metadata+TextArea::cursorx
   sta local_metadata+TextArea::cursorpos
   jsr int_update_cursor_pos
-  jsr int_update_cursor_scr_row_ptr
+  jsr int_update_cursor_row_scr_ptr
   rts
 
 ; clears all data between the markers
@@ -510,7 +579,7 @@ int_clear_data:
   ldy update_marker_start
 @loop:
   lda #' '
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
   iny
   cpy update_marker_end
   bcc @loop
@@ -557,7 +626,7 @@ ta_repaint:
   sty repaint_tmp0
   txa
   tay
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  lda (first_row_data_ptr_lo),y
   jsr utils_atascii_to_icode
   ldy repaint_tmp0
   sta (CMDDATA0),y
@@ -587,7 +656,7 @@ int_clear_row:
   ldx local_metadata+TextArea::width
   lda #' '
 @loop:
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
   iny
   dex
   bne @loop
@@ -602,7 +671,7 @@ int_clear_last_row:
   tay
   lda #' '
 @loop:
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
   iny
   cpy local_metadata+TextArea::size
   bne @loop
@@ -640,9 +709,9 @@ int_shift_lines_down:
   sta move_line_cursor_from ; end of previous line
 @loop:
   ldy move_line_cursor_from
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  lda (first_row_data_ptr_lo),y
   ldy move_line_cursor_to
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
 
   lda move_line_start_line_pos
   cmp move_line_cursor_from
@@ -690,7 +759,7 @@ ta_scroll_up:
 
   ldy #0
 @save_discarded_loop:
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  lda (first_row_data_ptr_lo),y
   sta (CMDDATA2),y
   iny
   cpy scroll_num_chars_scrolled_off
@@ -700,13 +769,13 @@ ta_scroll_up:
   ldy scroll_num_chars_scrolled_off ; start of data to pull from
   ldx #0 ; start of data to push to
 @shift_loop:
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y ; get char to shift
+  lda (first_row_data_ptr_lo),y ; get char to shift
   pha
   sty move_line_tempy
   txa
   tay
   pla
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y ; save shifted char to new loc
+  sta (first_row_data_ptr_lo),y ; save shifted char to new loc
   ldy move_line_tempy
   inx
   iny
@@ -727,7 +796,7 @@ ta_scroll_up:
   txa
   tay
   pla
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y ; save backfill
+  sta (first_row_data_ptr_lo),y ; save backfill
   ldy move_line_tempy
   inx
   iny
@@ -753,9 +822,9 @@ int_shift_lines_up:
   ldy #0
 @loop:
   ldy move_line_cursor_from
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  lda (first_row_data_ptr_lo),y
   ldy move_line_cursor_to
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
 
   inc move_line_cursor_to
   inc move_line_cursor_from
@@ -806,20 +875,20 @@ int_shift_chars_right:
   dey
   cpy local_metadata+TextArea::cursorpos
   beq @first_char
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  lda (first_row_data_ptr_lo),y
   iny
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
   cpy #1
   beq @done
   dey
   jmp @loop
 @first_char:
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  lda (first_row_data_ptr_lo),y
   iny
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
   dey
   lda #' '
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
 @done:
   rts
 
@@ -831,15 +900,15 @@ int_shift_chars_left:
   iny
   cpy local_metadata+TextArea::size
   beq @last_char
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  lda (first_row_data_ptr_lo),y
   dey
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
   iny
   jmp @loop
 @last_char: 
   dey
   lda #' '
-  sta (TA_FIRST_ROW_DATA_PTR_LO),y
+  sta (first_row_data_ptr_lo),y
 @done:
   rts
 
@@ -889,7 +958,7 @@ ta_paste_last_line:
   ldy #0
 @loop:
   lda copy_buffer40,y
-  sta (TA_LAST_ROW_DATA_PTR_LO),y
+  sta (last_row_data_ptr_lo),y
   iny
   cpy local_metadata+TextArea::width
   beq @done
@@ -904,7 +973,7 @@ ta_paste_last_line:
 ta_copy_first_line:
   ldy #0
 @loop:
-  lda (TA_FIRST_ROW_DATA_PTR_LO),y
+  lda (first_row_data_ptr_lo),y
   sta copy_buffer40,y
   iny
   cpy local_metadata+TextArea::width
@@ -916,7 +985,7 @@ ta_copy_first_line:
 ta_copy_last_line:
   ldy #0
 @loop:
-  lda (TA_LAST_ROW_DATA_PTR_LO),y
+  lda (last_row_data_ptr_lo),y
   sta copy_buffer40,y
   iny
   cpy local_metadata+TextArea::width
@@ -942,56 +1011,6 @@ ta_char_delete:
 @done:
   rts
 
-debug_dump_data:
-  lda SCR_PTR_LO
-  clc
-  adc #40
-  sta CMDDATA0
-  lda SCR_PTR_HI
-  adc #0
-  sta CMDDATA1
-  lda #<update_marker_start
-  sta CMDDATA2
-  lda #>update_marker_start
-  sta CMDDATA3
-  jsr utils_dump_mem_row
- 
-  lda SCR_PTR_LO
-  clc
-  adc #80
-  sta CMDDATA0
-  lda SCR_PTR_HI
-  adc #0
-  sta CMDDATA1
-  lda local_metadata+TextArea::first_row_data_ptr
-  sta CMDDATA2
-  lda local_metadata+TextArea::first_row_data_ptr+1
-  sta CMDDATA3
-  ldx #0
-@loop:
-  jsr utils_dump_mem_row
-  lda CMDDATA0
-  clc
-  adc #40
-  sta CMDDATA0
-  lda CMDDATA1
-  adc #0
-  sta CMDDATA1
-
-  lda CMDDATA2
-  clc
-  adc #8
-  sta CMDDATA2
-  lda CMDDATA3
-  adc #0
-  sta CMDDATA3
-  
-  inx
-  cpx #15
-  bne @loop
-  rts
-
-
 show_cursor_var0: .byte 0
 update_marker_start: .byte 0
 update_marker_end:   .byte 0
@@ -1007,16 +1026,12 @@ move_line_tempy:               .byte 0
 scroll_num_chars_remaining:    .byte 0
 scroll_num_chars_scrolled_off: .byte 0
 
-init_last_row_offset:     .byte 0
+init_last_row_offset:          .byte 0
 
-repaint_tmp0:             .byte 0
-repaint_tmp1:             .byte 0
+repaint_tmp0:                  .byte 0
+repaint_tmp1:                  .byte 0
 
-get_line_offset:            .byte 0
+get_line_offset:               .byte 0
 get_line_num_chars:            .byte 0
 
-debug_tmp0: .byte 0
-
-; internal copy
-local_metadata: .tag TextArea
 

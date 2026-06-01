@@ -1,26 +1,18 @@
 .ifndef TEXT_AREA_INC
-TEXT_AREA_INC = 1
+.define TEXT_AREA_INC 1
+
 .SEGMENT "CODE"
 
-TA_SCROLL_BACKFILL_ENABLED       = %10000000 ; when scrolling, backfill
-TA_SCROLL_SAVE_DISCARDED_ENABLED = %01000000 ; when scrolling, save discarded
-TA_SCROLL_JUST_SCROLL            = %00000000
+.define TA_SCROLL_BACKFILL_ENABLED       %10000000 ; when scrolling, backfill
+.define TA_SCROLL_SAVE_DISCARDED_ENABLED %01000000 ; when scrolling, save discarded
+.define TA_SCROLL_JUST_SCROLL            %00000000
 
-; get the current metadata_ptr from the text area
-; and push it to the stack
-.macro pha_metadata_ptr
-  lda TA_METADATA_PTR_LO
-  pha
-  lda TA_METADATA_PTR_HI
-  pha
-.endmacro
-
-.macro pla_metadata_ptr
-  pla
-  sta CMDDATA1
-  pla
-  sta CMDDATA0
-.endmacro
+.define CURSOR_FLAG_WRAP_SAME_LINE        %10000000
+.define CURSOR_FLAG_WRAP_DIFF_LINE        %00000000
+.define CURSOR_FLAG_ENABLED               %10000000
+.define CURSOR_FLAG_DISABLED              %00000000
+.define CURSOR_BEHAVIOR_WRAP_CHANGE_LINES %10000000
+.define CURSOR_BEHAVIOR_WRAP_SAME_LINE    %00000000
 
 .struct TextArea
   first_row_data_ptr    .word
@@ -38,7 +30,7 @@ TA_SCROLL_JUST_SCROLL            = %00000000
   cursor_maxy           .byte
   cursorpos             .byte
   use_cursor            .byte
-  cursor_scr_row_ptr    .word
+  cursor_row_scr_ptr    .word
   first_row_scr_row_ptr .word
   last_row_scr_row_ptr  .word
 .endstruct

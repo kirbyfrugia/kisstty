@@ -7,8 +7,6 @@
 .INCLUDE "rs232.inc"
 .INCLUDE "terminal.inc"
 
-.SEGMENT "CODE"
-
 .IMPORT g_kbd_key_pressed
 .IMPORT g_kbdcode_raw
 .IMPORT g_kbdcode_raw_stripped
@@ -20,9 +18,18 @@
 .EXPORT cfg_config_done
 .EXPORT cfg_saved_config
 
+.SEGMENT "ZEROPAGE"
+cfg_ptr_lo:                  .res 1
+cfg_ptr_hi:                  .res 1
+cfg_scr_ptr_lo:              .res 1
+cfg_scr_ptr_hi:              .res 1
+cfg_data_ptr_lo:             .res 1
+cfg_data_ptr_hi:             .res 1
+
+.SEGMENT "CODE"
 .LINECONT +
 
-MENU_MARGIN_TOP = 1
+.define MENU_MARGIN_TOP 1
 
 cfg_init:
   lda #0
@@ -190,116 +197,116 @@ cfg_init:
 ; note: assumes <256 chars worth of menu item data
 ;
 ; inputs:
-;   CFG_PTR_LO/HI   - pointer to menu struct
+;   cfg_ptr_lo/HI   - pointer to menu struct
 ;   menu_item_value - initial value
 int_refresh_menu:
   ldy #Menu::scr_pos_ptr
-  lda (CFG_PTR_LO),y
-  sta CFG_SCR_PTR_LO
+  lda (cfg_ptr_lo),y
+  sta cfg_scr_ptr_lo
   iny
-  lda (CFG_PTR_LO),y
-  sta CFG_SCR_PTR_HI
+  lda (cfg_ptr_lo),y
+  sta cfg_scr_ptr_hi
 
   ldy #Menu::border_width
-  lda (CFG_PTR_LO),y
+  lda (cfg_ptr_lo),y
   sta draw_menu_border_width
 
   ldy #Menu::num_items
-  lda (CFG_PTR_LO),y
+  lda (cfg_ptr_lo),y
   sta menu_item_num_items
 
   ldy #Menu::items_values_ptr
-  lda (CFG_PTR_LO),y
-  sta CFG_DATA_PTR_LO
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_lo
   iny
-  lda (CFG_PTR_LO),y
-  sta CFG_DATA_PTR_HI
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_hi
 
   jsr int_find_menu_item_index
   lda menu_item_index
   ldy #Menu::selected_index
-  sta (CFG_PTR_LO),y
+  sta (cfg_ptr_lo),y
 
 @top_border:
   ldy #0
   lda #$51 ; upper left corner
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   lda #$52 ; horizontal bar
 @top_loop:
   iny
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   cpy draw_menu_border_width
   bne @top_loop
   lda #$45 ; upper right corner
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
 
 @header:
-  ; header data -> CFG_DATA_PTR_LO
+  ; header data -> cfg_data_ptr_lo
   ldy #Menu::header_ptr
-  lda (CFG_PTR_LO),y
-  sta CFG_DATA_PTR_LO
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_lo
   iny
-  lda (CFG_PTR_LO),y
-  sta CFG_DATA_PTR_HI
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_hi
 
   ldy #0
 @header_loop:
-  lda (CFG_DATA_PTR_LO),y
+  lda (cfg_data_ptr_lo),y
   beq @header_loop_done
   jsr utils_atascii_to_icode
   iny
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   jmp @header_loop
 @header_loop_done:
   ; move to next row for menu items
-  lda CFG_SCR_PTR_LO
+  lda cfg_scr_ptr_lo
   clc
   adc #SCREEN_WIDTH
-  sta CFG_SCR_PTR_LO
-  lda CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_lo
+  lda cfg_scr_ptr_hi
   adc #0
-  sta CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_hi
   
-  ; menu item data -> CFG_DATA_PTR_LO
+  ; menu item data -> cfg_data_ptr_lo
   ldy #Menu::items_labels_ptr
-  lda (CFG_PTR_LO),y
-  sta CFG_DATA_PTR_LO
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_lo
   iny
-  lda (CFG_PTR_LO),y
-  sta CFG_DATA_PTR_HI
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_hi
 
   ldx #0
   stx menu_data_offset
 @menu_item_rows_loop:
   ldy #0
   lda #$41 ; vertical left bar
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   iny
   iny
 @menu_item_loop:
   sty draw_menu_tempy ; offset on current line
   ldy menu_data_offset 
-  lda (CFG_DATA_PTR_LO),y
+  lda (cfg_data_ptr_lo),y
   beq @menu_item_done ; null terminator
   jsr utils_atascii_to_icode
   ldy draw_menu_tempy
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   iny
   inc menu_data_offset 
   jmp @menu_item_loop
 @menu_item_done:
   ldy draw_menu_border_width
   lda #$44 ; vertical right bar
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
 
   inc menu_data_offset 
-  lda CFG_SCR_PTR_LO
+  lda cfg_scr_ptr_lo
   clc
   adc #SCREEN_WIDTH
-  sta CFG_SCR_PTR_LO
-  lda CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_lo
+  lda cfg_scr_ptr_hi
   adc #0
-  sta CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_hi
 
   inx
   cpx menu_item_num_items
@@ -309,15 +316,15 @@ int_refresh_menu:
 
   ldy #0
   lda #$5a ; lower left corner
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   lda #$52 ; horizontal bar
 @btm_loop:
   iny
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   cpy draw_menu_border_width
   bne @btm_loop
   lda #$43 ; lower right corner
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
 
   jsr int_highlight_selected_menu_item
 
@@ -325,25 +332,25 @@ int_refresh_menu:
 
 int_draw_preset:
   ldy #Preset::scr_pos_ptr
-  lda (CFG_PTR_LO),y
-  sta CFG_SCR_PTR_LO
+  lda (cfg_ptr_lo),y
+  sta cfg_scr_ptr_lo
   iny
-  lda (CFG_PTR_LO),y
-  sta CFG_SCR_PTR_HI
+  lda (cfg_ptr_lo),y
+  sta cfg_scr_ptr_hi
 
   ldy #Preset::label_ptr
-  lda (CFG_PTR_LO),y
-  sta CFG_DATA_PTR_LO
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_lo
   iny
-  lda (CFG_PTR_LO),y
-  sta CFG_DATA_PTR_HI
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_hi
 
   ldy #0
 @loop:
-  lda (CFG_DATA_PTR_LO),y
+  lda (cfg_data_ptr_lo),y
   beq @loop_done ; null char
   jsr utils_atascii_to_icode
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   iny
   bne @loop
 @loop_done:
@@ -352,9 +359,9 @@ int_draw_preset:
 
 int_draw_banners:
   lda SCR_PTR_LO
-  sta CFG_SCR_PTR_LO
+  sta cfg_scr_ptr_lo
   lda SCR_PTR_HI
-  sta CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_hi
 
   ldy #(SCREEN_WIDTH-1)
   ;lda #' '|$80
@@ -362,17 +369,17 @@ int_draw_banners:
   eor #$80
   jsr utils_atascii_to_icode
 @top_bar_loop:
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   dey
   bpl @top_bar_loop
 
   lda SCR_PTR_LO
   clc
   adc #1
-  sta CFG_SCR_PTR_LO
+  sta cfg_scr_ptr_lo
   lda SCR_PTR_HI
   adc #0
-  sta CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_hi
 
   ldy #0
 @top_banner_loop:
@@ -380,7 +387,7 @@ int_draw_banners:
   beq @top_banner_done
   eor #$80
   jsr utils_atascii_to_icode
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   iny
   jmp @top_banner_loop
 @top_banner_done:
@@ -389,17 +396,17 @@ int_draw_banners:
   lda SCR_PTR_LO
   clc
   adc #<OFFSET
-  sta CFG_SCR_PTR_LO
+  sta cfg_scr_ptr_lo
   lda SCR_PTR_HI
   adc #>OFFSET
-  sta CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_hi
 
   ldy #0
 @serial_preset_loop:
   lda presets,y
   beq @serial_preset_done
   jsr utils_atascii_to_icode
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   iny
   jmp @serial_preset_loop
 @serial_preset_done:
@@ -438,25 +445,25 @@ cfg_activate:
   rts
 
 ; inputs:
-;   CFG_PTR_LO/HI   - pointer to menu struct
+;   cfg_ptr_lo/HI   - pointer to menu struct
 ;   menu_item_index - index to highlight
 int_highlight_selected_menu_item:
   ldy #Menu::scr_pos_ptr
-  lda (CFG_PTR_LO),y
+  lda (cfg_ptr_lo),y
   clc
   adc #SCREEN_WIDTH
-  sta CFG_SCR_PTR_LO
+  sta cfg_scr_ptr_lo
   iny
-  lda (CFG_PTR_LO),y
+  lda (cfg_ptr_lo),y
   adc #0
-  sta CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_hi
 
   ldy #Menu::border_width
-  lda (CFG_PTR_LO),y
+  lda (cfg_ptr_lo),y
   sta menu_item_border_width
 
   ldy #Menu::num_items
-  lda (CFG_PTR_LO),y
+  lda (cfg_ptr_lo),y
   sta menu_item_num_items
 
   ldx #0
@@ -467,13 +474,13 @@ int_highlight_selected_menu_item:
   ; if here, this is not the row, but let's
   ; make sure we de-highlight it if needed
   ldy #1
-  lda (CFG_SCR_PTR_LO),y
+  lda (cfg_scr_ptr_lo),y
   and #%10000000 ; check if msb set on first char
   beq @menu_item_row_done ; was not highlighted
 @dehighlight_loop:
-  lda (CFG_SCR_PTR_LO),y
+  lda (cfg_scr_ptr_lo),y
   and #%01111111
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   iny
   cpy menu_item_border_width
   bne @dehighlight_loop
@@ -481,9 +488,9 @@ int_highlight_selected_menu_item:
 @menu_item_match:
   ldy #1
 @highlight_loop:
-  lda (CFG_SCR_PTR_LO),y
+  lda (cfg_scr_ptr_lo),y
   ora #%10000000
-  sta (CFG_SCR_PTR_LO),y
+  sta (cfg_scr_ptr_lo),y
   iny
   cpy menu_item_border_width
   bne @highlight_loop
@@ -491,13 +498,13 @@ int_highlight_selected_menu_item:
   inx
   cpx menu_item_num_items
   beq @done
-  lda CFG_SCR_PTR_LO
+  lda cfg_scr_ptr_lo
   clc
   adc #SCREEN_WIDTH
-  sta CFG_SCR_PTR_LO
-  lda CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_lo
+  lda cfg_scr_ptr_hi
   adc #0
-  sta CFG_SCR_PTR_HI
+  sta cfg_scr_ptr_hi
   jmp @menu_item_rows_loop
 @done:
   rts
@@ -505,7 +512,7 @@ int_highlight_selected_menu_item:
 ; Finds the index of the item with this value.
 ;
 ; inputs:
-;   CFG_DATA_PTR_LO/HI  - pointer to values array
+;   cfg_data_ptr_lo/HI  - pointer to values array
 ;   menu_item_num_items - number of items in the menu
 ;   menu_item_value     - value to search for
 ; outputs:
@@ -513,7 +520,7 @@ int_highlight_selected_menu_item:
 int_find_menu_item_index:
   ldy #0
 @index_loop:
-  lda (CFG_DATA_PTR_LO),y
+  lda (cfg_data_ptr_lo),y
   cmp menu_item_value
   beq @found
   iny
@@ -531,14 +538,14 @@ int_find_menu_item_index:
 ; for this menu. And highlights the new item.
 ;
 ; inputs:
-;   CFG_PTR_LO/HI - pointer to menu
+;   cfg_ptr_lo/HI - pointer to menu
 int_select_next_menu_item:
   ldy #Menu::num_items
-  lda (CFG_PTR_LO),y
+  lda (cfg_ptr_lo),y
   sta menu_item_num_items
 
   ldy #Menu::selected_index
-  lda (CFG_PTR_LO),y
+  lda (cfg_ptr_lo),y
   clc
   adc #1
   cmp menu_item_num_items
@@ -547,7 +554,7 @@ int_select_next_menu_item:
 @nowrap:
   sta menu_item_index
   ldy #Menu::selected_index
-  sta (CFG_PTR_LO),y
+  sta (cfg_ptr_lo),y
   jsr int_highlight_selected_menu_item
 
   rts
@@ -951,3 +958,5 @@ highlight_border_width: .byte 0
 cfg_draft_config:       .tag Config
 cfg_saved_config:       .tag Config
 cfg_config_done:        .byte 0
+
+

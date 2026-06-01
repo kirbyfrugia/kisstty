@@ -3,19 +3,6 @@
 .INCLUDE "macros.inc"
 .INCLUDE "common.inc"
 
-.SEGMENT "CODE"
-
-MAX_INPUT_LEN = 114
-WOZMON        = $9800
-RS232_CHANNEL = 32    ; channel 2 (2 * 16)
-
-MODE_CONFIG           = %10000000
-MODE_TERMINAL         = %01000000
-CTRL_SHIFT_FLAG_CTRL  = %10000000
-CTRL_SHIFT_FLAG_SHIFT = %01000000
-CTRL_SHIFT_FLAG_LOWER = %00000000
-DEBOUNCE_NUM_FRAMES   = 20
-
 .IMPORT g_kbd_key_pressed
 .IMPORT g_kbdcode_raw
 .IMPORT g_kbdcode_raw_stripped
@@ -35,7 +22,7 @@ DEBOUNCE_NUM_FRAMES   = 20
 .IMPORT kbd_unmodified
 .IMPORT kbd_shifted
 .IMPORT kbd_ctrld
-.IMPORT ta_initsys
+.IMPORT ta_init_context
 .IMPORT cfg_init
 .IMPORT cfg_activate
 .IMPORT cfg_tick
@@ -43,14 +30,21 @@ DEBOUNCE_NUM_FRAMES   = 20
 .IMPORT trm_init
 .IMPORT trm_activate
 .IMPORT trm_tick
-
-
 .ifdef DEBUG
 .IMPORT wozmon_main
 .endif
-
-
 .EXPORT start
+
+.SEGMENT "CODE"
+
+.define RS232_CHANNEL         32        ; channel 2 (2 * 16)
+.define MODE_CONFIG           %10000000
+.define MODE_TERMINAL         %01000000
+.define CTRL_SHIFT_FLAG_CTRL  %10000000
+.define CTRL_SHIFT_FLAG_SHIFT %01000000
+.define CTRL_SHIFT_FLAG_LOWER %00000000
+.define DEBOUNCE_NUM_FRAMES   20
+
 start:
 .ifdef DEBUG
   lda #<wozmon_main
@@ -225,7 +219,7 @@ init:
   sta debounce_count_start
 
   jsr set_vbi_handler
-  jsr ta_initsys
+  jsr ta_init_context
   jsr cfg_init
   jsr trm_init
 

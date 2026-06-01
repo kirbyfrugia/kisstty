@@ -2,7 +2,6 @@
 .INCLUDE "atari.inc"
 .INCLUDE "macros.inc"
 .INCLUDE "rs232.inc"
-.SEGMENT "CODE"
 
 .EXPORT rs232_open
 .EXPORT rs232_close
@@ -13,11 +12,12 @@
 .EXPORT rs232_input_buffer_size
 .EXPORT rs232_output_buffer_size
 
-WRITE_BUF_LEN           = 512
-CMD_TRANSLATION_PARITY  = $26
-CMD_CONTROL_LINES       = $22
-CMD_CONCURRENCY_MODE    = $28
-CMD_BAUD_STOPBITS_READY = $24
+.SEGMENT "CODE"
+.define WRITE_BUF_LEN           512
+.define CMD_TRANSLATION_PARITY  $26
+.define CMD_CONTROL_LINES       $22
+.define CMD_CONCURRENCY_MODE    $28
+.define CMD_BAUD_STOPBITS_READY $24
 
 ; inputs:
 ;   x - channel

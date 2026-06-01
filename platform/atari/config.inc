@@ -1,5 +1,6 @@
 .ifndef CONFIG_INC
-CONFIG_INC = 1
+.define CONFIG_INC 1
+
 .SEGMENT "CODE"
 .LINECONT +
 
@@ -67,9 +68,9 @@ CONFIG_INC = 1
 
 .macro refresh_menu menu, _init_value
   lda #<menu
-  sta CFG_PTR_LO
+  sta cfg_ptr_lo
   lda #>menu
-  sta CFG_PTR_HI
+  sta cfg_ptr_hi
   lda _init_value
   sta menu_item_value
   jsr int_refresh_menu
@@ -126,17 +127,17 @@ CONFIG_INC = 1
 
 .macro draw_preset preset
   lda #<preset
-  sta CFG_PTR_LO
+  sta cfg_ptr_lo
   lda #>preset
-  sta CFG_PTR_HI
+  sta cfg_ptr_hi
   jsr int_draw_preset
 .endmacro
 
 .macro handle_menu_next _menu
   lda #<_menu
-  sta CFG_PTR_LO
+  sta cfg_ptr_lo
   lda #>_menu
-  sta CFG_PTR_HI
+  sta cfg_ptr_hi
   jsr int_select_next_menu_item
 .endmacro
 

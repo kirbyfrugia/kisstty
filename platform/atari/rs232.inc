@@ -1,5 +1,5 @@
 .ifndef RS232_INC
-RS232_INC = 1
+.define RS232_INC 1
 .SEGMENT "CODE"
 
 ; enums for configuring rs232
