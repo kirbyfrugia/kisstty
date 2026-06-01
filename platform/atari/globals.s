@@ -12,7 +12,6 @@
 .EXPORT g_kbdcode_raw
 .EXPORT g_kbdcode_raw_stripped
 .EXPORT g_kbdcode_atascii
-.segment "ZEROPAGE"
 
 .exportzp ZPB0, ZPB1, ZPB2, ZPB3, ZPB4, ZPB5
 .exportzp CMDDATA0, CMDDATA1, CMDDATA2, CMDDATA3, CMDDATA4, CMDDATA5, CMDDATA6, CMDDATA7
@@ -28,6 +27,7 @@
 .exportzp CFG_SCR_PTR_LO, CFG_SCR_PTR_HI
 .exportzp CFG_DATA_PTR_LO, CFG_DATA_PTR_HI
 
+.segment "ZEROPAGE"
 ZPB0:                        .res 1
 ZPB1:                        .res 1
 ZPB2:                        .res 1
