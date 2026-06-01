@@ -6,6 +6,7 @@
 .INCLUDE "macros.inc"
 .INCLUDE "textarea.inc"
 
+.IMPORT cfg_saved_config
 .IMPORT copy_buffer40
 .IMPORT copy_buffer40_size
 .IMPORT g_kbd_key_pressed
@@ -221,18 +222,6 @@ int_cmd_return:
 int_handle_kbd:
   lda g_kbd_key_pressed
   beq @done
-;  ; TODO remove when no longer debugging
-;  lda SAVMSC
-;  sta CMDDATA0
-;  lda SAVMSC+1
-;  sta CMDDATA1
-;  ldy #0
-;  lda g_kbdcode_raw 
-;  jsr utils_byte_to_scr_hex
-;  ldy #3
-;  lda ctrl_shift_lock_flag
-;  jsr utils_byte_to_scr_hex
-
   lda g_kbdcode_raw 
   cmp #$8e
   beq @up_arrow

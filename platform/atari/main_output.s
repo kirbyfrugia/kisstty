@@ -1,3 +1,38 @@
+; TODO: some of this should move to terminal.s or elsewhere. It's a bit
+; weird for the output to manage the input...
+;
+; A screen is made up of multiple output text areas and a single input
+; text area. In some cases, we have a single line input (e.g. char mode)
+; and in others we have a multi-line input.
+;
+; The screen uses multiple output text areas to keep their size below 256
+; bytes Each text area has its own cursor, but it isn't visible in output
+; text areas. The cursor is used to know where to insert text, even
+; if it is not visible.
+;
+; main_output is responsible for managing flow between the text areas.
+; For example, if we receive text over serial, that text goes to the
+; upper left of the upper text area. It keeps getting added to that text
+; area until it overflows. At that point, new text goes to the next
+; output text area downwards.
+;
+; Once text reaches the bottom right of the bottom text area, all output
+; text areas scroll upwards and a new line is added at the bottom. The
+; cursor moves to the start of that line and we continue.
+;
+; main_output keeps track of where text goes across the areas when it
+; overflows. For example, until we've reached the bottom of the upper
+; text area, text is just drawn in that area.
+;
+; So once we've reach the bottom, the output always scrolls.
+;
+; Users only interact with the input text area. The input area can
+; be in one of two modes. In line mode, users interact with it until
+; they are done. They then hit return to accept their input.
+;
+; In other modes, the input area is a single line. The cursor doesn't
+; move
+;
 .SETCPU "6502"
 .INCLUDE "common.inc"
 .INCLUDE "config.inc"
@@ -241,7 +276,6 @@ mo_append:
 
   rts
 
-
 ; appends data to the output area. will
 ; blank out anything beyond copy_buffer40_size
 ; inputs:
@@ -265,6 +299,13 @@ mo_append_line_from_copy_buffer40:
   jsr mo_append
 
   rts
+
+mo_append_char:
+
+  rts
+
+
+active_area: .byte $00
 
 area0_metadata:             .tag TextArea
 area0_scr_row_ptr_table_lo: .res HEIGHT
