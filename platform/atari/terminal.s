@@ -6,6 +6,8 @@
 .INCLUDE "macros.inc"
 .INCLUDE "textarea.inc"
 
+.SEGMENT "CODE"
+
 .IMPORT cfg_saved_config
 .IMPORT copy_buffer40
 .IMPORT copy_buffer40_size
@@ -47,7 +49,6 @@
 .EXPORT trm_tick
 .EXPORT trm_append_line_from_copy_buffer40
 
-.SEGMENT "CODE"
 
 trm_init:
   jsr mo_init

@@ -65,6 +65,7 @@
 ; Zero page — Atari BASIC ZP area $CB-$FA, safe to use outside BASIC
 ; ---------------------------------------------------------------------------
 
+.SEGMENT "ZEROPAGE_WOZMON"
 XAML    = $CB           ; last "opened" location Low
 XAMH    = $CC           ; last "opened" location High
 STL     = $CD           ; store address Low

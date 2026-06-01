@@ -1,5 +1,6 @@
 .ifndef MACROS_INC
 MACROS_INC = 1
+.SEGMENT "CODE"
 
 .macro copy_struct_abs_to_zp  abs_addr, zp_ptr, struct_type
   .local loop

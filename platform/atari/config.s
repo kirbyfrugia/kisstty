@@ -7,6 +7,8 @@
 .INCLUDE "rs232.inc"
 .INCLUDE "terminal.inc"
 
+.SEGMENT "CODE"
+
 .IMPORT g_kbd_key_pressed
 .IMPORT g_kbdcode_raw
 .IMPORT g_kbdcode_raw_stripped
@@ -18,7 +20,6 @@
 .EXPORT cfg_config_done
 .EXPORT cfg_saved_config
 
-.SEGMENT "CODE"
 .LINECONT +
 
 MENU_MARGIN_TOP = 1

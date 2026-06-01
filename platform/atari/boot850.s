@@ -12,6 +12,7 @@
 .SETCPU "6502"
 .INCLUDE "atari.inc"
 .INCLUDE "macros.inc"
+.SEGMENT "CODE"
 
 POLL_DDEVIC    = $50       ; Device ID for 850 RS232 port
 POLL_DUNIT     = $01       ; Device number 1
@@ -29,7 +30,6 @@ LOAD_RHANDLER  = $0ab3     ; Adds the R: handler to HATABS
 HATABS_ENTRIES = 8
 HATABS_SIZE    = HATABS_ENTRIES * 3
 
-.SEGMENT "CODE"
 
 .EXPORT boot850_bootstrap ; bootstrap the 850 (only thing you really need to call)
 .EXPORT boot850_check     ; check if R: handler present in HATABS

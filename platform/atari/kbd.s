@@ -4,12 +4,12 @@
 ; Source: Atari OS User Manual Page 50
 
 .SETCPU "6502"
+.SEGMENT "CODE"
 
 .EXPORT kbd_unmodified
 .EXPORT kbd_shifted
 .EXPORT kbd_ctrld
 
-.SEGMENT "CODE"
 
 ; $00 means you should ignore this key press
 

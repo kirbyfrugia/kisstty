@@ -2,6 +2,7 @@
 .INCLUDE "atari.inc"
 .INCLUDE "macros.inc"
 .INCLUDE "common.inc"
+.SEGMENT "CODE"
 
 MAX_INPUT_LEN = 114
 
@@ -9,7 +10,6 @@ MAX_INPUT_LEN = 114
 .EXPORT utils_byte_to_scr_hex
 .EXPORT utils_dump_mem_row
 
-.SEGMENT "CODE"
 
 ; converts an atascii character to icode,
 ; used for screen display

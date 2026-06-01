@@ -1,5 +1,6 @@
 .ifndef TEXT_AREA_INC
 TEXT_AREA_INC = 1
+.SEGMENT "CODE"
 
 TA_SCROLL_BACKFILL_ENABLED       = %10000000 ; when scrolling, backfill
 TA_SCROLL_SAVE_DISCARDED_ENABLED = %01000000 ; when scrolling, save discarded

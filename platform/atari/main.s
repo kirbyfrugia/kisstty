@@ -3,6 +3,8 @@
 .INCLUDE "macros.inc"
 .INCLUDE "common.inc"
 
+.SEGMENT "CODE"
+
 MAX_INPUT_LEN = 114
 WOZMON        = $9800
 RS232_CHANNEL = 32    ; channel 2 (2 * 16)
@@ -47,7 +49,6 @@ DEBOUNCE_NUM_FRAMES   = 20
 .IMPORT wozmon_main
 .endif
 
-.SEGMENT "CODE"
 
 .EXPORT start
 start:

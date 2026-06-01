@@ -2,6 +2,7 @@
 .INCLUDE "atari.inc"
 .INCLUDE "macros.inc"
 .INCLUDE "rs232.inc"
+.SEGMENT "CODE"
 
 .EXPORT rs232_open
 .EXPORT rs232_close
@@ -17,9 +18,6 @@ CMD_TRANSLATION_PARITY  = $26
 CMD_CONTROL_LINES       = $22
 CMD_CONCURRENCY_MODE    = $28
 CMD_BAUD_STOPBITS_READY = $24
-
-
-.SEGMENT "CODE"
 
 ; inputs:
 ;   x - channel
