@@ -63,9 +63,9 @@ mo_data_ptr_hi:     .res 1
 .define HEIGHT        6
 .define SIZE          WIDTH * HEIGHT
 
-.define OVERFLOW_FLAG_AREA0 %10000000
-.define OVERFLOW_FLAG_AREA1 %01000000
-.define OVERFLOW_FLAG_AREA2 %00100000
+OVERFLOW_FLAG_AREA0 = %10000000
+OVERFLOW_FLAG_AREA1 = %01000000
+OVERFLOW_FLAG_AREA2 = %00100000
 ; initializes the text output area
 ;
 ; inputs:
@@ -234,6 +234,47 @@ mo_repaint:
   jsr ta_pop_context
   rts
 
+.macro append_chars area_num, metadata, next_jmp
+  jsr .ident(.concat("int_set_area",area_num,"_active"))
+
+  lda metadata+TextArea::size
+  sec
+  sbc metadata+TextArea::cursorpos
+  sta space_remaining
+  min8 space_remaining, chars_remaining, chars_added
+
+  lda chars_added
+  cmp space_remaining
+  bcc @no_overflow
+  lda overflow_flag
+  ora #.ident(.concat("OVERFLOW_FLAG_AREA",area_num))
+  sta overflow_flag
+@no_overflow:
+  lda mo_data_ptr_lo
+  sta CMDDATA0
+  lda mo_data_ptr_hi
+  sta CMDDATA1
+  lda chars_added
+  sta CMDDATA2
+
+  jsr ta_append_chars_fast
+ 
+  lda chars_remaining
+  sec
+  sbc chars_added
+  bne @more_to_do
+  jmp mac_done
+@more_to_do:
+  sta chars_remaining
+
+  lda mo_data_ptr_lo
+  clc
+  adc chars_added
+  sta mo_data_ptr_lo
+  bcc next_jmp
+  inc mo_data_ptr_hi
+.endmacro
+
 ; appends N chars to the output
 ;
 ; warn: you should make sure the input and
@@ -280,47 +321,7 @@ mac_check_area2:
 mac_gotta_scroll:
   jmp mac_scroll
 mac_area0:
-  jsr int_set_area0_active
-
-  lda area0_metadata+TextArea::size
-  sec
-  sbc area0_metadata+TextArea::cursorpos
-  sta space_remaining
-  min8 space_remaining, chars_remaining, chars_added
-
-  lda chars_added
-  cmp space_remaining
-  bcc mac_area0_no_overflow
-  lda overflow_flag
-  ora #OVERFLOW_FLAG_AREA0
-  sta overflow_flag
-mac_area0_no_overflow:
-
-  lda mo_data_ptr_lo
-  sta CMDDATA0
-  lda mo_data_ptr_hi
-  sta CMDDATA1
-  lda chars_added
-  sta CMDDATA2
-
-  ;brk
-  jsr ta_append_chars_fast
- 
-  lda chars_remaining
-  sec
-  sbc chars_added
-  bne area0_more_to_do
-  jmp mac_done
-area0_more_to_do:
-  sta chars_remaining
-
-
-  lda mo_data_ptr_lo
-  clc
-  adc chars_added
-  sta mo_data_ptr_lo
-  bcc mac_area1
-  inc mo_data_ptr_hi
+  append_chars "0", area0_metadata, mac_area1
 mac_area1:
   jsr int_set_area1_active
   lda area1_metadata+TextArea::size
