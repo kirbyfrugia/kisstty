@@ -555,6 +555,7 @@ int_shift_lines_down:
   sec
   sbc #1
   sta move_line_cursor_to ; end of last line
+  sec
   sbc local_metadata+TextArea::width
   sta move_line_cursor_from ; end of previous line
 @loop:
@@ -589,8 +590,8 @@ ta_scroll_up:
   ldx CMDDATA4
   ; first let's see how many chars we'll be discarding
   lda #0
-  clc
 @char_loop:
+  clc
   adc local_metadata+TextArea::width
   dex
   bne @char_loop
@@ -812,6 +813,8 @@ ta_char_delete:
 ;   CMDDATA0/1 - pointer to the data
 ;   CMDDATA2   - number of chars to add
 ta_append_chars_fast:
+  lda CMDDATA2
+  beq @done
   ldy #0
 @loop:
   lda (CMDDATA0),y
@@ -828,7 +831,7 @@ ta_append_chars_fast:
   jsr int_update_cursor_xy
   jsr int_update_cursor_pos
   jsr ta_repaint
-
+@done:
   rts
 
 show_cursor_var0: .byte 0

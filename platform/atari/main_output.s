@@ -288,6 +288,14 @@ mac_area0:
   sta space_remaining
   min8 space_remaining, chars_remaining, chars_added
 
+  lda chars_added
+  cmp space_remaining
+  bcc mac_area0_no_overflow
+  lda overflow_flag
+  ora #OVERFLOW_FLAG_AREA0
+  sta overflow_flag
+mac_area0_no_overflow:
+
   lda mo_data_ptr_lo
   sta CMDDATA0
   lda mo_data_ptr_hi
@@ -306,9 +314,6 @@ mac_area0:
 area0_more_to_do:
   sta chars_remaining
 
-  lda overflow_flag
-  ora #OVERFLOW_FLAG_AREA0
-  sta overflow_flag
 
   lda mo_data_ptr_lo
   clc
@@ -323,6 +328,14 @@ mac_area1:
   sbc area1_metadata+TextArea::cursorpos
   sta space_remaining
   min8 space_remaining, chars_remaining, chars_added
+
+  lda chars_added
+  cmp space_remaining
+  bcc mac_area1_no_overflow
+  lda overflow_flag
+  ora #OVERFLOW_FLAG_AREA1
+  sta overflow_flag
+mac_area1_no_overflow:
 
   lda mo_data_ptr_lo
   sta CMDDATA0
@@ -358,6 +371,14 @@ mac_area2:
   sbc area2_metadata+TextArea::cursorpos
   sta space_remaining
   min8 space_remaining, chars_remaining, chars_added
+
+  lda chars_added
+  cmp space_remaining
+  bcc mac_area2_no_overflow
+  lda overflow_flag
+  ora #OVERFLOW_FLAG_AREA2
+  sta overflow_flag
+mac_area2_no_overflow:
 
   lda mo_data_ptr_lo
   sta CMDDATA0
