@@ -8,6 +8,7 @@
 
 .IMPORT copy_buffer40
 .IMPORT copy_buffer40_size
+.IMPORT str_to_copy_buffer40_with_fill
 .IMPORT g_kbd_key_pressed
 .IMPORT g_kbdcode_raw
 .IMPORT g_kbdcode_raw_stripped
@@ -41,6 +42,7 @@
 .IMPORT ta_copy_last_line
 .IMPORT ta_push_context
 .IMPORT ta_pop_context
+.IMPORT ta_metadata
 .EXPORT trm_init
 .EXPORT trm_activate
 .EXPORT trm_tick
@@ -115,17 +117,17 @@ trm_activate:
   jsr mi_repaint
   jsr mi_show_cursor
 
-  ldy #0
-@loop:
-  lda welcome,y
-  beq @loop_done
-  sta copy_buffer40,y
-  iny
-  jmp @loop
-@loop_done:
-  sty copy_buffer40_size
+  lda #<welcome
+  sta CMDDATA0
+  lda #>welcome
+  sta CMDDATA1
+  lda ta_metadata+TextArea::width
+  sta CMDDATA2
+  lda #'F'
+  sta CMDDATA3
+  jsr str_to_copy_buffer40_with_fill
 
-  tya
+  lda copy_buffer40_size
   sta CMDDATA2
   lda #<copy_buffer40
   sta CMDDATA0
@@ -163,14 +165,14 @@ int_cmd_typechar:
   lda g_kbdcode_atascii
   beq @done
 
-  lda #<g_kbdcode_atascii
-  sta CMDDATA0
-  lda #>g_kbdcode_atascii
-  sta CMDDATA1
-  lda #1
-  sta CMDDATA2
-  jsr mo_append_chars
-;  jsr ta_typechar
+;  lda #<g_kbdcode_atascii
+;  sta CMDDATA0
+;  lda #>g_kbdcode_atascii
+;  sta CMDDATA1
+;  lda #1
+;  sta CMDDATA2
+;  jsr mo_append_chars
+  jsr ta_typechar
 @done:
   rts
 

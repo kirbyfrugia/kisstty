@@ -2,6 +2,7 @@
 
 .EXPORT copy_buffer40 
 .EXPORT copy_buffer40_size
+.EXPORT str_to_copy_buffer40_with_fill
 
 .EXPORT g_kbd_key_pressed
 .EXPORT g_kbdcode_raw
@@ -31,6 +32,34 @@ SCR_PTR_LO:                  .byte $00
 SCR_PTR_HI:                  .byte $00
 
 .SEGMENT "CODE"
+
+; copies the null terminated string to the copy buffer
+; and fills the rest with a space
+; inputs:
+;   CMDDATA0/1 - ptr to string
+;   CMDDATA2   - max width to copy
+;   CMDDATA3   - the char to fill
+str_to_copy_buffer40_with_fill:
+  ldy #0
+@str_loop:
+  lda (CMDDATA0),y
+  beq @fill
+  sta copy_buffer40,y
+  iny
+  cpy CMDDATA2
+  bne @str_loop
+  beq @done
+@fill:
+  lda CMDDATA3
+@fill_loop:
+  sta copy_buffer40,y
+  iny 
+  cpy CMDDATA2
+  bne @fill_loop
+@done:
+  sty copy_buffer40_size
+  rts
+
 copy_buffer40:          .res 40
 copy_buffer40_size:     .res 1
 g_kbd_key_pressed:      .res 1 ; nonzero if pressed

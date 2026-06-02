@@ -79,6 +79,7 @@
 .EXPORT ta_scroll_up
 .EXPORT ta_repaint
 .EXPORT ta_move_cursor_to_start_of_last_line
+.EXPORT ta_metadata
 
 .segment "ZEROPAGE"
 context_ptr_lo:       .res 1
@@ -89,15 +90,15 @@ scr_row_ptr_lo:       .res 1
 scr_row_ptr_hi:       .res 1
 data_ptr_lo:          .res 1
 data_ptr_hi:          .res 1
-local_metadata:       .tag TextArea
+ta_metadata:          .tag TextArea
 
 .segment "CODE"
-first_row_data_ptr_lo    = local_metadata+TextArea::first_row_data_ptr
-first_row_data_ptr_hi    = local_metadata+TextArea::first_row_data_ptr+1
-first_row_scr_ptr_lo     = local_metadata+TextArea::first_row_scr_ptr
-first_row_scr_ptr_hi     = local_metadata+TextArea::first_row_scr_ptr+1
-cursor_scr_ptr_lo        = local_metadata+TextArea::cursor_scr_ptr
-cursor_scr_ptr_hi        = local_metadata+TextArea::cursor_scr_ptr+1
+first_row_data_ptr_lo    = ta_metadata+TextArea::first_row_data_ptr
+first_row_data_ptr_hi    = ta_metadata+TextArea::first_row_data_ptr+1
+first_row_scr_ptr_lo     = ta_metadata+TextArea::first_row_scr_ptr
+first_row_scr_ptr_hi     = ta_metadata+TextArea::first_row_scr_ptr+1
+cursor_scr_ptr_lo        = ta_metadata+TextArea::cursor_scr_ptr
+cursor_scr_ptr_hi        = ta_metadata+TextArea::cursor_scr_ptr+1
 
 
 ta_init_context:
@@ -121,7 +122,7 @@ ta_set_context:
   beq no_cache
 cache_exists:
   ; copy our local cache to the existing source TextArea
-  copy_struct_abs_to_zp local_metadata, context_ptr_lo, TextArea
+  copy_struct_abs_to_zp ta_metadata, context_ptr_lo, TextArea
 no_cache:
   ; update our pointer to the new text area
   lda CMDDATA0
@@ -131,7 +132,7 @@ no_cache:
 
   ; copy data from the new TextArea to the local cache in
   ; the zero page.
-  copy_struct_zp_to_abs context_ptr_lo, local_metadata, TextArea
+  copy_struct_zp_to_abs context_ptr_lo, ta_metadata, TextArea
   rts
 
 ; saves the existing context ptr so that it can
@@ -144,7 +145,7 @@ ta_push_context:
   pha
   tya
   pha
-  copy_struct_abs_to_zp local_metadata, context_ptr_lo, TextArea
+  copy_struct_abs_to_zp ta_metadata, context_ptr_lo, TextArea
   lda context_ptr_lo
   sta context_ptr_saved_lo
   lda context_ptr_hi
@@ -164,8 +165,8 @@ ta_pop_context:
   pha
   tya
   pha
-  copy_struct_abs_to_zp local_metadata, context_ptr_lo, TextArea
-  copy_struct_zp_to_abs context_ptr_saved_lo, local_metadata, TextArea
+  copy_struct_abs_to_zp ta_metadata, context_ptr_lo, TextArea
+  copy_struct_zp_to_abs context_ptr_saved_lo, ta_metadata, TextArea
   lda context_ptr_saved_lo
   sta context_ptr_lo
   lda context_ptr_saved_hi
@@ -190,13 +191,13 @@ ta_init_textarea:
 ; flush cursor to backing store
 int_flush_cursor:
   ldy #TextArea::cursorx
-  lda local_metadata+TextArea::cursorx
+  lda ta_metadata+TextArea::cursorx
   sta (context_ptr_lo),y
   ldy #TextArea::cursory
-  lda local_metadata+TextArea::cursory
+  lda ta_metadata+TextArea::cursory
   sta (context_ptr_lo),y
   ldy #TextArea::cursorpos
-  lda local_metadata+TextArea::cursorpos
+  lda ta_metadata+TextArea::cursorpos
   sta (context_ptr_lo),y
   ldy #TextArea::cursor_scr_ptr
   lda cursor_scr_ptr_lo
@@ -212,27 +213,27 @@ int_update_cursor_pos:
   lda #0
   tax
 @data_loop:
-  cpx local_metadata+TextArea::cursory
+  cpx ta_metadata+TextArea::cursory
   beq @data_loop_done
   clc
-  adc local_metadata+TextArea::width
+  adc ta_metadata+TextArea::width
   inx
   bne @data_loop
 @data_loop_done:
   clc
-  adc local_metadata+TextArea::cursorx
-  sta local_metadata+TextArea::cursorpos
+  adc ta_metadata+TextArea::cursorx
+  sta ta_metadata+TextArea::cursorpos
 
   ; now do the cursor_ptr in screen coords
   lda first_row_scr_ptr_lo
   clc
-  adc local_metadata+TextArea::cursorx
+  adc ta_metadata+TextArea::cursorx
   sta cursor_scr_ptr_lo
   lda first_row_scr_ptr_hi
   adc #0
   sta cursor_scr_ptr_hi
 
-  ldy local_metadata+TextArea::cursory
+  ldy ta_metadata+TextArea::cursory
   beq @done
 @row_loop:
   lda cursor_scr_ptr_lo
@@ -251,24 +252,24 @@ int_update_cursor_pos:
 ; internal use only, updates the cursor x/y
 ; given the current cursorpos
 int_update_cursor_xy:
-  lda local_metadata+TextArea::cursorpos
-  ldx local_metadata+TextArea::width
+  lda ta_metadata+TextArea::cursorpos
+  ldx ta_metadata+TextArea::width
   ldy #0
 @div_loop:
-  cmp local_metadata+TextArea::width
+  cmp ta_metadata+TextArea::width
   bcc @div_done
   sec
-  sbc local_metadata+TextArea::width
+  sbc ta_metadata+TextArea::width
   iny
   bne @div_loop
 @div_done:
-  sta local_metadata+TextArea::cursorx
-  sty local_metadata+TextArea::cursory
+  sta ta_metadata+TextArea::cursorx
+  sty ta_metadata+TextArea::cursory
   rts
 
 
 ta_hide_cursor:
-  lda local_metadata+TextArea::use_cursor
+  lda ta_metadata+TextArea::use_cursor
   beq @done
 
   ldy #0
@@ -279,7 +280,7 @@ ta_hide_cursor:
   rts
 
 ta_show_cursor:
-  lda local_metadata+TextArea::use_cursor
+  lda ta_metadata+TextArea::use_cursor
   beq @done
 
   ldy #0
@@ -292,13 +293,13 @@ ta_show_cursor:
 ta_move_cursor_up:
   jsr ta_hide_cursor
 
-  lda local_metadata+TextArea::cursory
+  lda ta_metadata+TextArea::cursory
   beq @wrapped
-  dec local_metadata+TextArea::cursory
+  dec ta_metadata+TextArea::cursory
   jmp @updated
 @wrapped:
-  lda local_metadata+TextArea::cursor_maxy
-  sta local_metadata+TextArea::cursory
+  lda ta_metadata+TextArea::cursor_maxy
+  sta ta_metadata+TextArea::cursory
 @updated:
   jsr int_update_cursor_pos
   jsr ta_show_cursor
@@ -307,15 +308,15 @@ ta_move_cursor_up:
 ta_move_cursor_down:
   jsr ta_hide_cursor
 
-  lda local_metadata+TextArea::cursory
-  cmp local_metadata+TextArea::cursor_maxy
+  lda ta_metadata+TextArea::cursory
+  cmp ta_metadata+TextArea::cursor_maxy
   beq @wrapped
 
-  inc local_metadata+TextArea::cursory
+  inc ta_metadata+TextArea::cursory
   bne @updated
 @wrapped:
   lda #0
-  sta local_metadata+TextArea::cursory
+  sta ta_metadata+TextArea::cursory
 @updated:
   jsr int_update_cursor_pos
   jsr ta_show_cursor
@@ -332,9 +333,9 @@ ta_move_cursor_down:
 ta_move_cursor_left:
   jsr ta_hide_cursor
 
-  lda local_metadata+TextArea::cursorx
+  lda ta_metadata+TextArea::cursorx
   beq @wrapped
-  dec local_metadata+TextArea::cursorx
+  dec ta_metadata+TextArea::cursorx
   jmp @updated
 @wrapped:
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
@@ -342,18 +343,18 @@ ta_move_cursor_left:
   bmi @wrapped_change_lines
 
   ; if here, just wrap around on the same line
-  lda local_metadata+TextArea::cursor_maxx
-  sta local_metadata+TextArea::cursorx
+  lda ta_metadata+TextArea::cursor_maxx
+  sta ta_metadata+TextArea::cursorx
   bne @updated
 @wrapped_change_lines:
-  lda local_metadata+TextArea::cursory
+  lda ta_metadata+TextArea::cursory
   beq @done ; already at top, just ignore movement
 
   ; move up a line
-  dec local_metadata+TextArea::cursory
+  dec ta_metadata+TextArea::cursory
   ; and move to the end of it
-  lda local_metadata+TextArea::cursor_maxx
-  sta local_metadata+TextArea::cursorx
+  lda ta_metadata+TextArea::cursor_maxx
+  sta ta_metadata+TextArea::cursorx
 @updated:
   jsr int_update_cursor_pos
 @done:
@@ -363,11 +364,11 @@ ta_move_cursor_left:
 ta_move_cursor_right:
   jsr ta_hide_cursor
 
-  lda local_metadata+TextArea::cursorx
-  cmp local_metadata+TextArea::cursor_maxx
+  lda ta_metadata+TextArea::cursorx
+  cmp ta_metadata+TextArea::cursor_maxx
   beq @wrapped
 
-  inc local_metadata+TextArea::cursorx
+  inc ta_metadata+TextArea::cursorx
   bne @updated
 @wrapped:
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
@@ -376,18 +377,18 @@ ta_move_cursor_right:
 
   ; if here, just wrap around on the same line
   lda #0
-  sta local_metadata+TextArea::cursorx
+  sta ta_metadata+TextArea::cursorx
   beq @updated
 @wrapped_change_lines:
-  lda local_metadata+TextArea::cursory
-  cmp local_metadata+TextArea::cursor_maxy
+  lda ta_metadata+TextArea::cursory
+  cmp ta_metadata+TextArea::cursor_maxy
   beq @done; already at bottom
 
   ; move down a line
-  inc local_metadata+TextArea::cursory
+  inc ta_metadata+TextArea::cursory
   ; and move to the start of it
   lda #0
-  sta local_metadata+TextArea::cursorx
+  sta ta_metadata+TextArea::cursorx
 @updated:
   jsr int_update_cursor_pos
 @done:
@@ -398,7 +399,7 @@ ta_move_cursor_right:
 ; updates a single character on the screen in
 ; the current row
 int_update_screen_char:
-  ldy local_metadata+TextArea::cursorpos
+  ldy ta_metadata+TextArea::cursorpos
   lda (first_row_data_ptr_lo),y
   jsr utils_atascii_to_icode
   ldy #0
@@ -411,7 +412,7 @@ int_update_screen_char:
 ; inputs
 ;   - A the character
 ta_typechar:
-  ldy local_metadata+TextArea::cursorpos
+  ldy ta_metadata+TextArea::cursorpos
   sta (first_row_data_ptr_lo),y
   jsr int_update_screen_char
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
@@ -425,7 +426,7 @@ ta_backspace:
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
   sta CMDDATA0
   jsr ta_move_cursor_left
-  ldy local_metadata+TextArea::cursorpos
+  ldy ta_metadata+TextArea::cursorpos
   lda #' '
   sta (first_row_data_ptr_lo),y
   jsr int_update_screen_char
@@ -433,8 +434,8 @@ ta_backspace:
 
 int_cursor_home:
   lda #0
-  sta local_metadata+TextArea::cursorx
-  sta local_metadata+TextArea::cursory
+  sta ta_metadata+TextArea::cursorx
+  sta ta_metadata+TextArea::cursory
   jsr int_update_cursor_pos
   rts
 
@@ -475,10 +476,10 @@ ta_repaint:
   jsr utils_atascii_to_icode
   sta (scr_row_ptr_lo),y
   iny
-  cpy local_metadata+TextArea::width
+  cpy ta_metadata+TextArea::width
   bne @col_loop
   inx
-  cpx local_metadata+TextArea::height
+  cpx ta_metadata+TextArea::height
   beq @done
   lda scr_row_ptr_lo
   clc
@@ -489,7 +490,7 @@ ta_repaint:
 @scr_nowrap: 
   lda data_ptr_lo
   clc
-  adc local_metadata+TextArea::width
+  adc ta_metadata+TextArea::width
   sta data_ptr_lo
   bcc @data_nowrap
   inc data_ptr_hi
@@ -500,11 +501,11 @@ ta_repaint:
 
 ; clears the data in the current row
 int_clear_row_data:
-  lda local_metadata+TextArea::cursorpos
+  lda ta_metadata+TextArea::cursorpos
   sec
-  sbc local_metadata+TextArea::cursorx
+  sbc ta_metadata+TextArea::cursorx
   tay
-  ldx local_metadata+TextArea::width
+  ldx ta_metadata+TextArea::width
   lda #' '
 @loop:
   sta (first_row_data_ptr_lo),y
@@ -516,15 +517,15 @@ int_clear_row_data:
 ; just clears the last row of data. useful for scrolling
 ; or deleting lines
 int_clear_last_row_data:
-  lda local_metadata+TextArea::size
+  lda ta_metadata+TextArea::size
   sec
-  sbc local_metadata+TextArea::width
+  sbc ta_metadata+TextArea::width
   tay
   lda #' '
 @loop:
   sta (first_row_data_ptr_lo),y
   iny
-  cpy local_metadata+TextArea::size
+  cpy ta_metadata+TextArea::size
   bne @loop
   rts
 
@@ -534,7 +535,7 @@ ta_shift_clear:
 
   lda #0
   sta update_marker_start
-  lda local_metadata+TextArea::size
+  lda ta_metadata+TextArea::size
   sta update_marker_end
   jsr int_clear_data
 
@@ -548,16 +549,16 @@ ta_shift_clear:
 ; down by one
 int_shift_lines_down:
   ; first find the start of the line we're on
-  lda local_metadata+TextArea::cursorpos
+  lda ta_metadata+TextArea::cursorpos
   sec
-  sbc local_metadata+TextArea::cursorx
+  sbc ta_metadata+TextArea::cursorx
   sta move_line_start_line_pos
-  lda local_metadata+TextArea::size
+  lda ta_metadata+TextArea::size
   sec
   sbc #1
   sta move_line_cursor_to ; end of last line
   sec
-  sbc local_metadata+TextArea::width
+  sbc ta_metadata+TextArea::width
   sta move_line_cursor_from ; end of previous line
 @loop:
   ldy move_line_cursor_from
@@ -593,14 +594,14 @@ ta_scroll_up:
   lda #0
 @char_loop:
   clc
-  adc local_metadata+TextArea::width
+  adc ta_metadata+TextArea::width
   dex
   bne @char_loop
   sta scroll_num_chars_scrolled_off
 
   ; now see how many remaining characters we need to move
   ; to the top
-  lda local_metadata+TextArea::size
+  lda ta_metadata+TextArea::size
   sec
   sbc scroll_num_chars_scrolled_off
   sta scroll_num_chars_remaining
@@ -666,7 +667,7 @@ int_shift_lines_up:
   lda move_line_start_line_pos
   sta move_line_cursor_to    ; start of current line
   clc
-  adc local_metadata+TextArea::width
+  adc ta_metadata+TextArea::width
   sta move_line_cursor_from  ; start of next line
 
 @loop:
@@ -678,7 +679,7 @@ int_shift_lines_up:
   inc move_line_cursor_to
   inc move_line_cursor_from
   lda move_line_cursor_from
-  cmp local_metadata+TextArea::size
+  cmp ta_metadata+TextArea::size
   bne @loop
 @done:
   rts
@@ -687,9 +688,9 @@ int_shift_lines_up:
 ; up by one
 int_shift_lines_up_from_cursor:
   ; first find the start of the line we're on
-  lda local_metadata+TextArea::cursorpos
+  lda ta_metadata+TextArea::cursorpos
   sec
-  sbc local_metadata+TextArea::cursorx
+  sbc ta_metadata+TextArea::cursorx
   sta move_line_start_line_pos
   jsr int_shift_lines_up
 
@@ -699,8 +700,8 @@ int_shift_lines_up_from_cursor:
 ; including current line and clears current line
 ; cursor stays where it is.
 ta_line_insert:
-  lda local_metadata+TextArea::cursory
-  cmp local_metadata+TextArea::cursor_maxy
+  lda ta_metadata+TextArea::cursory
+  cmp ta_metadata+TextArea::cursor_maxy
   beq @done
 
   jsr ta_hide_cursor
@@ -717,7 +718,7 @@ ta_line_insert:
 ; right by one. Last char is lost. Blanks the cursor
 ; position with a space.
 int_shift_chars_right:
-  ldy local_metadata+TextArea::size
+  ldy ta_metadata+TextArea::size
   dey
 @loop:
   dey
@@ -725,7 +726,7 @@ int_shift_chars_right:
   iny
   sta (first_row_data_ptr_lo),y
   dey
-  cpy local_metadata+TextArea::cursorpos
+  cpy ta_metadata+TextArea::cursorpos
   bne @loop
   lda #' '
   sta (first_row_data_ptr_lo),y          ; blank cursorpos
@@ -734,10 +735,10 @@ int_shift_chars_right:
 ; shifts all characters to the right of the cursor
 ; to the left one space
 int_shift_chars_left:
-  ldy local_metadata+TextArea::cursorpos
+  ldy ta_metadata+TextArea::cursorpos
 @loop:
   iny
-  cpy local_metadata+TextArea::size
+  cpy ta_metadata+TextArea::size
   beq @last_char
   lda (first_row_data_ptr_lo),y
   dey
@@ -752,10 +753,10 @@ int_shift_chars_left:
   rts
 
 ta_char_insert:
-  ldy local_metadata+TextArea::cursorpos
+  ldy ta_metadata+TextArea::cursorpos
   iny
   beq @done ; rolled over
-  cpy local_metadata+TextArea::size
+  cpy ta_metadata+TextArea::size
   bcs @done ; at or beyond last char
 
   jsr ta_hide_cursor
@@ -769,8 +770,8 @@ ta_char_insert:
 
 ta_line_delete:
   jsr ta_hide_cursor
-  lda local_metadata+TextArea::cursory
-  cmp local_metadata+TextArea::cursor_maxy
+  lda ta_metadata+TextArea::cursory
+  cmp ta_metadata+TextArea::cursor_maxy
   beq @last_line ; on last line
 
   jsr int_shift_lines_up_from_cursor
@@ -793,9 +794,9 @@ ta_shift_all_up:
 ; erases the char under the cursor by moving all
 ; the characters to the right one space left.
 ta_char_delete:
-  ldy local_metadata+TextArea::cursorpos
+  ldy ta_metadata+TextArea::cursorpos
   iny
-  cpy local_metadata+TextArea::size
+  cpy ta_metadata+TextArea::size
   beq @done ; at last char
  
   jsr ta_hide_cursor
@@ -820,10 +821,10 @@ ta_append_chars_fast:
 @loop:
   lda (CMDDATA0),y
   sty append_tempy
-  ldy local_metadata+TextArea::cursorpos
+  ldy ta_metadata+TextArea::cursorpos
   sta (first_row_data_ptr_lo),y
   iny
-  sty local_metadata+TextArea::cursorpos
+  sty ta_metadata+TextArea::cursorpos
   ldy append_tempy
   iny
   cpy CMDDATA2
@@ -837,19 +838,18 @@ ta_append_chars_fast:
 
 ta_move_cursor_to_start_of_last_line:
   jsr ta_hide_cursor
-  lda local_metadata+TextArea::cursor_maxy
-  sta local_metadata+TextArea::cursory
+  lda ta_metadata+TextArea::cursor_maxy
+  sta ta_metadata+TextArea::cursory
   lda #0
-  sta local_metadata+TextArea::cursorx
+  sta ta_metadata+TextArea::cursorx
   jsr int_update_cursor_pos
   jsr ta_show_cursor
   rts
 
-show_cursor_var0: .byte 0
-update_marker_start: .byte 0
-update_marker_end:   .byte 0
+update_marker_start:           .byte 0
+update_marker_end:             .byte 0
 
-append_tempy: .byte 0
+append_tempy:                  .byte 0
 
 move_line_start_line_pos:      .byte 0
 move_line_end_line_pos:        .byte 0
