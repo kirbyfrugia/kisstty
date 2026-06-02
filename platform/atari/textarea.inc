@@ -15,10 +15,8 @@
 .define CURSOR_BEHAVIOR_WRAP_SAME_LINE    %00000000
 
 .struct TextArea
+  first_row_scr_ptr     .word
   first_row_data_ptr    .word
-  last_row_data_ptr     .word
-  scr_row_ptr_table_lo  .word
-  scr_row_ptr_table_hi  .word
   margin_left           .byte
   margin_top            .byte
   width                 .byte
@@ -28,11 +26,9 @@
   cursory               .byte
   cursor_maxx           .byte
   cursor_maxy           .byte
+  cursor_scr_ptr        .word
   cursorpos             .byte
   use_cursor            .byte
-  cursor_row_scr_ptr    .word
-  first_row_scr_row_ptr .word
-  last_row_scr_row_ptr  .word
 .endstruct
 
 .endif

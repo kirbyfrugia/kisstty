@@ -6,7 +6,6 @@
 .INCLUDE "macros.inc"
 .INCLUDE "textarea.inc"
 
-.IMPORT cfg_saved_config
 .IMPORT copy_buffer40
 .IMPORT copy_buffer40_size
 .IMPORT g_kbd_key_pressed
@@ -24,9 +23,8 @@
 .IMPORT mi_show_cursor
 .IMPORT mo_init
 .IMPORT mo_repaint
-.IMPORT mo_append
+.IMPORT mo_append_chars
 .IMPORT mo_scroll_up
-.IMPORT mo_append_line_from_copy_buffer40
 .IMPORT ta_scr_ptr
 .IMPORT ta_move_cursor_up
 .IMPORT ta_move_cursor_down
@@ -46,7 +44,6 @@
 .EXPORT trm_init
 .EXPORT trm_activate
 .EXPORT trm_tick
-.EXPORT trm_append_line_from_copy_buffer40
 
 .SEGMENT "CODE"
 
@@ -118,8 +115,6 @@ trm_activate:
   jsr mi_repaint
   jsr mi_show_cursor
 
-  jsr ta_push_context
-  ; TODO: remove this
   ldy #0
 @loop:
   lda welcome,y
@@ -129,24 +124,21 @@ trm_activate:
   jmp @loop
 @loop_done:
   sty copy_buffer40_size
-  jsr mo_append_line_from_copy_buffer40
 
+  tya
+  sta CMDDATA2
+  lda #<copy_buffer40
+  sta CMDDATA0
+  lda #>copy_buffer40
+  sta CMDDATA1
+  jsr ta_push_context
+  jsr mo_append_chars
   jsr ta_pop_context
- 
+
   rts
 
 trm_tick:
   jsr int_handle_kbd
-  rts
-
-; appends data to the output area. will
-; blank out anything beyond copy_buffer40_size
-; inputs:
-;   copy_buffer40, copy_buffer40_size (num chars)
-trm_append_line_from_copy_buffer40:
-  jsr ta_push_context
-  jsr mo_append_line_from_copy_buffer40
-  jsr ta_pop_context
   rts
 
 int_cmd_move_cursor_up:
@@ -172,7 +164,17 @@ int_cmd_move_cursor_right:
 int_cmd_typechar:
   lda g_kbdcode_atascii
   beq @done
-  jsr ta_typechar
+
+  lda #<g_kbdcode_atascii
+  sta CMDDATA0
+  lda #>g_kbdcode_atascii
+  sta CMDDATA1
+  lda #1
+  sta CMDDATA2
+  jsr ta_push_context
+  jsr mo_append_chars
+  jsr ta_pop_context
+;  jsr ta_typechar
 @done:
   rts
 
@@ -207,9 +209,9 @@ int_cmd_return:
   sta CMDDATA0
   lda #>mi_data
   sta CMDDATA1
-  lda mi_metadata+TextArea::height
-  sta CMDDATA4
-  jsr mo_append
+  lda mi_metadata+TextArea::size
+  sta CMDDATA2
+  jsr mo_append_chars
 
   jsr ta_pop_context
   jsr ta_shift_clear

@@ -34,6 +34,14 @@ mi_init:
   sta mi_metadata+TextArea::cursory
   sta mi_metadata+TextArea::cursorpos
 
+  lda #<(MARGIN_TOP*SCREEN_WIDTH+MARGIN_LEFT)
+  clc
+  adc SCR_PTR_LO
+  sta mi_metadata+TextArea::first_row_scr_ptr
+  lda #>(MARGIN_TOP*SCREEN_WIDTH+MARGIN_LEFT)
+  adc SCR_PTR_HI
+  sta mi_metadata+TextArea::first_row_scr_ptr+1
+
   lda #CURSOR_FLAG_ENABLED
   sta mi_metadata+TextArea::use_cursor
 
@@ -55,17 +63,6 @@ mi_init:
   sta mi_metadata+TextArea::cursor_maxx
   lda #(HEIGHT-1)
   sta mi_metadata+TextArea::cursor_maxy
-
-  ; set pointers to table where screen row data is stored
-  lda #<int_scr_row_ptr_table_lo
-  sta mi_metadata+TextArea::scr_row_ptr_table_lo
-  lda #>int_scr_row_ptr_table_lo
-  sta mi_metadata+TextArea::scr_row_ptr_table_lo+1
-
-  lda #<int_scr_row_ptr_table_hi
-  sta mi_metadata+TextArea::scr_row_ptr_table_hi
-  lda #>int_scr_row_ptr_table_hi
-  sta mi_metadata+TextArea::scr_row_ptr_table_hi+1
 
   ; fill the data
   lda #' '
@@ -98,6 +95,4 @@ mi_repaint:
   rts
 
 mi_metadata:              .tag TextArea
-int_scr_row_ptr_table_lo: .res HEIGHT
-int_scr_row_ptr_table_hi: .res HEIGHT
 mi_data:                  .res SIZE

@@ -3,6 +3,17 @@
 
 .SEGMENT "CODE"
 
+; stores the min of x and y in out
+.macro min8 arg1, arg2, out
+  .local done
+  lda arg1
+  cmp arg2
+  bcc done
+  lda arg2
+done:
+  sta out
+.endmacro
+
 .macro copy_struct_abs_to_zp src_addr, dest_zp_ptr, struct_type
   .local loop
   ldy #.sizeof(struct_type) - 1
