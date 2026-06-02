@@ -10,7 +10,7 @@
 .IMPORT ta_show_cursor
 .IMPORT ta_repaint
 .EXPORT mi_init
-.EXPORT mi_repaint
+.EXPORT mi_reset
 .EXPORT mi_hide_cursor
 .EXPORT mi_show_cursor
 .EXPORT mi_metadata
@@ -90,7 +90,7 @@ mi_show_cursor:
   jsr ta_show_cursor
   rts
 
-mi_repaint:
+mi_reset:
   jsr ta_repaint
   rts
 
