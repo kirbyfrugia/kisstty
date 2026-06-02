@@ -37,13 +37,13 @@
 
 .SEGMENT "CODE"
 
-.define RS232_CHANNEL         32        ; channel 2 (2 * 16)
-.define MODE_CONFIG           %10000000
-.define MODE_TERMINAL         %01000000
-.define CTRL_SHIFT_FLAG_CTRL  %10000000
-.define CTRL_SHIFT_FLAG_SHIFT %01000000
-.define CTRL_SHIFT_FLAG_LOWER %00000000
-.define DEBOUNCE_NUM_FRAMES   20
+.define RS232_CHANNEL          32        ; channel 2 (2 * 16)
+.define STATE_CONFIG           %10000000
+.define STATE_TERMINAL         %01000000
+.define CTRL_SHIFT_FLAG_CTRL   %10000000
+.define CTRL_SHIFT_FLAG_SHIFT  %01000000
+.define CTRL_SHIFT_FLAG_LOWER  %00000000
+.define DEBOUNCE_NUM_FRAMES    20
 
 start:
 .ifdef DEBUG
@@ -72,8 +72,8 @@ terminal_tick:
   beq @handle_tick
   lda #0
   sta start_fired
-  lda #MODE_CONFIG
-  sta switch_mode
+  lda #STATE_CONFIG
+  sta switch_state
   jmp @done
 @handle_tick:
   jsr trm_tick
@@ -84,39 +84,39 @@ config_tick:
   jsr cfg_tick 
   lda cfg_config_done
   beq @done
-  lda #MODE_TERMINAL
-  sta switch_mode
+  lda #STATE_TERMINAL
+  sta switch_state
 @done:
   rts
 
 main_loop:
   lda select_fired
-  beq @check_mode
+  beq @check_state
   lda #0
   sta select_fired
   jsr next_theme
-@check_mode:
-  lda switch_mode
+@check_state:
+  lda switch_state
   beq @check_kbd
-  sta current_mode
-  cmp #MODE_TERMINAL
+  sta current_state
+  cmp #STATE_TERMINAL
   beq @switch_to_terminal
   jsr cls
   jsr cfg_activate
   lda #0
-  sta switch_mode
+  sta switch_state
   jmp @check_kbd
 @switch_to_terminal:
   lda #0
-  sta switch_mode
+  sta switch_state
   sta select_fired
   sta start_fired
   jsr cls
   jsr trm_activate
 @check_kbd:
   jsr inkbd
-  lda current_mode
-  and #MODE_CONFIG
+  lda current_state
+  and #STATE_CONFIG
   bne @config
 @terminal:
   jsr terminal_tick
@@ -129,17 +129,11 @@ main_loop:
 
 ; called every vertical blank
 vbi_handler:
-; do some basic debouncing of presses.
-; implemented a very simple version.
-; A better version would probably put
-; a delay before re-firing instead
-; of a delay before firing.
-
+; basic debouncing of presses for special keys.
 ; CONSOL Bits (active low):
 ;   2 - option
 ;   1 - select
 ;   0 - start
-
 @check_select:
   lda CONSOL
   and #%00000010
@@ -213,7 +207,6 @@ init:
   sta ICCOM,x
   jsr CIOV
 
-
   lda #0
   sta debounce_count_select
   sta debounce_count_start
@@ -223,8 +216,8 @@ init:
   jsr cfg_init
   jsr trm_init
 
-  lda #MODE_CONFIG
-  sta switch_mode
+  lda #STATE_CONFIG
+  sta switch_state
 
   jsr init_ui
 
@@ -515,8 +508,8 @@ debounce_count_start:  .byte 0
 select_fired:          .byte 0
 start_fired:           .byte 0
 current_theme:         .byte 0
-current_mode:          .byte 0
-switch_mode:           .byte 0
+current_state:         .byte 0
+switch_state:          .byte 0
 
 themes_bg:
   .byte $02, $c2, $22, $be

@@ -42,10 +42,12 @@
 .IMPORT ta_push_context
 .IMPORT ta_pop_context
 .IMPORT ta_move_cursor_to_start_of_last_line
+.IMPORT ta_repaint
 .IMPORT ta_shift_clear
 .IMPORT ta_scroll_up
 .EXPORT mo_init
 .EXPORT mo_append_chars
+.EXPORT mo_repaint
 .EXPORT mo_reset
 
 .SEGMENT "ZEROPAGE"
@@ -271,6 +273,22 @@ int_set_areaE_active:
   jsr ta_set_context
   rts
 
+mo_repaint:
+  jsr int_set_area0_active
+  jsr ta_repaint
+  jsr int_set_area1_active
+  jsr ta_repaint
+  jsr int_set_area2_active
+  jsr ta_repaint
+
+  lda cfg_saved_config+Config::mode
+  cmp #TERMINAL_MODE::LINE
+  beq @repaint_done
+  jsr int_set_areaE_active
+  jsr ta_repaint
+@repaint_done:
+  rts
+
 mo_reset:
   lda #0
   sta overflow_flag
@@ -284,10 +302,10 @@ mo_reset:
 
   lda cfg_saved_config+Config::mode
   cmp #TERMINAL_MODE::LINE
-  beq @reset
+  beq @reset_done
   jsr int_set_areaE_active
   jsr ta_shift_clear
-@reset:
+@reset_done:
   rts
 
 .macro append_chars area_num, metadata, no_overflow_jmp

@@ -9,7 +9,9 @@
 .IMPORT ta_hide_cursor
 .IMPORT ta_show_cursor
 .IMPORT ta_shift_clear
+.IMPORT ta_repaint
 .EXPORT mi_init
+.EXPORT mi_repaint
 .EXPORT mi_reset
 .EXPORT mi_hide_cursor
 .EXPORT mi_show_cursor
@@ -92,6 +94,11 @@ mi_hide_cursor:
 
 mi_show_cursor:
   jsr ta_show_cursor
+  rts
+
+mi_repaint:
+  jsr int_set_context
+  jsr ta_repaint
   rts
 
 mi_reset:

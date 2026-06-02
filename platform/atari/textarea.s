@@ -80,6 +80,7 @@
 .EXPORT ta_shift_clear
 .EXPORT ta_move_cursor_to_start_of_last_line
 .EXPORT ta_metadata
+.EXPORT ta_repaint
 
 .segment "ZEROPAGE"
 context_ptr_lo:       .res 1

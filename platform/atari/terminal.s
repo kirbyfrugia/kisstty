@@ -19,11 +19,13 @@
 .IMPORT mi_init
 .IMPORT mi_metadata
 .IMPORT mi_data
+.IMPORT mi_repaint
 .IMPORT mi_reset
 .IMPORT mi_main_input_metadata
 .IMPORT mi_hide_cursor
 .IMPORT mi_show_cursor
 .IMPORT mo_init
+.IMPORT mo_repaint
 .IMPORT mo_reset
 .IMPORT mo_append_chars
 .IMPORT mo_scroll_up
@@ -51,6 +53,9 @@
 .SEGMENT "CODE"
 
 trm_init:
+  lda #TERMINAL_MODE::NONE
+  sta current_mode
+
   jsr mo_init
   jsr mi_init
 @done:
@@ -135,28 +140,47 @@ int_draw_ui_base:
 @done:
   rts
 
-int_activate_line_mode:
-  jsr mo_reset
-  jsr mi_reset
-
+int_repaint_line_mode:
+  jsr mo_repaint
+  jsr mi_repaint
   jsr int_draw_ui_line_mode
-
   rts
 
-int_activate_char_mode:
+int_reset_line_mode:
+  jsr mo_reset
+  jsr mi_reset
+  jsr int_draw_ui_line_mode
+  rts
+
+int_repaint_char_mode:
+  jsr mo_repaint
+  jsr int_draw_ui_char_mode
+  rts
+
+int_reset_char_mode:
   jsr mo_reset
   jsr int_draw_ui_char_mode
   rts
 
-trm_activate:
+int_repaint:
   lda cfg_saved_config+Config::mode
   cmp #TERMINAL_MODE::CHAR
   beq @char_mode
-  jsr int_activate_line_mode
+  jsr int_repaint_line_mode
+  jmp @done
+@char_mode:
+  jsr int_repaint_char_mode
+@done:
+  rts
+
+int_reset:
+  lda cfg_saved_config+Config::mode
+  cmp #TERMINAL_MODE::CHAR
+  beq @char_mode
+  jsr int_reset_line_mode
   jmp @welcome
 @char_mode:
-  jsr int_activate_char_mode
-
+  jsr int_reset_char_mode
 @welcome:
   lda #<welcome
   sta CMDDATA0
@@ -175,7 +199,19 @@ trm_activate:
   lda #>copy_buffer40
   sta CMDDATA1
   jsr mo_append_chars
+@done:
+  rts
 
+trm_activate:
+  lda cfg_saved_config+Config::mode
+  cmp current_mode
+  sta current_mode
+  beq @no_mode_change
+  jsr int_reset
+  jmp @done
+@no_mode_change:
+  jsr int_repaint
+@done:
   rts
 
 trm_tick:
@@ -338,8 +374,8 @@ int_handle_kbd_line_mode:
 @done:
   rts
 
-top_banner:             .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
-                        .byte 'S'|$80,'T'|$80,'A'|$80,'R'|$80,'T'|$80,"config "
-                        .byte $00
-
-welcome: .byte "Welcome!",$00
+top_banner:   .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
+              .byte 'S'|$80,'T'|$80,'A'|$80,'R'|$80,'T'|$80,"config "
+              .byte $00
+current_mode: .res 1
+welcome:      .byte "Welcome!",$00
