@@ -136,20 +136,16 @@ int_draw_ui_base:
   rts
 
 int_activate_line_mode:
-  jsr int_draw_ui_line_mode
-
-  jsr mi_show_cursor
-  jsr ta_push_context
   jsr mo_reset
-  jsr ta_pop_context
   jsr mi_reset
-  jsr mi_show_cursor
+
+  jsr int_draw_ui_line_mode
 
   rts
 
 int_activate_char_mode:
-  jsr int_draw_ui_char_mode
   jsr mo_reset
+  jsr int_draw_ui_char_mode
   rts
 
 trm_activate:

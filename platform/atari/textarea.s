@@ -77,7 +77,7 @@
 .EXPORT ta_char_delete
 .EXPORT ta_append_chars_fast
 .EXPORT ta_scroll_up
-.EXPORT ta_repaint
+.EXPORT ta_shift_clear
 .EXPORT ta_move_cursor_to_start_of_last_line
 .EXPORT ta_metadata
 

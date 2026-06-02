@@ -41,7 +41,6 @@
 .IMPORT ta_set_context
 .IMPORT ta_push_context
 .IMPORT ta_pop_context
-.IMPORT ta_repaint
 .IMPORT ta_move_cursor_to_start_of_last_line
 .IMPORT ta_shift_clear
 .IMPORT ta_scroll_up
@@ -277,18 +276,18 @@ mo_reset:
   sta overflow_flag
 
   jsr int_set_area0_active
-  jsr ta_repaint
+  jsr ta_shift_clear
   jsr int_set_area1_active
-  jsr ta_repaint
+  jsr ta_shift_clear
   jsr int_set_area2_active
-  jsr ta_repaint
+  jsr ta_shift_clear
 
   lda cfg_saved_config+Config::mode
   cmp #TERMINAL_MODE::LINE
-  beq @repainted
+  beq @reset
   jsr int_set_areaE_active
-  jsr ta_repaint
-@repainted:
+  jsr ta_shift_clear
+@reset:
   rts
 
 .macro append_chars area_num, metadata, no_overflow_jmp

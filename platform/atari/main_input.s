@@ -8,7 +8,7 @@
 .IMPORT ta_set_context
 .IMPORT ta_hide_cursor
 .IMPORT ta_show_cursor
-.IMPORT ta_repaint
+.IMPORT ta_shift_clear
 .EXPORT mi_init
 .EXPORT mi_reset
 .EXPORT mi_hide_cursor
@@ -73,14 +73,18 @@ mi_init:
   cpy #SIZE
   bne @loop
 
+  jsr int_set_context
+  jsr ta_init_textarea
+  rts
+
+int_set_context:
   lda #<mi_metadata
   sta CMDDATA0
   lda #>mi_metadata
   sta CMDDATA1
   jsr ta_set_context
-  jsr ta_init_textarea
-
   rts
+
 
 mi_hide_cursor:
   jsr ta_show_cursor
@@ -91,7 +95,8 @@ mi_show_cursor:
   rts
 
 mi_reset:
-  jsr ta_repaint
+  jsr int_set_context
+  jsr ta_shift_clear
   rts
 
 mi_metadata:              .tag TextArea
