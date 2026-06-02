@@ -131,9 +131,7 @@ trm_activate:
   sta CMDDATA0
   lda #>copy_buffer40
   sta CMDDATA1
-  jsr ta_push_context
   jsr mo_append_chars
-  jsr ta_pop_context
 
   rts
 
@@ -171,9 +169,7 @@ int_cmd_typechar:
   sta CMDDATA1
   lda #1
   sta CMDDATA2
-  jsr ta_push_context
   jsr mo_append_chars
-  jsr ta_pop_context
 ;  jsr ta_typechar
 @done:
   rts
@@ -203,8 +199,6 @@ int_cmd_char_delete:
   rts
 
 int_cmd_return:
-  jsr ta_push_context
-
   lda #<mi_data
   sta CMDDATA0
   lda #>mi_data
@@ -212,8 +206,6 @@ int_cmd_return:
   lda mi_metadata+TextArea::size
   sta CMDDATA2
   jsr mo_append_chars
-
-  jsr ta_pop_context
   jsr ta_shift_clear
   rts
 

@@ -209,15 +209,16 @@ int_flush_cursor:
 ; given the current cursor x and y
 int_update_cursor_pos:
   lda #0
-  clc
   tax
 @data_loop:
   cpx local_metadata+TextArea::cursory
   beq @data_loop_done
+  clc
   adc local_metadata+TextArea::width
   inx
   bne @data_loop
 @data_loop_done:
+  clc
   adc local_metadata+TextArea::cursorx
   sta local_metadata+TextArea::cursorpos
 

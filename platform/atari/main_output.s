@@ -243,7 +243,7 @@ mo_repaint:
 ;   CMDDATA0/1 - pointer to the data to append
 ;   CMDDATA2   - num chars to append
 mo_append_chars:
-
+  jsr ta_push_context
   lda CMDDATA0
   sta mo_data_ptr_lo
   lda CMDDATA1
@@ -388,7 +388,7 @@ area2_more_to_do:
   inc mo_data_ptr_hi
 mac_scroll:
 mac_done:
-
+  jsr ta_pop_context
   rts
 
 ;; appends N lines to the output
