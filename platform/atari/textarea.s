@@ -78,6 +78,7 @@
 .EXPORT ta_append_chars_fast
 .EXPORT ta_scroll_up
 .EXPORT ta_repaint
+.EXPORT ta_move_cursor_to_start_of_last_line
 
 .segment "ZEROPAGE"
 context_ptr_lo:       .res 1
@@ -832,6 +833,16 @@ ta_append_chars_fast:
   jsr int_update_cursor_pos
   jsr ta_repaint
 @done:
+  rts
+
+ta_move_cursor_to_start_of_last_line:
+  jsr ta_hide_cursor
+  lda local_metadata+TextArea::cursor_maxy
+  sta local_metadata+TextArea::cursory
+  lda #0
+  sta local_metadata+TextArea::cursorx
+  jsr int_update_cursor_pos
+  jsr ta_show_cursor
   rts
 
 show_cursor_var0: .byte 0

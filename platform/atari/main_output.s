@@ -47,6 +47,7 @@
 .IMPORT ta_push_context
 .IMPORT ta_pop_context
 .IMPORT ta_repaint
+.IMPORT ta_move_cursor_to_start_of_last_line
 .IMPORT ta_shift_clear
 .IMPORT ta_scroll_up
 .EXPORT mo_init
@@ -235,8 +236,10 @@ mo_repaint:
   rts
 
 .macro append_chars area_num, metadata, next_jmp
-  jsr .ident(.concat("int_set_area",area_num,"_active"))
-
+  lda chars_remaining
+  bne @chars_left
+  jmp mac_done
+@chars_left:
   lda metadata+TextArea::size
   sec
   sbc metadata+TextArea::cursorpos
@@ -262,17 +265,28 @@ mo_repaint:
   lda chars_remaining
   sec
   sbc chars_added
+  sta chars_remaining
   bne @more_to_do
   jmp mac_done
 @more_to_do:
-  sta chars_remaining
-
   lda mo_data_ptr_lo
   clc
   adc chars_added
   sta mo_data_ptr_lo
   bcc next_jmp
   inc mo_data_ptr_hi
+.endmacro
+
+.macro scroll_up area_num, backfill_data
+  lda #<backfill_data
+  sta CMDDATA0
+  lda #>backfill_data
+  sta CMDDATA1
+  lda #1
+  sta CMDDATA4
+  lda #TA_SCROLL_BACKFILL_ENABLED
+  sta CMDDATA5
+  jsr ta_scroll_up
 .endmacro
 
 ; appends N chars to the output
@@ -321,194 +335,48 @@ mac_check_area2:
 mac_gotta_scroll:
   jmp mac_scroll
 mac_area0:
+  jsr int_set_area0_active
   append_chars "0", area0_metadata, mac_area1
 mac_area1:
   jsr int_set_area1_active
-  lda area1_metadata+TextArea::size
-  sec
-  sbc area1_metadata+TextArea::cursorpos
-  sta space_remaining
-  min8 space_remaining, chars_remaining, chars_added
-
-  lda chars_added
-  cmp space_remaining
-  bcc mac_area1_no_overflow
-  lda overflow_flag
-  ora #OVERFLOW_FLAG_AREA1
-  sta overflow_flag
-mac_area1_no_overflow:
-
-  lda mo_data_ptr_lo
-  sta CMDDATA0
-  lda mo_data_ptr_hi
-  sta CMDDATA1
-  lda chars_added
-  sta CMDDATA2
-
-  jsr ta_append_chars_fast
- 
-  lda chars_remaining
-  sec
-  sbc chars_added
-  bne area1_more_to_do
-  jmp mac_done
-area1_more_to_do:
-  sta chars_remaining
-
-  lda overflow_flag
-  ora #OVERFLOW_FLAG_AREA1
-  sta overflow_flag
-
-  lda mo_data_ptr_lo
-  clc
-  adc chars_added
-  sta mo_data_ptr_lo
-  bcc mac_area2
-  inc mo_data_ptr_hi
+  append_chars "1", area1_metadata, mac_area2
 mac_area2:
   jsr int_set_area2_active
-  lda area2_metadata+TextArea::size
-  sec
-  sbc area2_metadata+TextArea::cursorpos
-  sta space_remaining
-  min8 space_remaining, chars_remaining, chars_added
-
-  lda chars_added
-  cmp space_remaining
-  bcc mac_area2_no_overflow
-  lda overflow_flag
-  ora #OVERFLOW_FLAG_AREA2
-  sta overflow_flag
-mac_area2_no_overflow:
-
-  lda mo_data_ptr_lo
-  sta CMDDATA0
-  lda mo_data_ptr_hi
-  sta CMDDATA1
-  lda chars_added
-  sta CMDDATA2
-
-  jsr ta_append_chars_fast
- 
-  lda chars_remaining
-  sec
-  sbc chars_added
-  bne area2_more_to_do
-  jmp mac_done
-area2_more_to_do:
-  sta chars_remaining
-
-  lda overflow_flag
-  ora #OVERFLOW_FLAG_AREA2
-  sta overflow_flag
-
-  lda mo_data_ptr_lo
-  clc
-  adc chars_added
-  sta mo_data_ptr_lo
-  bcc mac_scroll
-  inc mo_data_ptr_hi
+mac_area2_already_active:
+  append_chars "2", area2_metadata, mac_scroll
 mac_scroll:
+  jsr int_set_area0_active
+  scroll_up "0", area1_data
+  jsr int_set_area1_active
+  scroll_up "1", area2_data
+  jsr int_set_area2_active
+  scroll_up "2", new_line
+
+  jsr ta_move_cursor_to_start_of_last_line
+
+  lda overflow_flag
+  eor #OVERFLOW_FLAG_AREA2
+  sta overflow_flag
+  jmp mac_area2_already_active
 mac_done:
   jsr ta_pop_context
   rts
-
-;; appends N lines to the output
-;;
-;; warn: you should make sure the input and
-;;       output lines are the same length
-;;
-;; inputs:
-;;   CMDDATA0/1 - pointer to the data to append
-;;   CMDDATA4   - num lines to ppend
-;mo_append:
-;  lda CMDDATA0
-;  pha
-;  lda CMDDATA1
-;  pha
-;
-;  ; scroll area1 into area0
-;  jsr int_set_area0_active
-;
-;  lda #<area1_data
-;  sta CMDDATA0
-;  lda #>area1_data
-;  sta CMDDATA1
-;  lda #TA_SCROLL_BACKFILL_ENABLED
-;  sta CMDDATA5
-;  jsr ta_scroll_up
-;
-;  ; scroll area2 into area1
-;  jsr int_set_area1_active
-;
-;  lda #<area2_data
-;  sta CMDDATA0
-;  lda #>area2_data
-;  sta CMDDATA1
-;  lda #TA_SCROLL_BACKFILL_ENABLED
-;  sta CMDDATA5
-;  jsr ta_scroll_up
-;
-;  ; scroll input into area2
-;  jsr int_set_area2_active
-;
-;  pla
-;  sta CMDDATA1
-;  pla
-;  sta CMDDATA0
-;  lda #TA_SCROLL_BACKFILL_ENABLED
-;  sta CMDDATA5
-;  jsr ta_scroll_up
-;
-;  rts
-
-;; appends data to the output area. will
-;; blank out anything beyond copy_buffer40_size
-;; inputs:
-;;   copy_buffer40, copy_buffer40_size (num chars)
-;mo_append_line_from_copy_buffer40:
-;  lda #' '
-;  ldy copy_buffer40_size
-;@fill:
-;  cpy #40
-;  bcs @fill_done
-;  sta copy_buffer40,y
-;  iny
-;  bne @fill
-;@fill_done:
-;  lda #<copy_buffer40
-;  sta CMDDATA0
-;  lda #>copy_buffer40
-;  sta CMDDATA1
-;  lda #1
-;  sta CMDDATA4
-;  jsr mo_append
-;
-;  rts
-;
-;mo_append_char:
-;
-;  rts
 
 
 chars_remaining:            .res 1
 space_remaining:            .res 1
 chars_added:                .res 1
-active_area:                .res 1
 overflow_flag:              .res 1
 
 area0_metadata:             .tag TextArea
-area0_scr_row_ptr_table_lo: .res HEIGHT
-area0_scr_row_ptr_table_hi: .res HEIGHT
 area0_data:                 .res SIZE
 
 area1_metadata:             .tag TextArea
-area1_scr_row_ptr_table_lo: .res HEIGHT
-area1_scr_row_ptr_table_hi: .res HEIGHT
 area1_data:                 .res SIZE
 
 area2_metadata:             .tag TextArea
-area2_scr_row_ptr_table_lo: .res HEIGHT
-area2_scr_row_ptr_table_hi: .res HEIGHT
 area2_data:                 .res SIZE
 
+new_line: .repeat SCREEN_WIDTH, I
+             .byte ' '
+           .endrepeat
