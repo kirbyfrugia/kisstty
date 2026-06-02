@@ -84,8 +84,7 @@ mo_init:
   sta area2_metadata+TextArea::cursory
   sta area2_metadata+TextArea::cursorpos
 
-  ;lda #CURSOR_FLAG_DISABLED
-  lda #CURSOR_FLAG_ENABLED
+  lda #CURSOR_FLAG_DISABLED
   sta area0_metadata+TextArea::use_cursor
   sta area1_metadata+TextArea::use_cursor
   sta area2_metadata+TextArea::use_cursor

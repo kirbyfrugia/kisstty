@@ -123,7 +123,7 @@ trm_activate:
   sta CMDDATA1
   lda ta_metadata+TextArea::width
   sta CMDDATA2
-  lda #'F'
+  lda #' '
   sta CMDDATA3
   jsr str_to_copy_buffer40_with_fill
 

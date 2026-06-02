@@ -815,6 +815,7 @@ ta_char_delete:
 ;   CMDDATA0/1 - pointer to the data
 ;   CMDDATA2   - number of chars to add
 ta_append_chars_fast:
+  jsr ta_hide_cursor
   lda CMDDATA2
   beq @done
   ldy #0
@@ -834,6 +835,7 @@ ta_append_chars_fast:
   jsr int_update_cursor_pos
   jsr ta_repaint
 @done:
+  jsr ta_show_cursor
   rts
 
 ta_move_cursor_to_start_of_last_line:
