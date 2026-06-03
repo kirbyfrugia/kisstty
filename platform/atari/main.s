@@ -7,18 +7,7 @@
 .IMPORT g_kbdcode_raw
 .IMPORT g_kbdcode_raw_stripped
 .IMPORT g_kbdcode_atascii
-.IMPORT boot850_check 
-.IMPORT boot850_bootstrap 
 .IMPORT utils_atascii_to_icode
-.IMPORT utils_byte_to_scr_hex
-.IMPORT rs232_open
-.IMPORT rs232_close
-.IMPORT rs232_status
-.IMPORT rs232_getchr
-.IMPORT rs232_putchr
-.IMPORT rs232_last_status
-.IMPORT rs232_input_buffer_size
-.IMPORT rs232_output_buffer_size
 .IMPORT kbd_unmodified
 .IMPORT kbd_shifted
 .IMPORT kbd_ctrld
@@ -37,7 +26,6 @@
 
 .SEGMENT "CODE"
 
-.define RS232_CHANNEL          32        ; channel 2 (2 * 16)
 .define STATE_CONFIG           %10000000
 .define STATE_TERMINAL         %01000000
 .define CTRL_SHIFT_FLAG_CTRL   %10000000
@@ -54,18 +42,7 @@ start:
   cli ; for brk to work
 .endif
   jsr init
-  ; TODO: remove this once screen editor working
   jmp main_loop
-  jsr boot850_check
-  bcc @rhandler_loaded
-@bootstrap850:
-  jsr boot850_bootstrap
-  bcc @rhandler_loaded
-  ;print_str str_850error
-@rhandler_loaded:
-  ;print_str str_850loaded
-@loop:
-  jmp @loop
 
 terminal_tick:
   lda start_fired
@@ -385,123 +362,7 @@ init_ui:
   jsr set_theme
   rts
 
-cmd_boot850:
-  jsr boot850_bootstrap
-  bcs @error
-  jsr boot850_check
-  bcs @error
-  ;print_str str_850loaded
-  jmp @done
-@error:
-  ;print_str str_850error
-@done:
-  rts
 
-cmd_open:
-  ldx #RS232_CHANNEL
-  jsr rs232_open
-  bcs @error
-  ;print_str str_success
-  jmp @done
-@error:
-  sty command_error
-  ;print_bytes str_error, str_error_end
-  ldy #0
-  lda command_error
-  ;jsr utils_hex_to_str
-  ;;print_str utils_hex_str
-@done:
-  rts
-
-cmd_close:
-  jsr rs232_close
-  bcs @error
-  ;print_str str_success
-  jmp @done
-@error:
-  sty command_error
-  ;print_bytes str_error, str_error_end
-  ldy #0
-  lda command_error
-  ;jsr utils_hex_to_str
-  ;print_str utils_hex_str
-@done:
-  rts
-
-; TODO: move some macros to jsr to save bytes
-cmd_talk:
-  jsr rs232_status
-  bcs @error_status
-  lda rs232_input_buffer_size+1
-  bne @read
-  lda rs232_input_buffer_size
-  bne @read
-  jmp @done
-@read:
-  jsr rs232_getchr
-  bcc @read_success
-  jmp @error_getchr
-@read_success:
-  sta output_buf
-  ldy #0
-  ;print_str output_buf
-@echo:
-  lda output_buf
-  jsr rs232_putchr
-  bcs @error_putchr
-  jmp @done
-@error_status:
-  sty command_error
-  ;print_bytes str_error_status, str_error_status_end
-  jmp @error
-@error_getchr:
-  sty command_error
-  ;print_bytes str_error_getchr, str_error_getchr_end
-  jmp @error
-@error_putchr:
-  sty command_error
-  ;print_bytes str_error_putchr, str_error_putchr_end
-@error:
-  ldy #0
-  lda command_error
-  ;jsr utils_hex_to_str
-  ;print_str utils_hex_str
-  rts
-@done:
-  jmp cmd_talk
-
-
-
-
-str_850error: .byte "850 not found", $9b
-str_850loaded: .byte "850 handler loaded", $9b
-str_supported_commands: .byte "Supported Commands:", $9b
-.ifdef DEBUG
-str_commands: .byte "[B] boot [O] open [C] close [T] talk [M] mon", $9b
-.else
-str_commands: .byte "[B] boot [O] open [C] close [T] talk", $9b
-.endif
-str_invalid_command: .byte "Invalid input", $9b
-str_get_command:
-  .byte "cmd: "
-str_get_command_end:
-str_success: .byte "success", $9b
-str_error:
-  .byte "Error: "
-str_error_end:
-str_error_status:
-  .byte "Error on status: "
-str_error_status_end:
-str_error_getchr:
-  .byte "Error on getchr: "
-str_error_getchr_end:
-str_error_putchr:
-  .byte "Error on putchr: "
-str_error_putchr_end:
-
-user_input_buf:        .res 256
-output_buf:            .byte $9b,$9b
-command_error:         .byte 0
 ctrl_shift_lock_flag:  .byte 0
 debounce_count_select: .byte 0
 debounce_count_start:  .byte 0

@@ -71,6 +71,7 @@ rs232_open:
   ldx rs232_iocb
   lda #CMD_TRANSLATION_PARITY
   sta ICCOM,x
+  ; TODO: note the parity is there twice. I didn't deal with rx vs tx
   lda #RS232_TRANSLATION::NONE | RS232_PARITY::NONE | RS232_PARITY::NONE | RS232_LINE_FEED::NO_APPEND_LF
   sta ICAX1,x
   lda #0
@@ -148,6 +149,10 @@ rs232_putchr:
   ldx rs232_iocb
   lda #PUTCHR
   sta ICCOM,x
+  lda #0
+  sta ICBLL,x
+  lda #0
+  sta ICBLH,x
   lda rs232_output_char
   jsr CIOV
   bmi @error
@@ -170,13 +175,11 @@ rs232_close:
   sec
   rts
 
-write_buf: .res WRITE_BUF_LEN
-dev_name:  .byte "R1",$9b
-rs232_iocb: .byte 48
-sample_msg: .byte "Hello, world!",$9b
-sample_msg_end:
+write_buf:                .res WRITE_BUF_LEN
+dev_name:                 .byte "R1",$9b
+rs232_iocb:               .byte 48
 
-rs232_output_char: .byte 0,$9b
-rs232_last_status: .byte 0
-rs232_input_buffer_size: .byte 0, 0
+rs232_output_char:        .byte 0,$9b
+rs232_last_status:        .byte 0
+rs232_input_buffer_size:  .byte 0, 0
 rs232_output_buffer_size: .byte 0

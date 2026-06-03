@@ -4,7 +4,8 @@
 .INCLUDE "common.inc"
 
 .EXPORT utils_atascii_to_icode
-.EXPORT utils_byte_to_scr_hex
+.EXPORT utils_hex_to_atascii
+.EXPORT utils_hex_to_icode
 .EXPORT utils_dump_mem_row
 
 .SEGMENT "CODE"
@@ -56,13 +57,49 @@ utils_atascii_to_icode:
 @done:
   rts
 
-; Writes char to (CMDDATA0),y
+; Writes char in hex in atascii to (CMDDATA0),y
 ;
 ; inputs:
 ;   - CMDDATA0/CMDDATA1 - location to print
 ;   - y - offset from location
 ;   - a - byte to print 
-utils_byte_to_scr_hex:
+utils_hex_to_atascii:
+  sta tmp_byte_to_str
+  txa
+  pha
+  tya
+  pha
+
+  lda tmp_byte_to_str
+  lsr
+  lsr
+  lsr
+  lsr
+  tax
+  lda HEX_TABLE_ATASCII,x
+  sta (CMDDATA0),y
+  lda tmp_byte_to_str
+  and #%00001111
+  tax
+  iny
+  lda HEX_TABLE_ATASCII,x
+  sta (CMDDATA0),y
+
+  pla
+  tay
+  pla
+  tax
+  lda tmp_byte_to_str
+  rts
+
+
+; Writes char in icode to (CMDDATA0),y
+;
+; inputs:
+;   - CMDDATA0/CMDDATA1 - location to print
+;   - y - offset from location
+;   - a - byte to print 
+utils_hex_to_icode:
   sta tmp_byte_to_str
   txa
   pha
@@ -106,10 +143,10 @@ utils_dump_mem_row:
 
   lda CMDDATA3
   ldy #0
-  jsr utils_byte_to_scr_hex
+  jsr utils_hex_to_icode
   lda CMDDATA2
   ldy #2
-  jsr utils_byte_to_scr_hex
+  jsr utils_hex_to_icode
   lda #':'
   jsr utils_atascii_to_icode
   ldy #4
@@ -127,7 +164,7 @@ utils_dump_mem_row:
   tay
   lda (CMDDATA2),y
   ldy tmp_dump_mem
-  jsr utils_byte_to_scr_hex
+  jsr utils_hex_to_icode
   iny
   iny
 

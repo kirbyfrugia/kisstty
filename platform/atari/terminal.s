@@ -7,6 +7,8 @@
 .INCLUDE "terminal.inc"
 .INCLUDE "textarea.inc"
 
+.IMPORT boot850_check 
+.IMPORT boot850_bootstrap 
 .IMPORT copy_buffer40
 .IMPORT copy_buffer40_size
 .IMPORT str_to_copy_buffer40_with_fill
@@ -15,6 +17,7 @@
 .IMPORT g_kbdcode_raw_stripped
 .IMPORT g_kbdcode_atascii
 .IMPORT utils_atascii_to_icode
+.IMPORT utils_hex_to_atascii
 .IMPORT cfg_saved_config
 .IMPORT mi_init
 .IMPORT mi_metadata
@@ -29,6 +32,14 @@
 .IMPORT mo_reset
 .IMPORT mo_append_chars
 .IMPORT mo_scroll_up
+.IMPORT rs232_open
+.IMPORT rs232_close
+.IMPORT rs232_status
+.IMPORT rs232_getchr
+.IMPORT rs232_putchr
+.IMPORT rs232_last_status
+.IMPORT rs232_input_buffer_size
+.IMPORT rs232_output_buffer_size
 .IMPORT ta_scr_ptr
 .IMPORT ta_move_cursor_up
 .IMPORT ta_move_cursor_down
@@ -52,7 +63,14 @@
 
 .SEGMENT "CODE"
 
+.define RS232_CHANNEL 32 ; channel 2 (2 * 16)
+
+.define PORT_STATUS_OK    %00000000
+.define PORT_STATUS_ERROR %10000000
+
 trm_init:
+  lda #PORT_STATUS_OK
+  sta port_status
   lda #TERMINAL_MODE::NONE
   sta current_mode
 
@@ -182,35 +200,25 @@ int_reset:
 @char_mode:
   jsr int_reset_char_mode
 @welcome:
-  lda #<welcome
-  sta CMDDATA0
-  lda #>welcome
-  sta CMDDATA1
-  lda #38
-  sta CMDDATA2
-  lda #' '
-  sta CMDDATA3
-  jsr str_to_copy_buffer40_with_fill
-
-  lda copy_buffer40_size
-  sta CMDDATA2
-  lda #<copy_buffer40
-  sta CMDDATA0
-  lda #>copy_buffer40
-  sta CMDDATA1
+  str_to_buf str_welcome, TERMINAL_WIDTH, ' '
   jsr mo_append_chars
 @done:
   rts
 
 trm_activate:
+  lda #PORT_STATUS_OK
+  sta port_status
   lda cfg_saved_config+Config::mode
   cmp current_mode
   sta current_mode
   beq @no_mode_change
   jsr int_reset
-  jmp @done
+  jmp @boot850
 @no_mode_change:
   jsr int_repaint
+@boot850:
+  jsr int_cmd_boot850
+  jsr int_cmd_open_rs232
 @done:
   rts
 
@@ -219,9 +227,14 @@ trm_tick:
   cmp #TERMINAL_MODE::CHAR
   beq @char_mode
   jsr int_handle_kbd_line_mode
-  jmp @done
+  jmp @rs232
 @char_mode:
   jsr int_handle_kbd_char_mode
+@rs232:
+  lda port_status
+  cmp #PORT_STATUS_OK
+  bne @done
+  jsr int_cmd_get_rs232
 @done:
   rts
 
@@ -295,14 +308,15 @@ int_handle_kbd_char_mode:
   beq @done
   lda g_kbdcode_atascii
   beq @done
+  jsr int_cmd_put_rs232
 
-  lda #<g_kbdcode_atascii
-  sta CMDDATA0
-  lda #>g_kbdcode_atascii
-  sta CMDDATA1
-  lda #1
-  sta CMDDATA2
-  jsr mo_append_chars
+;  lda #<g_kbdcode_atascii
+;  sta CMDDATA0
+;  lda #>g_kbdcode_atascii
+;  sta CMDDATA1
+;  lda #1
+;  sta CMDDATA2
+;  jsr mo_append_chars
 @done:
   rts
 
@@ -374,8 +388,136 @@ int_handle_kbd_line_mode:
 @done:
   rts
 
-top_banner:   .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
-              .byte 'S'|$80,'T'|$80,'A'|$80,'R'|$80,'T'|$80,"config "
-              .byte $00
-current_mode: .res 1
-welcome:      .byte "Welcome!",$00
+
+int_cmd_boot850:
+  jsr boot850_check
+  bcc @rhandler_loaded
+  str_to_buf str_loading_850, TERMINAL_WIDTH, ' '
+  jsr mo_append_chars
+  jsr boot850_bootstrap
+  bcc @rhandler_bootstrapped
+  str_to_buf str_error_loading_850, TERMINAL_WIDTH, ' '
+  jsr mo_append_chars
+  jmp @error
+@rhandler_bootstrapped:
+  jsr boot850_check
+  bcc @rhandler_loaded
+  str_to_buf str_error_missing_850, TERMINAL_WIDTH, ' '
+  jsr mo_append_chars
+  jmp @error
+@rhandler_loaded:
+  str_to_buf str_loaded_850, TERMINAL_WIDTH, ' '
+  jsr mo_append_chars
+  jmp @done
+@error:
+  lda #PORT_STATUS_ERROR 
+  sta port_status
+@done:
+  rts
+
+int_cmd_open_rs232:
+  str_to_buf str_opening_rs232, TERMINAL_WIDTH, ' '
+  jsr mo_append_chars
+  ldx #RS232_CHANNEL
+  jsr rs232_open
+  bcs @error
+  str_to_buf str_opened_rs232, TERMINAL_WIDTH, ' '
+  jsr mo_append_chars
+  jmp @done
+@error:
+  sty command_error
+  sty port_status
+  str_to_buf str_error_rs232_open, TERMINAL_WIDTH, ' '
+  err_code_to_buf command_error,\
+                  str_error_rs232_open_code-str_error_rs232_open-1
+  jsr mo_append_chars
+@done:
+  rts
+
+int_cmd_get_rs232:
+  jsr rs232_status
+  bcs @error_status
+  lda rs232_input_buffer_size+1
+  bne @read
+  lda rs232_input_buffer_size
+  bne @read
+  jmp @done
+@read:
+  jsr rs232_getchr
+  bcc @read_success
+  jmp @error_getchr
+@read_success:
+  sta rs232_byte_read
+
+  lda #<rs232_byte_read
+  sta CMDDATA0
+  lda #>rs232_byte_read
+  sta CMDDATA1
+  lda #1
+  sta CMDDATA2
+  jsr mo_append_chars
+  jmp @done
+@error_status:
+  sty command_error
+  sty port_status
+  str_to_buf str_error_rs232_status, TERMINAL_WIDTH, ' '
+  err_code_to_buf command_error,\
+                  str_error_rs232_status_code-str_error_rs232_status-1
+  jsr mo_append_chars
+  jmp @done
+@error_getchr:
+  sty command_error
+  sty port_status
+  str_to_buf str_error_rs232_getchr, TERMINAL_WIDTH, ' '
+  err_code_to_buf command_error,\
+                  str_error_rs232_getchr_code-str_error_rs232_getchr-1
+  jsr mo_append_chars
+@done:
+  rts
+
+
+; writes a single char from kbd to rs232
+int_cmd_put_rs232:
+  lda port_status
+  cmp #PORT_STATUS_OK
+  bne @done
+  lda g_kbdcode_atascii
+  beq @done
+  jsr rs232_putchr
+  bcs @error_putchr
+  jmp @done
+@error_putchr:
+  sty command_error
+  sty port_status
+  str_to_buf str_error_rs232_putchr, TERMINAL_WIDTH, ' '
+  err_code_to_buf command_error,\
+                  str_error_rs232_putchr_code-str_error_rs232_putchr-1
+  jsr mo_append_chars
+@done:
+  rts
+
+top_banner:                  .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
+                             .byte 'S'|$80,'T'|$80,'A'|$80,'R'|$80,'T'|$80,"config "
+                             .byte $00
+current_mode:                .res 1
+str_welcome:                 .byte "Welcome!",$00
+
+str_loading_850:             .byte "Loading 850...",$00
+str_loaded_850:              .byte "850 handler loaded",$00
+str_error_missing_850:       .byte "850 not in HATABS",$00
+str_error_loading_850:       .byte "850 load error",$00
+str_error:                   .byte "Error: ",$00
+str_opening_rs232:           .byte "Opening rs232 port...",$00
+str_opened_rs232:            .byte "RS232 port opened",$00
+str_error_rs232_open:        .byte "Error opening RS232 port: ",$00
+str_error_rs232_open_code:   ; used as index to print error code for above str
+str_error_rs232_status:      .byte "Error on RS232 status: ",$00
+str_error_rs232_status_code: ; used as index to print error code for above str
+str_error_rs232_getchr:      .byte "Error on RS232 getchr: ",$00
+str_error_rs232_getchr_code: ; used as index to print error code for above str
+str_error_rs232_putchr:      .byte "Error on RS232 putchr: ",$00
+str_error_rs232_putchr_code: ; used as index to print error code for above str
+command_error:               .byte 0
+
+rs232_byte_read:             .byte 0
+port_status:                 .byte 0
