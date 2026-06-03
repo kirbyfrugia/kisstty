@@ -132,7 +132,7 @@ rs232_getchr:
   ldx rs232_iocb
   lda #GETCHR
   sta ICCOM,x
-  lda #1
+  lda #0
   sta ICBLL,x
   lda #0
   sta ICBLH,x
