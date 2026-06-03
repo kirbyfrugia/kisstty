@@ -60,7 +60,7 @@ rs232_open:
   ldx rs232_iocb
   lda #CMD_BAUD_STOPBITS_READY
   sta ICCOM,x
-  lda #RS232_BAUD::B1200
+  lda #RS232_BAUD::B9600
   ora #RS232_STOPBITS::N1
   sta ICAX1,x
   lda #$00
