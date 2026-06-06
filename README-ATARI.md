@@ -135,6 +135,7 @@ Some of the special screen editing functions don't work right on the atari800 em
 * shift+clear (\$76 on the atari) and ctrl+clear (\$b7 on the atari). On the emulator, I tried shift+backspace and shift+delete, but they both mapped to keycode $b4.
 * shift+insert (\$77 on the atari). Tried shift+insert, which mapped to \$7c on the emulator.
 * I can easily type faster than the atari800 emulator can handle and some keys are missed. This also happens when I just run straight basic on the emulator, so I don't think it's an issue with this code.
+* When running in the emulator over a TCP port, I had issues receiving $FF bytes. This occurrs when an APRS source has a station id of 15. In that case, it parses the wrong station ID. If $ff appears in the data elsewhere, it might cause weird problems.
 
 ## Resources:
 * [Mapping the Atari](https://www.atariarchives.org/mapping/) - amazing book documenting every memory location in the Atari.
