@@ -3,10 +3,16 @@
 .INCLUDE "macros.inc"
 .INCLUDE "common.inc"
 
-.EXPORT utils_atascii_to_icode
-.EXPORT utils_hex_to_atascii
-.EXPORT utils_hex_to_icode
-.EXPORT utils_dump_mem_row
+.EXPORTZP utils_bcd_result
+.EXPORT   utils_atascii_to_icode
+.EXPORT   utils_hex_table_atascii
+.EXPORT   utils_hex_to_atascii
+.EXPORT   utils_hex_to_icode
+.EXPORT   utils_bin_to_bcd
+
+.SEGMENT "ZEROPAGE"
+bcd_tmp:          .res 1
+utils_bcd_result: .res 2
 
 .SEGMENT "CODE"
 
@@ -76,13 +82,13 @@ utils_hex_to_atascii:
   lsr
   lsr
   tax
-  lda HEX_TABLE_ATASCII,x
+  lda utils_hex_table_atascii,x
   sta (CMDDATA0),y
   lda tmp_byte_to_str
   and #%00001111
   tax
   iny
-  lda HEX_TABLE_ATASCII,x
+  lda utils_hex_table_atascii,x
   sta (CMDDATA0),y
 
   pla
@@ -112,13 +118,13 @@ utils_hex_to_icode:
   lsr
   lsr
   tax
-  lda HEX_TABLE_SCR,x
+  lda hex_table_scr,x
   sta (CMDDATA0),y
   lda tmp_byte_to_str
   and #%00001111
   tax
   iny
-  lda HEX_TABLE_SCR,x
+  lda hex_table_scr,x
   sta (CMDDATA0),y
 
   pla
@@ -128,67 +134,41 @@ utils_hex_to_icode:
   lda tmp_byte_to_str
   rts
 
-; dump memory to screen in an 8-byte row with an address
-; 
-; input:
-;   CMDDATA0/CMDDATA1- screen address
-;   CMDDATA2/CMDDATA3- start address lo/hi
+; Thanks to [Andrew Jacobs]( https://6502.org/source/integers/hex2dec-more.htm)
+; inputs:
+;   A - value to convert
+; outputs:
+;   bcd_result+0 = low nibble is ones, high nibble is 10s
+;   bcd_result+1 = hundreds digit
 ; modifies:
-utils_dump_mem_row:
-  pha
-  txa
-  pha
-  tya
-  pha
+;   A and X
+utils_bin_to_bcd:
+  sta bcd_tmp
+  lda #0
+  sta utils_bcd_result+0
+  sta utils_bcd_result+1
+  ldx #8
 
-  lda CMDDATA3
-  ldy #0
-  jsr utils_hex_to_icode
-  lda CMDDATA2
-  ldy #2
-  jsr utils_hex_to_icode
-  lda #':'
-  jsr utils_atascii_to_icode
-  ldy #4
-  sta (CMDDATA0),y
-  lda #' '
-  jsr utils_atascii_to_icode
-  ldy #5
-  sta (CMDDATA0),y
+  sed
+@loop:
+  asl bcd_tmp
+  lda utils_bcd_result+0
+  adc utils_bcd_result+0
+  sta utils_bcd_result+0
+  lda utils_bcd_result+1
+  adc utils_bcd_result+1
+  sta utils_bcd_result+1
+  dex
+  bne @loop
+  cld
 
-  iny
-  ldx #0
-@next_byte:
-  sty tmp_dump_mem
-  txa
-  tay
-  lda (CMDDATA2),y
-  ldy tmp_dump_mem
-  jsr utils_hex_to_icode
-  iny
-  iny
-
-  lda #' '
-  jsr utils_atascii_to_icode
-  sta (CMDDATA0),y
-  iny
-  inx
-  cpx #8
-  bne @next_byte
-@done:
-  pla
-  tay
-  pla
-  tax
-  pla
   rts
 
-HEX_TABLE_ATASCII: .byte "0123456789ABCDEF"
+utils_hex_table_atascii: .byte "0123456789ABCDEF"
 
 ; subtract 32 from their ATASCII since all are 32 to 95
-HEX_TABLE_SCR:
+hex_table_scr:
   .byte 16,17,18,19,20,21,22,23,24,25
   .byte 33,34,35,36,37,38
 
-tmp_dump_mem:    .byte 0
 tmp_byte_to_str: .byte 0

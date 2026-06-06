@@ -35,6 +35,7 @@ ATARI_SRCS      = main.s \
 		  kbd.s \
 		  main_input.s \
 		  main_output.s \
+		  pctl_kiss.s \
 		  textarea.s \
 		  terminal.s \
 		  rs232.s \
@@ -57,7 +58,7 @@ ATARI_VICE_SYM_DBG = $(ATARI_BLDDIR_DBG)/kiss8b-vice-symbols.txt
 ATARI_ATR_DBG      = $(ATARI_BLDDIR_DBG)/kiss8b.atr
 ATARI_OBJS_DBG     = $(patsubst %.s,$(ATARI_BLDDIR_DBG)/%.o,$(ATARI_SRCS))
 
-PORT ?= /dev/ttyUSB0
+#PORT ?= /dev/ttyUSB0
 
 atari: $(ATARI_ATR)
 atari-debug: $(ATARI_ATR_DBG)

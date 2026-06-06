@@ -4,62 +4,72 @@
 .INCLUDE "common.inc"
 .INCLUDE "config.inc"
 .INCLUDE "macros.inc"
+.INCLUDE "pctl_kiss.inc"
 .INCLUDE "terminal.inc"
 .INCLUDE "textarea.inc"
 
-.IMPORT boot850_check 
-.IMPORT boot850_bootstrap 
-.IMPORT copy_buffer40
-.IMPORT copy_buffer40_size
-.IMPORT str_to_copy_buffer40_with_fill
-.IMPORT g_kbd_key_pressed
-.IMPORT g_kbdcode_raw
-.IMPORT g_kbdcode_raw_stripped
-.IMPORT g_kbdcode_atascii
-.IMPORT utils_atascii_to_icode
-.IMPORT utils_hex_to_atascii
-.IMPORT cfg_saved_config
-.IMPORT mi_init
-.IMPORT mi_metadata
-.IMPORT mi_data
-.IMPORT mi_repaint
-.IMPORT mi_reset
-.IMPORT mi_main_input_metadata
-.IMPORT mi_hide_cursor
-.IMPORT mi_show_cursor
-.IMPORT mo_init
-.IMPORT mo_repaint
-.IMPORT mo_reset
-.IMPORT mo_append_chars
-.IMPORT mo_scroll_up
-.IMPORT rs232_open
-.IMPORT rs232_close
-.IMPORT rs232_status
-.IMPORT rs232_getchr
-.IMPORT rs232_putchr
-.IMPORT rs232_last_status
-.IMPORT rs232_input_buffer_size
-.IMPORT rs232_output_buffer_size
-.IMPORT ta_scr_ptr
-.IMPORT ta_move_cursor_up
-.IMPORT ta_move_cursor_down
-.IMPORT ta_move_cursor_left
-.IMPORT ta_move_cursor_right
-.IMPORT ta_typechar
-.IMPORT ta_backspace
-.IMPORT ta_shift_clear
-.IMPORT ta_line_insert
-.IMPORT ta_char_insert
-.IMPORT ta_line_delete
-.IMPORT ta_char_delete
-.IMPORT ta_copy_first_line
-.IMPORT ta_copy_last_line
-.IMPORT ta_push_context
-.IMPORT ta_pop_context
-.IMPORT ta_metadata
-.EXPORT trm_init
-.EXPORT trm_activate
-.EXPORT trm_tick
+.IMPORTZP utils_bcd_result
+.IMPORT   boot850_check 
+.IMPORT   boot850_bootstrap 
+.IMPORT   copy_buffer40
+.IMPORT   copy_buffer40_size
+.IMPORT   str_to_copy_buffer40_with_fill
+.IMPORT   g_kbd_key_pressed
+.IMPORT   g_kbdcode_raw
+.IMPORT   g_kbdcode_raw_stripped
+.IMPORT   g_kbdcode_atascii
+.IMPORT   utils_atascii_to_icode
+.IMPORT   utils_hex_table_atascii
+.IMPORT   utils_hex_to_atascii
+.IMPORT   utils_bin_to_bcd
+.IMPORT   cfg_saved_config
+.IMPORT   mi_init
+.IMPORT   mi_metadata
+.IMPORT   mi_data
+.IMPORT   mi_repaint
+.IMPORT   mi_reset
+.IMPORT   mi_main_input_metadata
+.IMPORT   mi_hide_cursor
+.IMPORT   mi_show_cursor
+.IMPORT   mo_init
+.IMPORT   mo_repaint
+.IMPORT   mo_reset
+.IMPORT   mo_append_chars
+.IMPORT   mo_scroll_up
+.IMPORT   pk_frame_header
+.IMPORT   pk_frame_info
+.IMPORT   pk_new_byte
+.IMPORT   pk_next_frame
+.IMPORT   pk_reset
+.IMPORT   pk_state
+.IMPORT   rs232_open
+.IMPORT   rs232_close
+.IMPORT   rs232_status
+.IMPORT   rs232_getchr
+.IMPORT   rs232_putchr
+.IMPORT   rs232_last_status
+.IMPORT   rs232_input_buffer_size
+.IMPORT   rs232_output_buffer_size
+.IMPORT   ta_scr_ptr
+.IMPORT   ta_move_cursor_up
+.IMPORT   ta_move_cursor_down
+.IMPORT   ta_move_cursor_left
+.IMPORT   ta_move_cursor_right
+.IMPORT   ta_typechar
+.IMPORT   ta_backspace
+.IMPORT   ta_shift_clear
+.IMPORT   ta_line_insert
+.IMPORT   ta_char_insert
+.IMPORT   ta_line_delete
+.IMPORT   ta_char_delete
+.IMPORT   ta_copy_first_line
+.IMPORT   ta_copy_last_line
+.IMPORT   ta_push_context
+.IMPORT   ta_pop_context
+.IMPORT   ta_metadata
+.EXPORT   trm_init
+.EXPORT   trm_activate
+.EXPORT   trm_tick
 
 .SEGMENT "CODE"
 
@@ -180,6 +190,21 @@ int_reset_char_mode:
   jsr int_draw_ui_char_mode
   rts
 
+int_reset_protocol:
+  lda cfg_saved_config+Config::protocol
+  cmp #TERMINAL_PROTOCOL::TERMINAL
+  beq @terminal
+  cmp #TERMINAL_PROTOCOL::APRS
+  beq @aprs
+  bne @done
+@terminal:
+  jmp @done
+@aprs:
+  jsr pk_reset
+  jmp @done
+@done:
+  rts
+
 int_repaint:
   lda cfg_saved_config+Config::mode
   cmp #TERMINAL_MODE::CHAR
@@ -192,6 +217,7 @@ int_repaint:
   rts
 
 int_reset:
+  jsr int_reset_protocol
   lda cfg_saved_config+Config::mode
   cmp #TERMINAL_MODE::CHAR
   beq @char_mode
@@ -434,6 +460,119 @@ int_cmd_open_rs232:
 @done:
   rts
 
+int_handle_byte_read:
+  lda cfg_saved_config+Config::protocol
+  cmp #TERMINAL_PROTOCOL::TERMINAL
+  beq @terminal
+  cmp #TERMINAL_PROTOCOL::APRS
+  beq @aprs
+  bne @done
+@terminal:
+  lda #<rs232_byte_read
+  sta CMDDATA0
+  lda #>rs232_byte_read
+  sta CMDDATA1
+  lda #1
+  sta CMDDATA2
+  jsr mo_append_chars
+  jmp @done
+@aprs:
+  lda rs232_byte_read
+  sta CMDDATA0
+  jsr pk_new_byte
+  lda pk_state
+  and #KISS_FRAME_READY
+  beq @done
+@aprs_frame_ready:
+  jsr int_handle_kiss_frame
+  jsr pk_next_frame
+@done:
+  rts
+
+; inputs:
+;   A - offset in frame header to address
+;   Y - offset in copy buffer to store address
+; modifies:
+;   addr_index_var, X, Y
+int_addr_to_copy_buf:
+  tax
+  clc
+  adc #6
+  sta addr_index_var ; last char of callsign
+@loop:
+  lda pk_frame_header,x
+  cmp #$20
+  beq @loop_done
+  sta copy_buffer40,y
+  iny
+  inx
+  cpx addr_index_var
+  bne @loop
+@loop_done:
+  lda #'-'
+  sta copy_buffer40,y
+
+  ldx addr_index_var    ; index to ssid
+  lda pk_frame_header,x ; ssid
+  jsr utils_bin_to_bcd
+
+  lda utils_bcd_result
+  lsr
+  lsr
+  lsr
+  lsr
+  beq @no_tens
+  tax
+  lda utils_hex_table_atascii,x
+  iny
+  sta copy_buffer40,y 
+@no_tens:
+  iny
+  lda utils_bcd_result
+  and #%00001111
+  tax
+  lda utils_hex_table_atascii,x
+  sta copy_buffer40,y
+  rts
+
+int_handle_kiss_frame:
+  ldy #0
+  lda #KissFrameHeader::source
+  jsr int_addr_to_copy_buf
+  
+  iny
+  lda #'>'
+  sta copy_buffer40,y
+
+  iny
+  lda #KissFrameHeader::dest
+  jsr int_addr_to_copy_buf
+
+  iny
+  lda #':'
+  sta copy_buffer40,y
+
+  iny
+  sty copy_buffer40_size
+
+  lda #<copy_buffer40
+  sta CMDDATA0
+  lda #>copy_buffer40
+  sta CMDDATA1
+  lda copy_buffer40_size
+  sta CMDDATA2
+  jsr mo_append_chars
+
+  lda #<pk_frame_info
+  sta CMDDATA0
+  lda #>pk_frame_info
+  sta CMDDATA1
+  lda pk_frame_info+KissFrameInfo::num_chars
+  sta CMDDATA2
+  jsr mo_append_chars
+
+  rts
+
 int_cmd_get_rs232:
   jsr rs232_status
   bcs @error_status
@@ -449,13 +588,8 @@ int_cmd_get_rs232:
 @read_success:
   sta rs232_byte_read
 
-  lda #<rs232_byte_read
-  sta CMDDATA0
-  lda #>rs232_byte_read
-  sta CMDDATA1
-  lda #1
-  sta CMDDATA2
-  jsr mo_append_chars
+  jsr int_handle_byte_read
+
   jmp @done
 @error_status:
   sty command_error
@@ -496,6 +630,7 @@ int_cmd_put_rs232:
 @done:
   rts
 
+addr_index_var:              .byte $00
 top_banner:                  .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
                              .byte 'S'|$80,'T'|$80,'A'|$80,'R'|$80,'T'|$80,"config "
                              .byte $00

@@ -104,8 +104,8 @@ cfg_init:
               preset_APRS_label, OFFSET 
 
   ; default config
-  copy_struct_abs_to_abs preset_fastchar_config, cfg_draft_config, Config
-  copy_struct_abs_to_abs preset_fastchar_config, cfg_saved_config, Config
+  copy_struct_abs_to_abs preset_APRS_config, cfg_draft_config, Config
+  copy_struct_abs_to_abs preset_APRS_config, cfg_saved_config, Config
 
   OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 2
   NUM_ITEMS     .set 8
