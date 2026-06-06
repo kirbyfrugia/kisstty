@@ -72,7 +72,7 @@ rs232_open:
   lda #CMD_TRANSLATION_PARITY
   sta ICCOM,x
   ; TODO: note the parity is there twice. I didn't deal with rx vs tx
-  lda #RS232_TRANSLATION::NONE | RS232_PARITY::NONE | RS232_PARITY::NONE | RS232_LINE_FEED::NO_APPEND_LF
+  lda #(RS232_TRANSLATION::NONE | RS232_PARITY::NONE | RS232_PARITY::NONE | RS232_LINE_FEED::NO_APPEND_LF)
   sta ICAX1,x
   lda #0
   sta ICAX2,x
