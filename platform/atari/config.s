@@ -43,12 +43,10 @@ cfg_init:
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
                   RS232_PARITY::NONE, \
-                  RS232_DUPLEX::FULL, \
                   RS232_CTS::ON, \
                   RS232_DSR::OFF, \
                   RS232_DTR::ON, \
-                  RS232_RTS::ON, \
-                  RS232_TRANSLATION::NONE
+                  RS232_RTS::ON
   make_preset preset_fastchar, preset_fastchar_config, \
               preset_fastchar_label, OFFSET 
 
@@ -60,12 +58,10 @@ cfg_init:
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
                   RS232_PARITY::NONE, \
-                  RS232_DUPLEX::FULL, \
                   RS232_CTS::ON, \
                   RS232_DSR::OFF, \
                   RS232_DTR::ON, \
-                  RS232_RTS::ON, \
-                  RS232_TRANSLATION::NONE
+                  RS232_RTS::ON
   make_preset preset_fastline, preset_fastline_config, \
               preset_fastline_label, OFFSET 
 
@@ -77,12 +73,10 @@ cfg_init:
                   RS232_WORDSIZE::N7, \
                   RS232_STOPBITS::N1, \
                   RS232_PARITY::EVEN, \
-                  RS232_DUPLEX::FULL, \
                   RS232_CTS::ON, \
                   RS232_DSR::ON, \
                   RS232_DTR::ON, \
-                  RS232_RTS::ON, \
-                  RS232_TRANSLATION::NONE
+                  RS232_RTS::ON
   make_preset preset_vintage, preset_vintage_config, \
               preset_vintage_label, OFFSET 
 
@@ -94,12 +88,10 @@ cfg_init:
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
                   RS232_PARITY::NONE, \
-                  RS232_DUPLEX::FULL, \
                   RS232_CTS::ON, \
                   RS232_DSR::OFF, \
                   RS232_DTR::ON, \
-                  RS232_RTS::ON, \
-                  RS232_TRANSLATION::NONE
+                  RS232_RTS::ON
   make_preset preset_APRS, preset_APRS_config, \
               preset_APRS_label, OFFSET 
 
@@ -135,20 +127,6 @@ cfg_init:
             stop_menu_item_values, stop_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+11) * SCREEN_WIDTH + 11
-  NUM_ITEMS     .set 2
-  BORDER_WIDTH  .set 10
-  make_menu duplex_menu, duplex_menu_header, \
-            duplex_menu_item_values, duplex_menu_item_labels, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
-
-  OFFSET        .set (MENU_MARGIN_TOP+10) * SCREEN_WIDTH + 22
-  NUM_ITEMS     .set 3
-  BORDER_WIDTH  .set 15
-  make_menu trans_menu, trans_menu_header, \
-            trans_menu_item_values, trans_menu_item_labels, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
-
   OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 22
   NUM_ITEMS     .set 2
   BORDER_WIDTH  .set 7
@@ -177,14 +155,14 @@ cfg_init:
             rts_menu_item_values, rts_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+15) * SCREEN_WIDTH + 11
+  OFFSET        .set (MENU_MARGIN_TOP+12) * SCREEN_WIDTH + 15
   NUM_ITEMS     .set 2
   BORDER_WIDTH  .set 10
   make_menu mode_menu, mode_menu_header, \
             mode_menu_item_values, mode_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+15) * SCREEN_WIDTH + 26
+  OFFSET        .set (MENU_MARGIN_TOP+12) * SCREEN_WIDTH + 26
   NUM_ITEMS     .set 3
   BORDER_WIDTH  .set 11
   make_menu protocol_menu, protocol_menu_header, \
@@ -417,12 +395,10 @@ int_refresh_menus:
   refresh_menu parity_menu,   cfg_draft_config+Config::parity
   refresh_menu data_menu,     cfg_draft_config+Config::data_bits
   refresh_menu stop_menu,     cfg_draft_config+Config::stop_bits
-  refresh_menu trans_menu,    cfg_draft_config+Config::translation
   refresh_menu cts_menu,      cfg_draft_config+Config::cts
   refresh_menu dsr_menu,      cfg_draft_config+Config::dsr
   refresh_menu dtr_menu,      cfg_draft_config+Config::dtr
   refresh_menu rts_menu,      cfg_draft_config+Config::rets
-  refresh_menu duplex_menu,   cfg_draft_config+Config::duplex
   refresh_menu mode_menu,     cfg_draft_config+Config::mode
   refresh_menu protocol_menu, cfg_draft_config+Config::protocol
   rts
@@ -612,13 +588,6 @@ int_cmd_stop:
   sta cfg_draft_config+Config::stop_bits
   rts
 
-int_cmd_duplex:
-  handle_menu_next duplex_menu
-  ldy duplex_menu+Menu::selected_index
-  lda duplex_menu_item_values,y
-  sta cfg_draft_config+Config::duplex
-  rts
-
 int_cmd_cts:
   handle_menu_next cts_menu
   ldy cts_menu+Menu::selected_index
@@ -645,13 +614,6 @@ int_cmd_rets:
   ldy rts_menu+Menu::selected_index
   lda rts_menu_item_values,y
   sta cfg_draft_config+Config::rets
-  rts
-
-int_cmd_translation:
-  handle_menu_next trans_menu
-  ldy trans_menu+Menu::selected_index
-  lda trans_menu_item_values,y
-  sta cfg_draft_config+Config::translation
   rts
 
 int_cmd_mode:
@@ -688,8 +650,6 @@ int_handle_kbd:
   beq @data
   cmp #$08
   beq @stop
-  cmp #$0b
-  beq @duplex
   cmp #$12
   beq @cts
   cmp #$3e
@@ -698,8 +658,6 @@ int_handle_kbd:
   beq @dtr
   cmp #$28
   beq @rets
-  cmp #$00
-  beq @translation
   cmp #$25
   beq @mode
   cmp #$32
@@ -729,9 +687,6 @@ int_handle_kbd:
 @stop:
   jsr int_cmd_stop
   jmp @done
-@duplex:
-  jsr int_cmd_duplex
-  jmp @done
 @cts:
   jsr int_cmd_cts
   jmp @done
@@ -743,9 +698,6 @@ int_handle_kbd:
   jmp @done
 @rets:
   jsr int_cmd_rets
-  jmp @done
-@translation:
-  jsr int_cmd_translation
   jmp @done
 @mode:
   jsr int_cmd_mode
@@ -823,18 +775,6 @@ stop_menu_item_labels:
 stop_menu_item_label_word1:    .byte "1 bit",$00
 stop_menu_item_label_word2:    .byte "2 bit",$00
 
-trans_menu:                    .tag Menu
-trans_menu_header:             .byte "Trans",'L'|$80,"ation",$00
-trans_menu_item_values:
-  .byte RS232_TRANSLATION::NONE
-  .byte RS232_TRANSLATION::LIGHT
-  .byte RS232_TRANSLATION::HEAVY
-trans_menu_item_values_end:
-trans_menu_item_labels:
-trans_menu_item_label_none:    .byte "None",$00
-trans_menu_item_label_light:   .byte "Light",$00
-trans_menu_item_label_heavy:   .byte "Heavy",$00
-
 cts_menu:                      .tag Menu
 cts_menu_header:               .byte 'C'|$80,"TS",$00
 cts_menu_item_values:
@@ -878,16 +818,6 @@ rts_menu_item_labels:
 rts_menu_item_label_no_change: .byte "N/C",$00
 rts_menu_item_label_off:       .byte "OFF",$00
 rts_menu_item_label_on:        .byte "ON",$00
-
-duplex_menu:                   .tag Menu
-duplex_menu_header:            .byte "D",'U'|$80,"plex",$00
-duplex_menu_item_values:
-  .byte RS232_DUPLEX::FULL
-  .byte RS232_DUPLEX::HALF
-duplex_menu_item_values_end:
-duplex_menu_item_labels:
-duplex_menu_item_label_full:   .byte "Full",$00
-duplex_menu_item_label_half:   .byte "Half",$00
 
 parity_menu:                   .tag Menu
 parity_menu_header:            .byte 'P'|$80,"arity",$00

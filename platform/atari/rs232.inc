@@ -48,10 +48,29 @@
   NONE  = %00100000
 .endenum
 
-.enum RS232_PARITY
+.enum RS232_PARITY_INPUT
   NONE  = %00000000
-  EVEN  = %00001000
   ODD   = %00000100
+  EVEN  = %00001000
+  CLEAR = %00001100
+.endenum
+
+.enum RS232_PARITY_OUTPUT
+  NONE = %00000000
+  ODD  = %00000001
+  EVEN = %00000010
+  MARK = %00000011
+.endenum
+
+; not setting input and output separately
+; each of the below is input and output combined
+; also I'm ignoring the following options:
+; INPUT  - do not check parity but clear parity bit
+; OUTPUT - set parity bit to 1
+.enum RS232_PARITY
+  NONE  = RS232_PARITY_INPUT::NONE|RS232_PARITY_OUTPUT::NONE
+  EVEN  = RS232_PARITY_INPUT::EVEN|RS232_PARITY_OUTPUT::EVEN
+  ODD   = RS232_PARITY_INPUT::ODD|RS232_PARITY_OUTPUT::ODD
 .endenum
 
 .enum RS232_LINE_FEED

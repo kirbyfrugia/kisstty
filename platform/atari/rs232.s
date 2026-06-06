@@ -1,8 +1,10 @@
 .SETCPU "6502"
 .INCLUDE "atari.inc"
+.INCLUDE "config.inc"
 .INCLUDE "macros.inc"
 .INCLUDE "rs232.inc"
 
+.IMPORT cfg_saved_config
 .EXPORT rs232_open
 .EXPORT rs232_close
 .EXPORT rs232_status
@@ -13,11 +15,11 @@
 .EXPORT rs232_output_buffer_size
 
 .SEGMENT "CODE"
-.define WRITE_BUF_LEN           512
-.define CMD_TRANSLATION_PARITY  $26
-.define CMD_CONTROL_LINES       $22
-.define CMD_CONCURRENCY_MODE    $28
-.define CMD_BAUD_STOPBITS_READY $24
+.define WRITE_BUF_LEN              512
+.define CMD_CONFIGURE_TRANSLATION  $26
+.define CMD_CONTROL                $22
+.define CMD_CONCURRENCY_MODE       $28
+.define CMD_CONFIGURE_BAUD         $24
 
 ; inputs:
 ;   x - channel
@@ -36,49 +38,58 @@ rs232_open:
 
   ; set control lines
   ldx rs232_iocb
-  lda #CMD_CONTROL_LINES
+  lda #CMD_CONTROL
   sta ICCOM,x
-  lda #RS232_DTR::OFF | RS232_RTS::OFF | RS232_XMT::MARK
+  lda cfg_saved_config+Config::dtr
+  ora cfg_saved_config+Config::rets ; rts
+  ora cfg_saved_config+Config::xmt
   sta ICAX1,x
   lda #0
   sta ICAX2,x
   jsr CIOV
-  bmi @error
-
+  bpl @open_port
+  jmp @error
+@open_port:
   ; open port
   ldx rs232_iocb
   lda #OPEN
   sta ICCOM,x
-  lda #$0d ; read, write, concurrent
+  lda #$0d ; input, output, concurrent
   sta ICAX1,x
   lda #$00
   sta ICAX2,x
   jsr CIOV
-  bmi @error
-
-  ; configure settings
+  bpl @configure_baud
+  jmp @error
+@configure_baud:
   ldx rs232_iocb
-  lda #CMD_BAUD_STOPBITS_READY
+  lda #CMD_CONFIGURE_BAUD
   sta ICCOM,x
-  lda #RS232_BAUD::B9600
-  ora #RS232_STOPBITS::N1
+  lda #0
+  ora cfg_saved_config+Config::baud
+  ora cfg_saved_config+Config::stop_bits
   sta ICAX1,x
-  lda #$00
+  lda cfg_saved_config+Config::dsr
+  ora cfg_saved_config+Config::cts
+  ora cfg_saved_config+Config::crx
   sta ICAX2,x
   jsr CIOV
-  bmi @error
-
+  bpl @configure_translation
+  jmp @error
+@configure_translation:
   ldx rs232_iocb
-  lda #CMD_TRANSLATION_PARITY
+  lda #CMD_CONFIGURE_TRANSLATION
   sta ICCOM,x
-  ; TODO: note the parity is there twice. I didn't deal with rx vs tx
-  lda #(RS232_TRANSLATION::NONE | RS232_PARITY::NONE | RS232_PARITY::NONE | RS232_LINE_FEED::NO_APPEND_LF)
+  lda cfg_saved_config+Config::translation
+  ora cfg_saved_config+Config::parity
+  ora cfg_saved_config+Config::line_feed
   sta ICAX1,x
   lda #0
   sta ICAX2,x
   jsr CIOV
-  bmi @error
-
+  bpl @start_concurrent
+  jmp @error
+@start_concurrent:
   ; start concurrent mode
   ldx rs232_iocb
   lda #CMD_CONCURRENCY_MODE 

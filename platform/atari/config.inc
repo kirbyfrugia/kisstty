@@ -21,12 +21,14 @@
   data_bits   .byte
   stop_bits   .byte
   parity      .byte
-  duplex      .byte
   cts         .byte
   dsr         .byte
+  crx         .byte
   dtr         .byte
   rets        .byte
+  xmt         .byte
   translation .byte
+  line_feed   .byte
 .endstruct
 
 .struct Preset
@@ -77,8 +79,7 @@
 .endmacro
 
 .macro make_config  config, _protocol, _mode, _baud, _data_bits, \
-                   _stop_bits, _parity, _duplex, _cts,\
-                   _dsr, _dtr, _rets, _translation
+                   _stop_bits, _parity, _cts, _dsr, _dtr, _rets
   lda #_protocol
   sta config+Config::protocol
   lda #_mode
@@ -91,8 +92,6 @@
   sta config+Config::stop_bits
   lda #_parity
   sta config+Config::parity
-  lda #_duplex
-  sta config+Config::duplex
   lda #_cts
   sta config+Config::cts
   lda #_dsr
@@ -101,8 +100,15 @@
   sta config+Config::dtr
   lda #_rets
   sta config+Config::rets
-  lda #_translation
+  ; TODO: maybe make the rest of these options
+  lda #RS232_TRANSLATION::NONE
   sta config+Config::translation
+  lda #RS232_LINE_FEED::NO_APPEND_LF
+  sta config+Config::line_feed
+  lda #RS232_CRX::OFF
+  sta config+Config::crx
+  lda #RS232_XMT::NO_CHANGE
+  sta config+Config::xmt
 .endmacro
 
 .macro make_preset preset, config, _label, scr_pos_offset
