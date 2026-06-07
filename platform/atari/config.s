@@ -35,7 +35,7 @@ cfg_init:
   lda #0
   sta cfg_config_done
 
-  OFFSET       .set (MENU_MARGIN_TOP+20) * SCREEN_WIDTH + 1
+  OFFSET       .set (MENU_MARGIN_TOP+18) * SCREEN_WIDTH + 13
   make_config preset_fastchar_config, \
                   TERMINAL_PROTOCOL::TERMINAL, \
                   TERMINAL_MODE::CHAR, \
@@ -50,7 +50,7 @@ cfg_init:
   make_preset preset_fastchar, preset_fastchar_config, \
               preset_fastchar_label, OFFSET 
 
-  OFFSET       .set (MENU_MARGIN_TOP+21) * SCREEN_WIDTH + 1
+  OFFSET       .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 13
   make_config preset_fastline_config, \
                   TERMINAL_PROTOCOL::TERMINAL, \
                   TERMINAL_MODE::LINE, \
@@ -65,7 +65,7 @@ cfg_init:
   make_preset preset_fastline, preset_fastline_config, \
               preset_fastline_label, OFFSET 
 
-  OFFSET       .set (MENU_MARGIN_TOP+20) * SCREEN_WIDTH + 13
+  OFFSET       .set (MENU_MARGIN_TOP+18) * SCREEN_WIDTH + 25
   make_config preset_vintage_config, \
                   TERMINAL_PROTOCOL::TERMINAL, \
                   TERMINAL_MODE::CHAR, \
@@ -80,7 +80,7 @@ cfg_init:
   make_preset preset_vintage, preset_vintage_config, \
               preset_vintage_label, OFFSET 
 
-  OFFSET       .set (MENU_MARGIN_TOP+21) * SCREEN_WIDTH + 13
+  OFFSET       .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 25
   make_config preset_APRS_config, \
                   TERMINAL_PROTOCOL::APRS, \
                   TERMINAL_MODE::CHAR, \
@@ -100,74 +100,75 @@ cfg_init:
   copy_struct_abs_to_abs preset_APRS_config, cfg_saved_config, Config
 
   OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 2
-  NUM_ITEMS     .set 8
+  NUM_ITEMS     .set 7
   BORDER_WIDTH  .set 8
   make_menu baud_menu, baud_menu_header, \
             baud_menu_item_values, baud_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+11) * SCREEN_WIDTH + 2
+  OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 11
   NUM_ITEMS     .set 3
-  BORDER_WIDTH  .set 8
+  BORDER_WIDTH  .set 13
   make_menu parity_menu, parity_menu_header, \
             parity_menu_item_values, parity_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 11
+  OFFSET        .set (MENU_MARGIN_TOP+10) * SCREEN_WIDTH + 2
   NUM_ITEMS     .set 4
-  BORDER_WIDTH  .set 10
+  BORDER_WIDTH  .set 8 
   make_menu data_menu, data_menu_header, \
             data_menu_item_values, data_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+7) * SCREEN_WIDTH + 11
+  OFFSET        .set (MENU_MARGIN_TOP+16) * SCREEN_WIDTH + 2
   NUM_ITEMS     .set 2
-  BORDER_WIDTH  .set 10
+  BORDER_WIDTH  .set 8
   make_menu stop_menu, stop_menu_header, \
             stop_menu_item_values, stop_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 22
+  OFFSET        .set (MENU_MARGIN_TOP+6) * SCREEN_WIDTH + 11
   NUM_ITEMS     .set 2
-  BORDER_WIDTH  .set 7
+  BORDER_WIDTH  .set 6
   make_menu cts_menu, cts_menu_header, \
             cts_menu_item_values, cts_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 30
+  OFFSET        .set (MENU_MARGIN_TOP+6) * SCREEN_WIDTH + 18
   NUM_ITEMS     .set 2
-  BORDER_WIDTH  .set 7
+  BORDER_WIDTH  .set 6
   make_menu dsr_menu, dsr_menu_header, \
             dsr_menu_item_values, dsr_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+5) * SCREEN_WIDTH + 22
+  OFFSET        .set (MENU_MARGIN_TOP+10) * SCREEN_WIDTH + 11
   NUM_ITEMS     .set 3
-  BORDER_WIDTH  .set 7
+  BORDER_WIDTH  .set 6
   make_menu dtr_menu, dtr_menu_header, \
             dtr_menu_item_values, dtr_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+5) * SCREEN_WIDTH + 30
+  OFFSET        .set (MENU_MARGIN_TOP+10) * SCREEN_WIDTH + 18
   NUM_ITEMS     .set 3
-  BORDER_WIDTH  .set 7
+  BORDER_WIDTH  .set 6
   make_menu rts_menu, rts_menu_header, \
             rts_menu_item_values, rts_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-  OFFSET        .set (MENU_MARGIN_TOP+12) * SCREEN_WIDTH + 15
-  NUM_ITEMS     .set 2
-  BORDER_WIDTH  .set 10
-  make_menu mode_menu, mode_menu_header, \
-            mode_menu_item_values, mode_menu_item_labels, \
-            NUM_ITEMS, BORDER_WIDTH, OFFSET
-
-  OFFSET        .set (MENU_MARGIN_TOP+12) * SCREEN_WIDTH + 26
+  OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 26
   NUM_ITEMS     .set 3
   BORDER_WIDTH  .set 11
   make_menu protocol_menu, protocol_menu_header, \
             protocol_menu_item_values, protocol_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
+
+  OFFSET        .set (MENU_MARGIN_TOP+6) * SCREEN_WIDTH + 26
+  NUM_ITEMS     .set 2
+  BORDER_WIDTH  .set 11
+  make_menu mode_menu, mode_menu_header, \
+            mode_menu_item_values, mode_menu_item_labels, \
+            NUM_ITEMS, BORDER_WIDTH, OFFSET
+
 
   rts
 
@@ -206,16 +207,15 @@ int_refresh_menu:
   sta (cfg_ptr_lo),y
 
 @top_border:
-  ldy #0
-  lda #$51 ; upper left corner
+  ldy draw_menu_border_width
+  lda #$45 ; upper right corner
   sta (cfg_scr_ptr_lo),y
   lda #$52 ; horizontal bar
 @top_loop:
-  iny
+  dey
   sta (cfg_scr_ptr_lo),y
-  cpy draw_menu_border_width
   bne @top_loop
-  lda #$45 ; upper right corner
+  lda #$51 ; upper left corner
   sta (cfg_scr_ptr_lo),y
 
 @header:
@@ -292,16 +292,17 @@ int_refresh_menu:
   bne @menu_item_rows_loop
 @menu_item_rows_loop_done:
 
-  ldy #0
-  lda #$5a ; lower left corner
+
+@btm_border:
+  ldy draw_menu_border_width
+  lda #$43 ; lower right corner
   sta (cfg_scr_ptr_lo),y
   lda #$52 ; horizontal bar
 @btm_loop:
-  iny
+  dey
   sta (cfg_scr_ptr_lo),y
-  cpy draw_menu_border_width
   bne @btm_loop
-  lda #$43 ; lower right corner
+  lda #$5a ; lower left corner
   sta (cfg_scr_ptr_lo),y
 
   jsr int_highlight_selected_menu_item
@@ -370,7 +371,7 @@ int_draw_banners:
   jmp @top_banner_loop
 @top_banner_done:
 
-  OFFSET .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 1
+  OFFSET .set (MENU_MARGIN_TOP+17) * SCREEN_WIDTH + 13
   lda SCR_PTR_LO
   clc
   adc #<OFFSET
@@ -389,6 +390,7 @@ int_draw_banners:
   jmp @serial_preset_loop
 @serial_preset_done:
   rts
+
 
 int_refresh_menus:
   refresh_menu baud_menu,     cfg_draft_config+Config::baud
@@ -737,7 +739,6 @@ baud_menu_item_values:
   .byte RS232_BAUD::B600
   .byte RS232_BAUD::B1200
   .byte RS232_BAUD::B2400
-  .byte RS232_BAUD::B4800
   .byte RS232_BAUD::B9600
   .byte RS232_BAUD::B19200
 baud_menu_item_values_end:
@@ -747,7 +748,6 @@ baud_menu_item_label_300:      .byte "300",$00
 baud_menu_item_label_600:      .byte "600",$00
 baud_menu_item_label_1200:     .byte "1200",$00
 baud_menu_item_label_2400:     .byte "2400",$00
-baud_menu_item_label_4800:     .byte "4800",$00
 baud_menu_item_label_9600:     .byte "9600",$00
 baud_menu_item_label_19200:    .byte "19200",$00
 
