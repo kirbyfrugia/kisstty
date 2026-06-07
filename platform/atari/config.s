@@ -169,16 +169,80 @@ cfg_init:
             mode_menu_item_values, mode_menu_item_labels, \
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
-
   rts
 
-; updates and draws a menu
+int_draw_menu_items:
+  ldy #Menu::scr_pos_ptr
+  lda (cfg_ptr_lo),y
+  clc
+  adc #(SCREEN_WIDTH+2)
+  sta cfg_scr_ptr_lo
+  iny
+  lda (cfg_ptr_lo),y
+  adc #0
+  sta cfg_scr_ptr_hi
+
+  ldy #Menu::border_width
+  lda (cfg_ptr_lo),y
+  sta draw_menu_border_width
+
+  ldy #Menu::num_items
+  lda (cfg_ptr_lo),y
+  sta menu_item_num_items
+
+  ldy #Menu::items_labels_ptr
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_lo
+  iny
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_hi
+
+  ; menu labels are null terminated strings
+  ; stored in a contiguous chunk of memory.
+  ; each menu label can vary in length.
+  ; we want to loop N rows, but the length
+  ; of each label is unknown ahead of time.
+  ; so we track what row we're on, but also
+  ; where in the menu data we're at (menu_data_offset)
+  ldx #0
+  stx menu_data_offset
+@menu_item_rows_loop:
+  ldy #0
+@menu_item_loop:
+  sty draw_menu_tempy ; offset on current line
+  ldy menu_data_offset 
+  lda (cfg_data_ptr_lo),y
+  beq @menu_item_done ; null terminator
+  jsr utils_atascii_to_icode
+  ldy draw_menu_tempy
+  sta (cfg_scr_ptr_lo),y
+  iny
+  inc menu_data_offset 
+  jmp @menu_item_loop
+@menu_item_done:
+  inc menu_data_offset 
+  lda cfg_scr_ptr_lo
+  clc
+  adc #SCREEN_WIDTH
+  sta cfg_scr_ptr_lo
+  lda cfg_scr_ptr_hi
+  adc #0
+  sta cfg_scr_ptr_hi
+
+  inx
+  cpx menu_item_num_items
+  beq @menu_item_rows_loop_done
+  bne @menu_item_rows_loop
+@menu_item_rows_loop_done:
+  rts
+
+; draws the menu border and header
 ; note: assumes <256 chars worth of menu item data
 ;
 ; inputs:
 ;   cfg_ptr_lo/HI   - pointer to menu struct
 ;   menu_item_value - initial value
-int_refresh_menu:
+int_draw_menu_border:
   ldy #Menu::scr_pos_ptr
   lda (cfg_ptr_lo),y
   sta cfg_scr_ptr_lo
@@ -193,19 +257,6 @@ int_refresh_menu:
   ldy #Menu::num_items
   lda (cfg_ptr_lo),y
   sta menu_item_num_items
-
-  ldy #Menu::items_values_ptr
-  lda (cfg_ptr_lo),y
-  sta cfg_data_ptr_lo
-  iny
-  lda (cfg_ptr_lo),y
-  sta cfg_data_ptr_hi
-
-  jsr int_find_menu_item_index
-  lda menu_item_index
-  ldy #Menu::selected_index
-  sta (cfg_ptr_lo),y
-
 @top_border:
   ldy draw_menu_border_width
   lda #$45 ; upper right corner
@@ -217,9 +268,7 @@ int_refresh_menu:
   bne @top_loop
   lda #$51 ; upper left corner
   sta (cfg_scr_ptr_lo),y
-
 @header:
-  ; header data -> cfg_data_ptr_lo
   ldy #Menu::header_ptr
   lda (cfg_ptr_lo),y
   sta cfg_data_ptr_lo
@@ -236,7 +285,7 @@ int_refresh_menu:
   sta (cfg_scr_ptr_lo),y
   jmp @header_loop
 @header_loop_done:
-  ; move to next row for menu items
+  ; move to next row for vertical borders
   lda cfg_scr_ptr_lo
   clc
   adc #SCREEN_WIDTH
@@ -245,39 +294,17 @@ int_refresh_menu:
   adc #0
   sta cfg_scr_ptr_hi
   
-  ; menu item data -> cfg_data_ptr_lo
-  ldy #Menu::items_labels_ptr
-  lda (cfg_ptr_lo),y
-  sta cfg_data_ptr_lo
-  iny
-  lda (cfg_ptr_lo),y
-  sta cfg_data_ptr_hi
-
-  ldx #0
-  stx menu_data_offset
+  ldx menu_item_num_items
 @menu_item_rows_loop:
   ldy #0
   lda #$41 ; vertical left bar
   sta (cfg_scr_ptr_lo),y
-  iny
-  iny
-@menu_item_loop:
-  sty draw_menu_tempy ; offset on current line
-  ldy menu_data_offset 
-  lda (cfg_data_ptr_lo),y
-  beq @menu_item_done ; null terminator
-  jsr utils_atascii_to_icode
-  ldy draw_menu_tempy
-  sta (cfg_scr_ptr_lo),y
-  iny
-  inc menu_data_offset 
-  jmp @menu_item_loop
-@menu_item_done:
-  ldy draw_menu_border_width
+  ldy draw_menu_border_width 
   lda #$44 ; vertical right bar
   sta (cfg_scr_ptr_lo),y
 
-  inc menu_data_offset 
+  dex
+
   lda cfg_scr_ptr_lo
   clc
   adc #SCREEN_WIDTH
@@ -286,12 +313,8 @@ int_refresh_menu:
   adc #0
   sta cfg_scr_ptr_hi
 
-  inx
-  cpx menu_item_num_items
-  beq @menu_item_rows_loop_done
+  cpx #0
   bne @menu_item_rows_loop
-@menu_item_rows_loop_done:
-
 
 @btm_border:
   ldy draw_menu_border_width
@@ -305,10 +328,11 @@ int_refresh_menu:
   lda #$5a ; lower left corner
   sta (cfg_scr_ptr_lo),y
 
-  jsr int_highlight_selected_menu_item
-
   rts
 
+; draws the preset title for a given preset
+; inputs:
+;   cfg_ptr_lo/hi - ptr to the preset
 int_draw_preset:
   ldy #Preset::scr_pos_ptr
   lda (cfg_ptr_lo),y
@@ -333,9 +357,9 @@ int_draw_preset:
   iny
   bne @loop
 @loop_done:
- 
   rts
 
+; draws the banners and the "Preset" label
 int_draw_banners:
   lda SCR_PTR_LO
   sta cfg_scr_ptr_lo
@@ -391,7 +415,8 @@ int_draw_banners:
 @serial_preset_done:
   rts
 
-
+; redraws the menu items, sets the selected by value,
+; and highlights the selected menu item.
 int_refresh_menus:
   refresh_menu baud_menu,     cfg_draft_config+Config::baud
   refresh_menu parity_menu,   cfg_draft_config+Config::parity
@@ -405,12 +430,28 @@ int_refresh_menus:
   refresh_menu protocol_menu, cfg_draft_config+Config::protocol
   rts
 
+; draws the chroma around the borders and the header
+int_draw_menu_borders:
+  draw_menu_border baud_menu
+  draw_menu_border parity_menu
+  draw_menu_border data_menu
+  draw_menu_border stop_menu
+  draw_menu_border cts_menu
+  draw_menu_border dsr_menu
+  draw_menu_border dtr_menu
+  draw_menu_border rts_menu
+  draw_menu_border mode_menu
+  draw_menu_border protocol_menu
+  
+  rts
+
 cfg_activate:
   lda #0
   sta cfg_config_done
 
   copy_struct_abs_to_abs cfg_saved_config, cfg_draft_config, Config
 
+  jsr int_draw_menu_borders
   jsr int_refresh_menus
 
   draw_preset preset_fastchar
@@ -424,7 +465,6 @@ cfg_activate:
 
 ; inputs:
 ;   cfg_ptr_lo/HI   - pointer to menu struct
-;   menu_item_index - index to highlight
 int_highlight_selected_menu_item:
   ldy #Menu::scr_pos_ptr
   lda (cfg_ptr_lo),y
@@ -443,6 +483,10 @@ int_highlight_selected_menu_item:
   ldy #Menu::num_items
   lda (cfg_ptr_lo),y
   sta menu_item_num_items
+
+  ldy #Menu::selected_index
+  lda (cfg_ptr_lo),y
+  sta menu_item_index
 
   ldx #0
 @menu_item_rows_loop:
@@ -487,28 +531,37 @@ int_highlight_selected_menu_item:
 @done:
   rts
 
-; Finds the index of the item with this value.
+; Finds menu item with the provided value and
+; sets the selected index.
 ;
 ; inputs:
-;   cfg_data_ptr_lo/HI  - pointer to values array
-;   menu_item_num_items - number of items in the menu
+;   cfg_ptr_lo/hi       - pointer to the menu
 ;   menu_item_value     - value to search for
-; outputs:
-;   menu_item_index     - index of the value found, zero if not found
-int_find_menu_item_index:
+int_select_menu_item_by_value:
+  ldy #Menu::num_items
+  lda (cfg_ptr_lo),y
+  sta menu_item_num_items
+
+  ldy #Menu::items_values_ptr
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_lo
+  iny
+  lda (cfg_ptr_lo),y
+  sta cfg_data_ptr_hi
+  
   ldy #0
-@index_loop:
+@loop:
   lda (cfg_data_ptr_lo),y
   cmp menu_item_value
   beq @found
   iny
   cpy menu_item_num_items
-  bne @index_loop
+  bne @loop
   ldy #0
-  sty menu_item_index
-  beq @done
 @found:
-  sty menu_item_index
+  tya
+  ldy #Menu::selected_index
+  sta (cfg_ptr_lo),y
 @done:
   rts
 

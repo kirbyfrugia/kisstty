@@ -68,6 +68,14 @@
 
 .endmacro
 
+.macro draw_menu_border menu
+  lda #<menu
+  sta cfg_ptr_lo
+  lda #>menu
+  sta cfg_ptr_hi
+  jsr int_draw_menu_border
+.endmacro
+
 .macro refresh_menu menu, _init_value
   lda #<menu
   sta cfg_ptr_lo
@@ -75,7 +83,10 @@
   sta cfg_ptr_hi
   lda _init_value
   sta menu_item_value
-  jsr int_refresh_menu
+
+  jsr int_select_menu_item_by_value
+  jsr int_draw_menu_items
+  jsr int_highlight_selected_menu_item
 .endmacro
 
 .macro make_config  config, _protocol, _mode, _baud, _data_bits, \
