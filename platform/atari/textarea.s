@@ -75,7 +75,7 @@
 .EXPORT ta_line_delete
 .EXPORT ta_shift_all_up
 .EXPORT ta_char_delete
-.EXPORT ta_append_chars_fast
+.EXPORT ta_append_chars
 .EXPORT ta_scroll_up
 .EXPORT ta_shift_clear
 .EXPORT ta_move_cursor_to_start_of_last_line
@@ -209,7 +209,7 @@ int_flush_cursor:
   rts
 
 ; internal use only, updates the local cursor pos
-; given the current cursor x and y
+; and the screen cursor pos given the current cursor x and y
 int_update_cursor_pos:
   lda #0
   tax
@@ -810,15 +810,31 @@ ta_char_delete:
 @done:
   rts
 
-; appends chars to the text area without doing any bounds
-; checking. assumes you know there is space when you call it.
+; Appends chars to the text area until it is full,
+; meaning that we wrote a char in the bottom right
+; position. The cursor position will remain in the
+; bottom right.
+;
+; It will always write at least one character unless
+; CMDDATA2 is zero. That is because text areas don't
+; really have a concept of being "full." The cursorpos
+; remains at the bottom right when the area is full.
+;
 ; inputs:
 ;   CMDDATA0/1 - pointer to the data
 ;   CMDDATA2   - number of chars to add
-ta_append_chars_fast:
+; outputs:
+;   CMDDATA2   - number of chars remaining to add
+;   CMDDATA3   - number of chars added
+;   C - set if text area is now full, clear if empty
+ta_append_chars:
+  ldx CMDDATA2
+  beq @no_change
+
+  ; assumes x not clobbered by ta_hide_cursor.
+  ; it's not right now and no reason it should be.
   jsr ta_hide_cursor
-  lda CMDDATA2
-  beq @done
+
   ldy #0
 @loop:
   lda (CMDDATA0),y
@@ -826,17 +842,36 @@ ta_append_chars_fast:
   ldy ta_metadata+TextArea::cursorpos
   sta (first_row_data_ptr_lo),y
   iny
-  sty ta_metadata+TextArea::cursorpos
+  cpy ta_metadata+TextArea::size
+  beq @full
+  inc ta_metadata+TextArea::cursorpos
   ldy append_tempy
   iny
-  cpy CMDDATA2
+  dex
   bne @loop
-
+@wrote_all:
+  stx CMDDATA2
+  sty CMDDATA3
   jsr int_update_cursor_xy
   jsr int_update_cursor_pos
   jsr ta_repaint
-@done:
   jsr ta_show_cursor
+  clc ; finished, didn't fill up
+  rts
+@full:
+  dex
+  stx CMDDATA2
+  sty CMDDATA3
+  jsr int_update_cursor_xy
+  jsr int_update_cursor_pos
+  jsr ta_repaint
+  jsr ta_show_cursor
+  sec ; full
+  rts
+@no_change:
+  ldy #0
+  sty CMDDATA3
+  clc
   rts
 
 ta_move_cursor_to_start_of_last_line:
@@ -848,6 +883,30 @@ ta_move_cursor_to_start_of_last_line:
   jsr int_update_cursor_pos
   jsr ta_show_cursor
   rts
+
+
+;int_update_screen_char:
+;  ldy ta_metadata+TextArea::cursorpos
+;  lda (first_row_data_ptr_lo),y
+;  jsr utils_atascii_to_icode
+;  ldy #0
+;  sta (cursor_scr_ptr_lo),y
+;  rts
+;
+;; sets the character at the current cursor location provided in A.
+;; moves the cursor to the right.
+;;
+;; inputs
+;;   - A the character
+;ta_typechar:
+;  ldy ta_metadata+TextArea::cursorpos
+;  sta (first_row_data_ptr_lo),y
+;  jsr int_update_screen_char
+;  lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
+;  sta CMDDATA0
+;  jsr ta_move_cursor_right
+;  rts
+
 
 update_marker_start:           .byte 0
 update_marker_end:             .byte 0

@@ -3,7 +3,7 @@
 .INCLUDE "macros.inc"
 .INCLUDE "common.inc"
 
-.EXPORTZP utils_bcd_result
+.EXPORTZP utils_result
 .EXPORT   utils_atascii_to_icode
 .EXPORT   utils_hex_table_atascii
 .EXPORT   utils_hex_to_atascii
@@ -11,8 +11,9 @@
 .EXPORT   utils_bin_to_bcd
 
 .SEGMENT "ZEROPAGE"
-bcd_tmp:          .res 1
-utils_bcd_result: .res 2
+bcd_tmp:      .res 1
+utils_result: .res 4
+utils_input:  .res 4
 
 .SEGMENT "CODE"
 
@@ -134,6 +135,28 @@ utils_hex_to_icode:
   lda tmp_byte_to_str
   rts
 
+; Multiples a 32-bit number by 91
+; APRS uses base-91 encoding/decoding for positions
+; in some messages.
+;
+; 91 = 1 + 2 + 8 + 16 + 64
+; 91 * n = n + 2n + 8n +16n + 64n
+;
+; inputs:
+utils_mult_32bitX91:
+
+  ; TODO: obviously I haven't implemented this yet.
+  lda utils_input+0
+  sta utils_result+0
+  lda utils_input+1
+  sta utils_result+1
+  lda utils_input+2
+  sta utils_result+2
+  lda utils_input+3
+  sta utils_result+3
+
+  rts
+
 ; Thanks to [Andrew Jacobs]( https://6502.org/source/integers/hex2dec-more.htm)
 ; inputs:
 ;   A - value to convert
@@ -145,19 +168,19 @@ utils_hex_to_icode:
 utils_bin_to_bcd:
   sta bcd_tmp
   lda #0
-  sta utils_bcd_result+0
-  sta utils_bcd_result+1
+  sta utils_result+0
+  sta utils_result+1
   ldx #8
 
   sed
 @loop:
   asl bcd_tmp
-  lda utils_bcd_result+0
-  adc utils_bcd_result+0
-  sta utils_bcd_result+0
-  lda utils_bcd_result+1
-  adc utils_bcd_result+1
-  sta utils_bcd_result+1
+  lda utils_result+0
+  adc utils_result+0
+  sta utils_result+0
+  lda utils_result+1
+  adc utils_result+1
+  sta utils_result+1
   dex
   bne @loop
   cld

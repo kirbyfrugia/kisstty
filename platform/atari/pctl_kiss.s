@@ -4,13 +4,13 @@
 .INCLUDE "macros.inc"
 .INCLUDE "pctl_kiss.inc"
 
-.EXPORT pk_reset
-.EXPORT pk_new_byte
-.EXPORT pk_next_frame
-.EXPORT pk_state
-.EXPORT pk_frame_header
-.EXPORT pk_frame_info
-
+.IMPORTZP g_rx_buf_num_chars, g_disp_buf_num_chars
+.IMPORT   g_rx_buf, g_disp_buf
+.EXPORT   pk_reset
+.EXPORT   pk_new_byte
+.EXPORT   pk_next_frame
+.EXPORT   pk_state
+.EXPORT   pk_frame_header
 
 .SEGMENT "ZEROPAGE"
 buf_counter:  .res 1
@@ -102,7 +102,7 @@ int_process_byte:
 @in_info:
   ldy buf_counter
   lda CMDDATA0
-  sta pk_frame_info+KissFrameInfo::data,y
+  sta g_rx_buf,y
   iny ; assumes <256 bytes
   sty buf_counter
 @done:
@@ -120,10 +120,32 @@ pk_next_frame:
 
   rts
 
+int_parse_position_no_ts:
+  rts
+
+int_parse_position_ts:
+  rts
+
 int_process_frame:
   lda buf_counter
   beq @done ; no data, was an empty frame
-  sta pk_frame_info+KissFrameInfo::num_chars
+  sta g_rx_buf_num_chars
+
+;  lda pk_frame_info+KissFrameInfo::dti
+;  cmp #'!'
+;  beq position_no_ts
+;  cmp #'='
+;  beq position_no_ts
+;  cmp #'/'
+;  beq position_ts
+;  cmp #'@'
+;  beq position_ts
+;position_no_ts:
+;  jmp parse_position_no_ts
+;  jmp @done
+;position_ts:
+;  jmp parse_position_ts
+;  jmp @done
 
   ; indicate a frame is ready for handling
   lda pk_state
@@ -191,4 +213,3 @@ pk_new_byte:
 btwn_counter:    .res 1
 pk_state:        .res 1
 pk_frame_header: .tag KissFrameHeader
-pk_frame_info:   .tag KissFrameInfo

@@ -8,12 +8,14 @@
 .INCLUDE "terminal.inc"
 .INCLUDE "textarea.inc"
 
-.IMPORTZP utils_bcd_result
+.IMPORTZP g_rx_buf_num_chars
+.IMPORTZP utils_result
 .IMPORT   boot850_check 
 .IMPORT   boot850_bootstrap 
 .IMPORT   copy_buffer40
 .IMPORT   copy_buffer40_size
 .IMPORT   str_to_copy_buffer40_with_fill
+.IMPORT   g_rx_buf
 .IMPORT   g_kbd_key_pressed
 .IMPORT   g_kbdcode_raw
 .IMPORT   g_kbdcode_raw_stripped
@@ -516,7 +518,7 @@ int_addr_to_copy_buf:
   lda pk_frame_header,x ; ssid
   jsr utils_bin_to_bcd
 
-  lda utils_bcd_result
+  lda utils_result
   lsr
   lsr
   lsr
@@ -528,7 +530,7 @@ int_addr_to_copy_buf:
   sta copy_buffer40,y 
 @no_tens:
   iny
-  lda utils_bcd_result
+  lda utils_result
   and #%00001111
   tax
   lda utils_hex_table_atascii,x
@@ -563,11 +565,11 @@ int_handle_kiss_frame:
   sta CMDDATA2
   jsr mo_append_chars
 
-  lda #<pk_frame_info
+  lda #<g_rx_buf
   sta CMDDATA0
-  lda #>pk_frame_info
+  lda #>g_rx_buf
   sta CMDDATA1
-  lda pk_frame_info+KissFrameInfo::num_chars
+  lda g_rx_buf_num_chars
   sta CMDDATA2
   jsr mo_append_chars
 

@@ -36,7 +36,7 @@
 .IMPORT cfg_saved_config
 .IMPORT copy_buffer40
 .IMPORT copy_buffer40_size
-.IMPORT ta_append_chars_fast
+.IMPORT ta_append_chars
 .IMPORT ta_init_textarea
 .IMPORT ta_set_context
 .IMPORT ta_push_context
@@ -50,10 +50,6 @@
 .EXPORT mo_repaint
 .EXPORT mo_reset
 
-.SEGMENT "ZEROPAGE"
-mo_data_ptr_lo:     .res 1
-mo_data_ptr_hi:     .res 1
-
 .SEGMENT "CODE"
 .define MARGIN_LEFT       1
 .define WIDTH             38
@@ -62,17 +58,17 @@ mo_data_ptr_hi:     .res 1
 .define AREA_HEIGHT_EXTRA 3
 .define AREA_SIZE_EXTRA   WIDTH * AREA_HEIGHT_EXTRA
 
-OVERFLOW_FLAG_AREA0 = %10000000
-OVERFLOW_FLAG_AREA1 = %01000000
-OVERFLOW_FLAG_AREA2 = %00100000
-OVERFLOW_FLAG_AREAE = %00010000
+FULL_FLAG_AREA0 = %10000000
+FULL_FLAG_AREA1 = %01000000
+FULL_FLAG_AREA2 = %00100000
+FULL_FLAG_AREAE = %00010000
 ; initializes the text output area
 ;
 ; inputs:
 ;   CMDDATA0/1 - pointer to the upper left of the real screen
 mo_init:
   lda #0
-  sta overflow_flag
+  sta full_flag
   sta area0_metadata+TextArea::cursorx
   sta area0_metadata+TextArea::cursory
   sta area0_metadata+TextArea::cursorpos
@@ -242,35 +238,67 @@ mo_init:
   rts
 
 int_set_area0_active:
+  lda CMDDATA0
+  pha
+  lda CMDDATA1
+  pha
   lda #<area0_metadata
   sta CMDDATA0
   lda #>area0_metadata
   sta CMDDATA1
   jsr ta_set_context
+  pla
+  sta CMDDATA1
+  pla
+  sta CMDDATA0
   rts
 
 int_set_area1_active:
+  lda CMDDATA0
+  pha
+  lda CMDDATA1
+  pha
   lda #<area1_metadata
   sta CMDDATA0
   lda #>area1_metadata
   sta CMDDATA1
   jsr ta_set_context
+  pla
+  sta CMDDATA1
+  pla
+  sta CMDDATA0
   rts
 
 int_set_area2_active:
+  lda CMDDATA0
+  pha
+  lda CMDDATA1
+  pha
   lda #<area2_metadata
   sta CMDDATA0
   lda #>area2_metadata
   sta CMDDATA1
   jsr ta_set_context
+  pla
+  sta CMDDATA1
+  pla
+  sta CMDDATA0
   rts
 
 int_set_areaE_active:
+  lda CMDDATA0
+  pha
+  lda CMDDATA1
+  pha
   lda #<areaE_metadata
   sta CMDDATA0
   lda #>areaE_metadata
   sta CMDDATA1
   jsr ta_set_context
+  pla
+  sta CMDDATA1
+  pla
+  sta CMDDATA0
   rts
 
 mo_repaint:
@@ -291,7 +319,7 @@ mo_repaint:
 
 mo_reset:
   lda #0
-  sta overflow_flag
+  sta full_flag
 
   jsr int_set_area0_active
   jsr ta_shift_clear
@@ -308,50 +336,16 @@ mo_reset:
 @reset_done:
   rts
 
-.macro append_chars area_num, metadata, no_overflow_jmp
-  lda chars_remaining
-  bne @chars_left
-  jmp no_overflow_jmp
-@chars_left:
-  lda metadata+TextArea::size
-  sec
-  sbc metadata+TextArea::cursorpos
-  sta space_remaining
-  min8 space_remaining, chars_remaining, chars_added
-
-  lda chars_added
-  cmp space_remaining
-  bcc @no_overflow
-  lda overflow_flag
-  ora #.ident(.concat("OVERFLOW_FLAG_AREA",area_num))
-  sta overflow_flag
-@no_overflow:
-  lda mo_data_ptr_lo
-  sta CMDDATA0
-  lda mo_data_ptr_hi
-  sta CMDDATA1
-  lda chars_added
-  sta CMDDATA2
-
-  jsr ta_append_chars_fast
- 
-  lda chars_remaining
-  sec
-  sbc chars_added
-  sta chars_remaining
-  bne @more_to_do
-  jmp no_overflow_jmp
-@more_to_do:
-  lda mo_data_ptr_lo
-  clc
-  adc chars_added
-  sta mo_data_ptr_lo
-  bcc @nowrap
-  inc mo_data_ptr_hi
-@nowrap:
-.endmacro
-
+;TODO: be smarter about repainting the text areas. Only
+;      repaint the areas that changed.
+;      If scroll, repaint all.
+;      If data added to a text area, repaint it.
+      
 .macro scroll_up area_num, backfill_data
+  lda CMDDATA0
+  pha
+  lda CMDDATA1
+  pha
   lda #<backfill_data
   sta CMDDATA0
   lda #>backfill_data
@@ -361,6 +355,34 @@ mo_reset:
   lda #TA_SCROLL_BACKFILL_ENABLED
   sta CMDDATA5
   jsr ta_scroll_up
+  pla
+  sta CMDDATA1
+  pla
+  sta CMDDATA0
+.endmacro
+
+.macro append_to_area area_full_flag, jmp_if_done, branch_if_overflow
+  .local area_full
+  .local nowrap
+  jsr ta_append_chars
+  bcs area_full
+  jmp jmp_if_done ; area not full, so done
+area_full:
+  lda full_flag
+  ora #area_full_flag
+  sta full_flag
+
+  ; move the ptr to the next data to write
+  lda CMDDATA0
+  clc
+  adc CMDDATA3
+  sta CMDDATA0
+  bcc nowrap
+  inc CMDDATA1
+nowrap:
+  lda CMDDATA2
+  bne branch_if_overflow
+  jmp jmp_if_done ; wrote all chars, so done
 .endmacro
 
 ; appends N chars to the output
@@ -371,73 +393,56 @@ mo_reset:
 ; inputs:
 ;   CMDDATA0/1 - pointer to the data to append
 ;   CMDDATA2   - num chars to append
+; modifies:
+;   CMDDATA0/1/2
 mo_append_chars:
-  jsr ta_push_context
-  lda CMDDATA0
-  sta mo_data_ptr_lo
-  lda CMDDATA1
-  sta mo_data_ptr_hi
-  lda CMDDATA2
-  sta chars_remaining
-  lda #0
-  sta chars_added
-
   ; basic algorithm:
   ; is there space remaining in the top area?
   ;   yes, fill what we can. if 
   ;   no, go to next text area.
-  ; first see if there's space remaining in the upper
-  ; text area. If so, how much?
-
-  ; TODO: make sure the text area always updates the
-  ;       cursor position, and efficiently
-
-  lda overflow_flag
-  and #OVERFLOW_FLAG_AREA0
-  bne area0_in_overflow
+  lda full_flag
+  and #FULL_FLAG_AREA0
+  bne area0_is_full
   jmp mac_area0
-area0_in_overflow:
-  lda overflow_flag
-  and #OVERFLOW_FLAG_AREA1
-  bne area1_in_overflow
+area0_is_full:
+  lda full_flag
+  and #FULL_FLAG_AREA1
+  bne area1_is_full
   jmp mac_area1
-area1_in_overflow:
-  lda overflow_flag
-  and #OVERFLOW_FLAG_AREA2
-  bne area2_in_overflow
+area1_is_full:
+  lda full_flag
+  and #FULL_FLAG_AREA2
+  bne area2_is_full
   jmp mac_area2
-area2_in_overflow:
+area2_is_full:
   lda cfg_saved_config+Config::mode
   cmp #TERMINAL_MODE::LINE
-  beq all_in_overflow
-  lda overflow_flag
-  and #OVERFLOW_FLAG_AREAE
-  bne all_in_overflow
+  beq all_are_full
+  lda full_flag
+  and #FULL_FLAG_AREAE
+  bne all_are_full
   jmp mac_areaE
-all_in_overflow:
-  jmp all_overflowed
+all_are_full:
+  jmp mac_all_overflowed
 mac_area0:
   jsr int_set_area0_active
-  append_chars "0", area0_metadata, mac_done
-  ; area overflowed
+  append_to_area FULL_FLAG_AREA0, mac_done, mac_area1
 mac_area1:
   jsr int_set_area1_active
-  append_chars "1", area1_metadata, mac_done
-  ; area overflowed
+  append_to_area FULL_FLAG_AREA1, mac_done, mac_area2
 mac_area2:
   jsr int_set_area2_active
 mac_area2_already_active:
-  append_chars "2", area2_metadata, mac_done
-  ; area overflowed
+  append_to_area FULL_FLAG_AREA2, mac_done, mac_area2_overflowed
+mac_area2_overflowed:
   lda cfg_saved_config+Config::mode
   cmp #TERMINAL_MODE::CHAR
-  bne all_overflowed
+  bne mac_all_overflowed
 mac_areaE:
   jsr int_set_areaE_active
 mac_areaE_already_active:
-  append_chars "E", areaE_metadata, mac_done
-  ; overflowed
-all_overflowed:
+  append_to_area FULL_FLAG_AREAE, mac_done, mac_all_overflowed
+mac_all_overflowed:
   jsr int_set_area0_active
   scroll_up "0", area1_data
   jsr int_set_area1_active
@@ -448,9 +453,9 @@ all_overflowed:
   jsr int_set_area2_active
   scroll_up "2", new_line
   jsr ta_move_cursor_to_start_of_last_line
-  lda overflow_flag
-  eor #OVERFLOW_FLAG_AREA2
-  sta overflow_flag
+  lda full_flag
+  eor #FULL_FLAG_AREA2
+  sta full_flag
   jmp mac_area2_already_active
 mac_scroll_char_mode:
   jsr int_set_area2_active
@@ -458,20 +463,16 @@ mac_scroll_char_mode:
   jsr int_set_areaE_active
   scroll_up "E", new_line
   jsr ta_move_cursor_to_start_of_last_line
-  lda overflow_flag
-  eor #OVERFLOW_FLAG_AREAE
-  sta overflow_flag
+  lda full_flag
+  eor #FULL_FLAG_AREAE
+  sta full_flag
   jmp mac_areaE_already_active
 mac_scroll_done:
 mac_done:
   jsr ta_pop_context
   rts
 
-
-chars_remaining:            .res 1
-space_remaining:            .res 1
-chars_added:                .res 1
-overflow_flag:              .res 1
+full_flag:                  .res 1
 
 area0_metadata:             .tag TextArea
 area0_data:                 .res AREA_SIZE_TOP3

@@ -4,32 +4,36 @@
 .EXPORT copy_buffer40_size
 .EXPORT str_to_copy_buffer40_with_fill
 
+.EXPORT g_rx_buf, g_disp_buf
 .EXPORT g_kbd_key_pressed
 .EXPORT g_kbdcode_raw
 .EXPORT g_kbdcode_raw_stripped
 .EXPORT g_kbdcode_atascii
 
-.exportzp ZPB0, ZPB1, ZPB2, ZPB3, ZPB4, ZPB5
-.exportzp CMDDATA0, CMDDATA1, CMDDATA2, CMDDATA3, CMDDATA4, CMDDATA5, CMDDATA6, CMDDATA7
-.exportzp SCR_PTR_LO, SCR_PTR_HI
+.EXPORTZP ZPB0, ZPB1, ZPB2, ZPB3, ZPB4, ZPB5
+.EXPORTZP CMDDATA0, CMDDATA1, CMDDATA2, CMDDATA3, CMDDATA4, CMDDATA5, CMDDATA6, CMDDATA7
+.EXPORTZP SCR_PTR_LO, SCR_PTR_HI
+.EXPORTZP g_rx_buf_num_chars, g_disp_buf_num_chars
 
 .SEGMENT "ZEROPAGE"
-ZPB0:                        .byte $00
-ZPB1:                        .byte $00
-ZPB2:                        .byte $00
-ZPB3:                        .byte $00
-ZPB4:                        .byte $00
-ZPB5:                        .byte $00
-CMDDATA0:                    .byte $00
-CMDDATA1:                    .byte $00
-CMDDATA2:                    .byte $00
-CMDDATA3:                    .byte $00
-CMDDATA4:                    .byte $00
-CMDDATA5:                    .byte $00
-CMDDATA6:                    .byte $00
-CMDDATA7:                    .byte $00
-SCR_PTR_LO:                  .byte $00
-SCR_PTR_HI:                  .byte $00
+ZPB0:                        .res 1
+ZPB1:                        .res 1
+ZPB2:                        .res 1
+ZPB3:                        .res 1
+ZPB4:                        .res 1
+ZPB5:                        .res 1
+CMDDATA0:                    .res 1
+CMDDATA1:                    .res 1
+CMDDATA2:                    .res 1
+CMDDATA3:                    .res 1
+CMDDATA4:                    .res 1
+CMDDATA5:                    .res 1
+CMDDATA6:                    .res 1
+CMDDATA7:                    .res 1
+SCR_PTR_LO:                  .res 1
+SCR_PTR_HI:                  .res 1
+g_rx_buf_num_chars:          .res 1
+g_disp_buf_num_chars:        .res 1
 
 .SEGMENT "CODE"
 
@@ -62,6 +66,8 @@ str_to_copy_buffer40_with_fill:
 
 copy_buffer40:          .res 40
 copy_buffer40_size:     .res 1
+g_rx_buf:               .res 256
+g_disp_buf:             .res 256
 g_kbd_key_pressed:      .res 1 ; nonzero if pressed
 g_kbdcode_raw:          .res 1 ; raw keyboard code currently pressed
 g_kbdcode_raw_stripped: .res 1 ; raw minus ctrl bits

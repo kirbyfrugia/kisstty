@@ -73,9 +73,4 @@ KISS_DUPLEX_FULL = %11111111
   protocol_id .res 1
 .endstruct
 
-.struct KissFrameInfo
-  data      .res 256
-  num_chars .res 1
-.endstruct
-
 .endif
