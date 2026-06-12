@@ -1,14 +1,9 @@
 .SETCPU "6502"
 .INCLUDE "atari.inc"
-.INCLUDE "macros.inc"
 .INCLUDE "common.inc"
+.INCLUDE "macros.inc"
+.INCLUDE "utils.inc"
 
-.EXPORTZP utils_result
-.EXPORT   utils_atascii_to_icode
-.EXPORT   utils_hex_table_atascii
-.EXPORT   utils_hex_to_atascii
-.EXPORT   utils_hex_to_icode
-.EXPORT   utils_bin_to_bcd
 
 .SEGMENT "ZEROPAGE"
 bcd_tmp:      .res 1

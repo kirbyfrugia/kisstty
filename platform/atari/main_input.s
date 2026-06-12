@@ -1,24 +1,10 @@
-.SETCPU "6502"
-.INCLUDE "common.inc"
-.INCLUDE "config.inc"
-.INCLUDE "textarea.inc"
+.setcpu "6502"
+.include "main_input.inc"
+.include "common.inc"
+.include "config.inc"
+.include "textarea.inc"
 
-.IMPORT utils_dump_mem_row
-.IMPORT ta_init_textarea
-.IMPORT ta_set_context
-.IMPORT ta_hide_cursor
-.IMPORT ta_show_cursor
-.IMPORT ta_shift_clear
-.IMPORT ta_repaint
-.EXPORT mi_init
-.EXPORT mi_repaint
-.EXPORT mi_reset
-.EXPORT mi_hide_cursor
-.EXPORT mi_show_cursor
-.EXPORT mi_metadata
-.EXPORT mi_data
-
-.SEGMENT "CODE"
+.segment "CODE"
 
 .define MARGIN_LEFT   1
 .define MARGIN_TOP    20
@@ -34,33 +20,30 @@ mi_init:
   lda #0
   sta mi_metadata+TextArea::cursorx
   sta mi_metadata+TextArea::cursory
-  sta mi_metadata+TextArea::cursorpos
 
   lda #<(MARGIN_TOP*SCREEN_WIDTH+MARGIN_LEFT)
   clc
   adc SCR_PTR_LO
-  sta mi_metadata+TextArea::first_row_scr_ptr
+  sta mi_metadata+TextArea::first_line_scr_ptr
   lda #>(MARGIN_TOP*SCREEN_WIDTH+MARGIN_LEFT)
   adc SCR_PTR_HI
-  sta mi_metadata+TextArea::first_row_scr_ptr+1
+  sta mi_metadata+TextArea::first_line_scr_ptr+1
 
-  lda #CURSOR_FLAG_ENABLED
-  sta mi_metadata+TextArea::use_cursor
+  lda #TA_TYPE_INPUT
+  sta mi_metadata+TextArea::type
 
   lda #<mi_data
-  sta mi_metadata+TextArea::first_row_data_ptr
+  sta mi_metadata+TextArea::first_line_data_ptr
   lda #>mi_data
-  sta mi_metadata+TextArea::first_row_data_ptr+1
-  lda #MARGIN_LEFT
-  sta mi_metadata+TextArea::margin_left
-  lda #MARGIN_TOP
-  sta mi_metadata+TextArea::margin_top
+  sta mi_metadata+TextArea::first_line_data_ptr+1
   lda #WIDTH
   sta mi_metadata+TextArea::width
   lda #HEIGHT
   sta mi_metadata+TextArea::height
   lda #SIZE
   sta mi_metadata+TextArea::size
+  lda #0
+  sta mi_metadata+TextArea::size+1
   lda #(WIDTH-1)
   sta mi_metadata+TextArea::cursor_maxx
   lda #(HEIGHT-1)

@@ -1,77 +1,60 @@
 .SETCPU "6502"
 
-.INCLUDE "atari.inc" ; /usr/share/cc65/asminc/atari.inc
-.INCLUDE "common.inc"
-.INCLUDE "config.inc"
-.INCLUDE "macros.inc"
-.INCLUDE "pctl_kiss.inc"
-.INCLUDE "terminal.inc"
-.INCLUDE "textarea.inc"
+.include "atari.inc" ; /usr/share/cc65/asminc/atari.inc
+.include "common.inc"
+.include "config.inc"
+.include "macros.inc"
+.include "pctl_kiss.inc"
+.include "terminal.inc"
+.include "textarea_edit.inc"
 
-.IMPORTZP g_rx_buf_num_chars
-.IMPORTZP utils_result
-.IMPORT   boot850_check 
-.IMPORT   boot850_bootstrap 
-.IMPORT   copy_buffer40
-.IMPORT   copy_buffer40_size
-.IMPORT   str_to_copy_buffer40_with_fill
-.IMPORT   g_rx_buf
-.IMPORT   g_kbd_key_pressed
-.IMPORT   g_kbdcode_raw
-.IMPORT   g_kbdcode_raw_stripped
-.IMPORT   g_kbdcode_atascii
-.IMPORT   utils_atascii_to_icode
-.IMPORT   utils_hex_table_atascii
-.IMPORT   utils_hex_to_atascii
-.IMPORT   utils_bin_to_bcd
-.IMPORT   cfg_saved_config
-.IMPORT   mi_init
-.IMPORT   mi_metadata
-.IMPORT   mi_data
-.IMPORT   mi_repaint
-.IMPORT   mi_reset
-.IMPORT   mi_main_input_metadata
-.IMPORT   mi_hide_cursor
-.IMPORT   mi_show_cursor
-.IMPORT   mo_init
-.IMPORT   mo_repaint
-.IMPORT   mo_reset
-.IMPORT   mo_append_chars
-.IMPORT   mo_scroll_up
-.IMPORT   pk_frame_header
-.IMPORT   pk_frame_info
-.IMPORT   pk_new_byte
-.IMPORT   pk_next_frame
-.IMPORT   pk_reset
-.IMPORT   pk_state
-.IMPORT   rs232_open
-.IMPORT   rs232_close
-.IMPORT   rs232_status
-.IMPORT   rs232_getchr
-.IMPORT   rs232_putchr
-.IMPORT   rs232_last_status
-.IMPORT   rs232_input_buffer_size
-.IMPORT   rs232_output_buffer_size
-.IMPORT   ta_scr_ptr
-.IMPORT   ta_move_cursor_up
-.IMPORT   ta_move_cursor_down
-.IMPORT   ta_move_cursor_left
-.IMPORT   ta_move_cursor_right
-.IMPORT   ta_typechar
-.IMPORT   ta_backspace
-.IMPORT   ta_shift_clear
-.IMPORT   ta_line_insert
-.IMPORT   ta_char_insert
-.IMPORT   ta_line_delete
-.IMPORT   ta_char_delete
-.IMPORT   ta_copy_first_line
-.IMPORT   ta_copy_last_line
-.IMPORT   ta_push_context
-.IMPORT   ta_pop_context
-.IMPORT   ta_metadata
-.EXPORT   trm_init
-.EXPORT   trm_activate
-.EXPORT   trm_tick
+.importzp g_rx_buf_num_chars
+.importzp utils_result
+.import   boot850_check 
+.import   boot850_bootstrap 
+.import   copy_buffer40
+.import   copy_buffer40_size
+.import   str_to_copy_buffer40_with_fill
+.import   g_rx_buf
+.import   g_kbd_key_pressed
+.import   g_kbdcode_raw
+.import   g_kbdcode_raw_stripped
+.import   g_kbdcode_atascii
+.import   utils_atascii_to_icode
+.import   utils_hex_table_atascii
+.import   utils_hex_to_atascii
+.import   utils_bin_to_bcd
+.import   cfg_saved_config
+.import   mi_init
+.import   mi_metadata
+.import   mi_data
+.import   mi_repaint
+.import   mi_reset
+.import   mi_main_input_metadata
+.import   mi_hide_cursor
+.import   mi_show_cursor
+.import   mo_init
+.import   mo_repaint
+.import   mo_reset
+.import   mo_append_chars
+.import   mo_scroll_up
+.import   pk_frame_header
+.import   pk_frame_info
+.import   pk_new_byte
+.import   pk_next_frame
+.import   pk_reset
+.import   pk_state
+.import   rs232_open
+.import   rs232_close
+.import   rs232_status
+.import   rs232_getchr
+.import   rs232_putchr
+.import   rs232_last_status
+.import   rs232_input_buffer_size
+.import   rs232_output_buffer_size
+.export   trm_init
+.export   trm_activate
+.export   trm_tick
 
 .SEGMENT "CODE"
 
@@ -229,7 +212,7 @@ int_reset:
   jsr int_reset_char_mode
 @welcome:
   str_to_buf str_welcome, TERMINAL_WIDTH, ' '
-  jsr mo_append_chars
+  jsr int_print_str
 @done:
   rts
 
@@ -268,34 +251,34 @@ trm_tick:
 
 
 int_cmd_line_mode_move_cursor_up:
-  jsr ta_move_cursor_up
+  jsr ta_edit_move_cursor_up
   rts
 
 int_cmd_line_mode_move_cursor_down:
-  jsr ta_move_cursor_down
+  jsr ta_edit_move_cursor_down
   rts
 
 int_cmd_line_mode_move_cursor_left:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
-  jsr ta_move_cursor_left
+  jsr ta_edit_move_cursor_left
   rts
 
 int_cmd_line_mode_move_cursor_right:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
-  jsr ta_move_cursor_right
+  jsr ta_edit_move_cursor_right
   rts
 
 int_cmd_line_mode_handle_char:
   lda g_kbdcode_atascii
   beq @done
-  jsr ta_typechar
+  jsr ta_edit_type_char
 @done:
   rts
 
 int_cmd_line_mode_backspace:
-  jsr ta_backspace
+  jsr ta_edit_backspace
   rts
 
 int_cmd_line_mode_shift_clear:
@@ -303,19 +286,19 @@ int_cmd_line_mode_shift_clear:
   rts
 
 int_cmd_line_mode_line_insert:
-  jsr ta_line_insert
+  jsr ta_edit_line_insert
   rts
 
 int_cmd_line_mode_char_insert:
-  jsr ta_char_insert
+  jsr ta_edit_char_insert
   rts
 
 int_cmd_line_mode_line_delete:
-  jsr ta_line_delete
+  jsr ta_edit_line_delete
   rts
 
 int_cmd_line_mode_char_delete:
-  jsr ta_char_delete
+  jsr ta_edit_char_delete
   rts
 
 int_cmd_line_mode_return:
@@ -336,15 +319,15 @@ int_handle_kbd_char_mode:
   beq @done
   lda g_kbdcode_atascii
   beq @done
-  jsr int_cmd_put_rs232
+;  jsr int_cmd_put_rs232
 
-;  lda #<g_kbdcode_atascii
-;  sta CMDDATA0
-;  lda #>g_kbdcode_atascii
-;  sta CMDDATA1
-;  lda #1
-;  sta CMDDATA2
-;  jsr mo_append_chars
+  lda #<g_kbdcode_atascii
+  sta CMDDATA0
+  lda #>g_kbdcode_atascii
+  sta CMDDATA1
+  lda #1
+  sta CMDDATA2
+  jsr mo_append_chars
 @done:
   rts
 
@@ -420,22 +403,20 @@ int_handle_kbd_line_mode:
 int_cmd_boot850:
   jsr boot850_check
   bcc @rhandler_loaded
-  str_to_buf str_loading_850, TERMINAL_WIDTH, ' '
-  jsr mo_append_chars
   jsr boot850_bootstrap
   bcc @rhandler_bootstrapped
   str_to_buf str_error_loading_850, TERMINAL_WIDTH, ' '
-  jsr mo_append_chars
+  jsr int_print_str
   jmp @error
 @rhandler_bootstrapped:
   jsr boot850_check
   bcc @rhandler_loaded
   str_to_buf str_error_missing_850, TERMINAL_WIDTH, ' '
-  jsr mo_append_chars
+  jsr int_print_str
   jmp @error
 @rhandler_loaded:
   str_to_buf str_loaded_850, TERMINAL_WIDTH, ' '
-  jsr mo_append_chars
+  jsr int_print_str
   jmp @done
 @error:
   lda #PORT_STATUS_ERROR 
@@ -445,12 +426,12 @@ int_cmd_boot850:
 
 int_cmd_open_rs232:
   str_to_buf str_opening_rs232, TERMINAL_WIDTH, ' '
-  jsr mo_append_chars
+  jsr int_print_str
   ldx #RS232_CHANNEL
   jsr rs232_open
   bcs @error
   str_to_buf str_opened_rs232, TERMINAL_WIDTH, ' '
-  jsr mo_append_chars
+  jsr int_print_str
   jmp @done
 @error:
   sty command_error
@@ -458,7 +439,7 @@ int_cmd_open_rs232:
   str_to_buf str_error_rs232_open, TERMINAL_WIDTH, ' '
   err_code_to_buf command_error,\
                   str_error_rs232_open_code-str_error_rs232_open-1
-  jsr mo_append_chars
+  jsr int_print_str
 @done:
   rts
 
@@ -599,7 +580,7 @@ int_cmd_get_rs232:
   str_to_buf str_error_rs232_status, TERMINAL_WIDTH, ' '
   err_code_to_buf command_error,\
                   str_error_rs232_status_code-str_error_rs232_status-1
-  jsr mo_append_chars
+  jsr int_print_str
   jmp @done
 @error_getchr:
   sty command_error
@@ -607,7 +588,7 @@ int_cmd_get_rs232:
   str_to_buf str_error_rs232_getchr, TERMINAL_WIDTH, ' '
   err_code_to_buf command_error,\
                   str_error_rs232_getchr_code-str_error_rs232_getchr-1
-  jsr mo_append_chars
+  jsr int_print_str
 @done:
   rts
 
@@ -628,8 +609,24 @@ int_cmd_put_rs232:
   str_to_buf str_error_rs232_putchr, TERMINAL_WIDTH, ' '
   err_code_to_buf command_error,\
                   str_error_rs232_putchr_code-str_error_rs232_putchr-1
-  jsr mo_append_chars
+  jsr int_print_str
 @done:
+  rts
+
+; TODO this is just a temp hack
+int_print_str:
+  jsr ta_push_context
+  lda #<copy_buffer40
+  sta CMDDATA0
+  lda #>copy_buffer40
+  sta CMDDATA1
+  lda copy_buffer40_size
+  sta CMDDATA2
+  lda #0
+  sta CMDDATA3
+  jsr mo_append_chars
+
+  jsr ta_pop_context
   rts
 
 addr_index_var:              .byte $00
@@ -644,7 +641,7 @@ str_loaded_850:              .byte "850 handler loaded",$00
 str_error_missing_850:       .byte "850 not in HATABS",$00
 str_error_loading_850:       .byte "850 load error",$00
 str_error:                   .byte "Error: ",$00
-str_opening_rs232:           .byte "Opening rs232 port...",$00
+str_opening_rs232:           .byte "Opening RS232 port...",$00
 str_opened_rs232:            .byte "RS232 port opened",$00
 str_error_rs232_open:        .byte "Error opening RS232 port: ",$00
 str_error_rs232_open_code:   ; used as index to print error code for above str

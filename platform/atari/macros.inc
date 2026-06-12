@@ -1,7 +1,20 @@
 .ifndef MACROS_INC
-.define MACROS_INC 1
+MACROS_INC = 1
 
 .SEGMENT "CODE"
+
+; compares 16 bit x to y, branches appropriately
+.macro cmp16 _x, _y, branch_xlty, branch_xeqy, branch_xgty
+  lda _x+1
+  cmp _y+1
+  bcc branch_xlty
+  bne branch_xgty
+  lda _x
+  cmp _y
+  bcc branch_xlty
+  bne branch_xgty
+  beq branch_xeqy
+.endmacro
 
 ; stores the min of x and y in out
 .macro min8 arg1, arg2, out

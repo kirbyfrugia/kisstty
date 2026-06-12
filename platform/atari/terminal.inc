@@ -1,8 +1,7 @@
 .ifndef TERMINAL_INC
-.define TERMINAL_INC 1
-.SEGMENT "CODE"
+TERMINAL_INC = 1
 
-.define TERMINAL_WIDTH 38
+TERMINAL_WIDTH = 38
 
 
 .enum TERMINAL_MODE
@@ -44,6 +43,9 @@
   sta CMDDATA0
   lda #>copy_buffer40
   sta CMDDATA1
+
+  lda #0
+  sta CMDDATA3
 
 .endmacro
 

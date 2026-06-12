@@ -35,6 +35,7 @@ ATARI_SRCS      = main.s \
 		  kbd.s \
 		  main_input.s \
 		  main_output.s \
+		  memmove.s \
 		  pctl_kiss.s \
 		  textarea.s \
 		  terminal.s \

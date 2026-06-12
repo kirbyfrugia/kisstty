@@ -27,7 +27,7 @@
 ;   FESC TFEND ($db $dc) -> original byte was $c0 (FEND)
 ;   FESC TFESC ($db $dd) -> original byte was $db (FESC)
 .ifndef PCTL_KISS_INC
-.define PCTL_KISS_INC
+PCTL_KISS_INC = 1
 
 .define KISS_STATE_NEW    %10000000 ; waiting for first FEND
 .define KISS_STATE_FESC   %01000000 ; in an FESC waiting for next byte

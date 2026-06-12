@@ -1,0 +1,16 @@
+.ifndef MEMMOVE_INC
+MEMMOVE_INC = 1
+
+.include "common.inc"
+
+.global MM_MOVEDOWN
+.global MM_MOVEUP_SS
+.global MM_MOVEUP_E1E1
+.global MM_MOVEUP_EE
+
+MM_FROM  = ZPB0
+MM_TO    = ZPB2
+MM_SIZEL = ZPB4
+MM_SIZEH = ZPB5
+
+.endif

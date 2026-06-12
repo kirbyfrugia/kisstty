@@ -21,3 +21,5 @@ Each platform-specific version has its own readme that tells you how to build, r
 Special thanks to:
 * [fredlcore](https://github.com/fredlcore) for [AtariWozmon](https://github.com/fredlcore/AtariWozMon). Also, all the people he thanked in his repo.
 * Andrew Jacobs for the [binary to BCD code](https://6502.org/source/integers/hex2dec-more.htm) 
+* Bruce Clark for [mem move](https://6502.org/source/general/memory_move.html)
+

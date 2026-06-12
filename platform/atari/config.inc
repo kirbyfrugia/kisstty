@@ -1,5 +1,5 @@
 .ifndef CONFIG_INC
-.define CONFIG_INC 1
+CONFIG_INC = 1
 
 .SEGMENT "CODE"
 .LINECONT +
