@@ -4,9 +4,10 @@
 .include "common.inc"
 .include "config.inc"
 .include "macros.inc"
+.include "main_output.inc"
 .include "pctl_kiss.inc"
 .include "terminal.inc"
-.include "textarea_edit.inc"
+.include "textarea.inc"
 
 .importzp g_rx_buf_num_chars
 .importzp utils_result
@@ -33,11 +34,6 @@
 .import   mi_main_input_metadata
 .import   mi_hide_cursor
 .import   mi_show_cursor
-.import   mo_init
-.import   mo_repaint
-.import   mo_reset
-.import   mo_append_chars
-.import   mo_scroll_up
 .import   pk_frame_header
 .import   pk_frame_info
 .import   pk_new_byte
@@ -321,13 +317,21 @@ int_handle_kbd_char_mode:
   beq @done
 ;  jsr int_cmd_put_rs232
 
-  lda #<g_kbdcode_atascii
+;  jsr ta_push_context
+;  lda #<g_kbdcode_atascii
+;  sta CMDDATA0
+;  lda #>g_kbdcode_atascii
+;  sta CMDDATA1
+;  lda #1
+;  sta CMDDATA2
+;  jsr mo_append_chars
+;  jsr ta_pop_context
+
+  jsr ta_push_context
+  lda g_kbdcode_atascii
   sta CMDDATA0
-  lda #>g_kbdcode_atascii
-  sta CMDDATA1
-  lda #1
-  sta CMDDATA2
-  jsr mo_append_chars
+  jsr mo_append_char
+  jsr ta_pop_context
 @done:
   rts
 
@@ -615,6 +619,7 @@ int_cmd_put_rs232:
 
 ; TODO this is just a temp hack
 int_print_str:
+  rts
   jsr ta_push_context
   lda #<copy_buffer40
   sta CMDDATA0
@@ -636,20 +641,20 @@ top_banner:                  .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
 current_mode:                .res 1
 str_welcome:                 .byte "Welcome!",$00
 
-str_loading_850:             .byte "Loading 850...",$00
-str_loaded_850:              .byte "850 handler loaded",$00
-str_error_missing_850:       .byte "850 not in HATABS",$00
-str_error_loading_850:       .byte "850 load error",$00
-str_error:                   .byte "Error: ",$00
-str_opening_rs232:           .byte "Opening RS232 port...",$00
-str_opened_rs232:            .byte "RS232 port opened",$00
-str_error_rs232_open:        .byte "Error opening RS232 port: ",$00
+str_loading_850:             .byte "Loading 850...",$9b
+str_loaded_850:              .byte "850 handler loaded",$9b
+str_error_missing_850:       .byte "850 not in HATABS",$9b
+str_error_loading_850:       .byte "850 load error",$9b
+str_error:                   .byte "Error: ",$9b
+str_opening_rs232:           .byte "Opening RS232 port...",$9b
+str_opened_rs232:            .byte "RS232 port opened",$9b
+str_error_rs232_open:        .byte "Error opening RS232 port: ",$9b
 str_error_rs232_open_code:   ; used as index to print error code for above str
-str_error_rs232_status:      .byte "Error on RS232 status: ",$00
+str_error_rs232_status:      .byte "Error on RS232 status: ",$9b
 str_error_rs232_status_code: ; used as index to print error code for above str
-str_error_rs232_getchr:      .byte "Error on RS232 getchr: ",$00
+str_error_rs232_getchr:      .byte "Error on RS232 getchr: ",$9b
 str_error_rs232_getchr_code: ; used as index to print error code for above str
-str_error_rs232_putchr:      .byte "Error on RS232 putchr: ",$00
+str_error_rs232_putchr:      .byte "Error on RS232 putchr: ",$9b
 str_error_rs232_putchr_code: ; used as index to print error code for above str
 command_error:               .byte 0
 

@@ -508,7 +508,7 @@ ta_bytes_remaining:
   adc ta_metadata+TextArea::size+1
   sta MM_SIZEH
 
-  ; end - cursor
+  ; end - cursor start of line
   lda MM_SIZEL
   sec
   sbc cursor_line_data_ptr_lo
@@ -821,7 +821,7 @@ int_shift_chars_right:
   bne @nowrap_dest
   inc MM_TO+1
 @nowrap_dest:
-  jsr MM_MOVEDOWN
+  jsr MM_MOVEUP_SS
 
   lda #' '
   jsr int_update_char
@@ -846,7 +846,7 @@ int_shift_chars_left:
 @nowrap_dest:
   dec MM_TO
 
-  jsr MM_MOVEUP_SS
+  jsr MM_MOVEDOWN
   rts
 
 ; TODO: done, not tested
@@ -875,94 +875,195 @@ int_shift_lines_up_from_cursor:
   sbc MM_TO+1
   sta MM_SIZEH
 
-  jsr MM_MOVEUP_SS
+  jsr MM_MOVEDOWN
   rts
 
-
-; appends the given lines of data starting one row
-; below the current cursor and moves the cursor
-; to the end of the new data
-ta_add_lines:
-  rts
-
-; appends the given data starting at the current cursor
-; location and moves the cursor to the end of the new data.
-; Also repaints.
-;
-; Note: it's up to you to make sure that number of chars
-;       is <= the size of this buffer.
-; Note: it also assumes that your data does not overlap
-;       with this text area.
-;
-; inputs:
-;   CMDDATA0/1 - ptr to data to append
-;   CMDDATA2/3 - number of chars to append
-ta_add_chars:
-  ; Basic algorithm
-  ; 1. See if there's space to fit the new chars.
-  ;    If yes, go to step 5.
-  ; 2. Figure out how much space we need to add.
-  ; 3. Move the existing data up by the amount needed.
-  ; 4. Set the cursor position to the end of the existing
-  ;    data.
-  ; 5. Move the new data to the cursor position.
-  ; 6. Repaint the part of the text area that changed.
-  ; first let's make room for the new chars
-  ; by moving
-
-  jsr ta_bytes_remaining
-
-  cmp16 CMDDATA2, MM_SIZEL, @fits, @fits, @make_space
-@make_space:
-  lda CMDDATA2
-  sec
-  sbc MM_SIZEL
-  sta MM_SIZEL
-  lda CMDDATA3
-  sbc MM_SIZEH
-  sta MM_SIZEH
-
+; scrolls the entire text area up one line.
+; cursor stays where it is.
+ta_out_scroll_up_one_line:
   lda first_line_data_ptr_lo
   sta MM_TO
   clc
-  adc MM_SIZEL
+  adc ta_metadata+TextArea::width
   sta MM_FROM
   lda first_line_data_ptr_hi
   sta MM_TO+1
-  adc MM_SIZEH
-  sta MM_FROM+1
-  jsr MM_MOVEUP_SS
-@fits:
-  lda CMDDATA2
-  sta MM_SIZEL
-  lda CMDDATA3
-  sta MM_SIZEH
-@append_text:
-  lda CMDDATA0
-  sta MM_FROM
-  lda CMDDATA1
+  adc #0
   sta MM_FROM+1
 
-  lda cursor_line_data_ptr_lo
-  clc
-  adc ta_metadata+TextArea::cursorx
-  sta MM_TO
-  lda cursor_line_data_ptr_hi
-  adc #0
-  sta MM_TO+1
-  ; doesn't matter if up or down, since it's not overlapping
-  ; move down is probably a little faster, so using it
+  lda ta_metadata+TextArea::size
+  sec
+  sbc ta_metadata+TextArea::width
+  sta MM_SIZEL
+  lda ta_metadata+TextArea::size+1
+  sbc #0
+  sta MM_SIZEH
   jsr MM_MOVEDOWN
 
-  ; now move the cursor
-  lda MM_SIZEL
-  sta CMDDATA0
-  lda MM_SIZEH
-  sta CMDDATA1
-  jsr int_move_cursor_xy
+  ; now clear the last row
+  lda first_line_data_ptr_lo
+  clc
+  adc ta_metadata+TextArea::size
+  sta temp_line_data_ptr_lo
+  lda first_line_data_ptr_hi
+  adc ta_metadata+TextArea::size+1
+  sta temp_line_data_ptr_hi
+
+  lda temp_line_data_ptr_lo
+  sec
+  sbc ta_metadata+TextArea::width
+  sta temp_line_data_ptr_lo
+  lda temp_line_data_ptr_hi
+  sbc #0
+  sta temp_line_data_ptr_hi
+
+  lda #' '
+  ldy ta_metadata+TextArea::width
+  dey
+@clear_loop:
+  sta (temp_line_data_ptr_lo),y
+  dey
+  bpl @clear_loop
+
   jsr ta_repaint
-  
   rts
+
+; appends the data char by char until an eol ($9b)
+; is reached. Moves cursor to the next line,
+; scrolling the viewport up if needed.
+ta_out_append_chars_eol:
+  rts
+
+; appends the char. If it's an eol or we reach
+; the end of the line, it moves to the next line,
+; scrolling the viewport up if needed.
+;
+; inputs:
+;   CMDDATA0 - the char
+ta_out_append_char:
+  jsr ta_hide_cursor
+  lda CMDDATA0
+  cmp #$9b
+  beq @eol
+  jsr int_update_char
+
+  ldx ta_metadata+TextArea::cursorx
+  cpx ta_metadata+TextArea::cursor_maxx
+  beq @eol
+  inx
+  stx ta_metadata+TextArea::cursorx
+  bne @done
+@eol:
+  ldx ta_metadata+TextArea::cursory
+  cpx ta_metadata+TextArea::cursor_maxy
+  beq @scroll
+  inc ta_metadata+TextArea::cursory
+  lda #0
+  sta ta_metadata+TextArea::cursorx
+  beq @done
+@scroll:
+  jsr ta_out_scroll_up_one_line
+  ; no need to set cursory, was already on
+  ; last line
+  lda #0
+  sta ta_metadata+TextArea::cursorx
+@done:
+  jsr int_update_cursor_line
+  jsr ta_show_cursor
+  rts
+
+; appends the given lines of data starting one row
+; below the current cursor. Cursor will be at the
+; end of the appended lines
+ta_out_append_lines:
+  rts
+
+;; appends the given data starting at the current cursor
+;; location and moves the cursor to the end of the new data.
+;; Also repaints.
+;;
+;; Note: it's up to you to make sure that number of chars
+;;       is <= the size of this buffer.
+;; Note: it also assumes that your data does not overlap
+;;       with this text area.
+;;
+;; inputs:
+;;   CMDDATA0/1 - ptr to data to append
+;;   CMDDATA2/3 - number of chars to append
+;ta_add_chars:
+;  jsr ta_hide_cursor
+;  ; Basic algorithm
+;  ; 1. See if there's space to fit the new chars.
+;  ;    If yes, go to step 5.
+;  ; 2. Figure out how much space we need to add.
+;  ; 3. Move the existing data up by the amount needed.
+;  ; 4. Set the cursor position to the end of the existing
+;  ;    data.
+;  ; 5. Move the new data to the cursor position.
+;  ; 6. Repaint the part of the text area that changed.
+;  ; first let's make room for the new chars
+;  ; by moving
+;
+;  jsr ta_bytes_remaining
+;
+;  cmp16 CMDDATA2, MM_SIZEL, @fits, @fits, @make_space
+;@make_space:
+;  ; if here, num chars to add is greater than space we
+;  ; have remaining.
+;
+;  ; subtract the num to add - space we have remaining
+;  lda CMDDATA2
+;  sec
+;  sbc MM_SIZEL
+;  sta MM_SIZEL
+;  lda CMDDATA3
+;  sbc MM_SIZEH
+;  sta MM_SIZEH
+;
+;  ; and move up by that amount
+;  lda first_line_data_ptr_lo
+;  sta MM_TO
+;  clc
+;  adc MM_SIZEL
+;  sta MM_FROM
+;  lda first_line_data_ptr_hi
+;  sta MM_TO+1
+;  adc MM_SIZEH
+;  sta MM_FROM+1
+;  jsr MM_MOVEUP_SS
+;@fits:
+;  lda CMDDATA2
+;  sta MM_SIZEL
+;  lda CMDDATA3
+;  sta MM_SIZEH
+;@append_text:
+;  lda CMDDATA0
+;  sta MM_FROM
+;  lda CMDDATA1
+;  sta MM_FROM+1
+;
+;  lda cursor_line_data_ptr_lo
+;  clc
+;  adc ta_metadata+TextArea::cursorx
+;  sta MM_TO
+;  lda cursor_line_data_ptr_hi
+;  adc #0
+;  sta MM_TO+1
+;  ; doesn't matter if up or down, since it's not overlapping
+;  ; move down is probably a little faster, so using it
+;  jsr MM_MOVEDOWN
+;
+;  ; now move the cursor
+;  lda MM_SIZEL
+;  sta CMDDATA0
+;  lda MM_SIZEH
+;  sta CMDDATA1
+;  jsr int_move_cursor_xy
+;  ; TODO: only repaint what changed
+;  jsr ta_repaint
+;  
+;  jsr ta_show_cursor
+;  rts
 
 
 tempy:                         .byte 0

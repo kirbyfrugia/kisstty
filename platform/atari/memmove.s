@@ -6,7 +6,7 @@
 
 .segment "CODE"
 
-; Move memory down
+; Move memory down to a lower address
 ;
 ; MM_FROM = source start address
 ;   MM_TO = destination start address
@@ -33,7 +33,7 @@ MM_MOVEDOWN:
          BNE @MD3
 @MD4:    RTS
 
-; Move memory up
+; Move memory up to a higher address
 ;
 ; MM_FROM = source start address
 ;   MM_TO = destination start address
@@ -67,7 +67,7 @@ MM_MOVEUP_SS:
            BNE @MU1
            RTS
 
-; Move memory up
+; Move memory up to a higher address
 ;
 ; MM_FROM = 1 + source end address
 ; MM_TO   = 1 + destination end address
@@ -99,7 +99,7 @@ MM_MOVEUP_E1E1:
          BNE @MU4
 @MU5:    RTS
 
-; Move memory up
+; Move memory up to a higher address
 ;
 ; MM_FROM = source end address
 ; MM_TO   = destination end address

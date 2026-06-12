@@ -56,7 +56,8 @@ mo_init:
   sta mo_metadata+TextArea::cursor_line_scr_ptr
   sta mo_metadata+TextArea::cursor_line_scr_ptr+1
 
-  lda #TA_TYPE_OUTPUT
+  ;lda #TA_TYPE_OUTPUT
+  lda #TA_TYPE_INPUT
   sta mo_metadata+TextArea::type
 
   MARGIN_TOP .set 1
@@ -266,12 +267,21 @@ mo_reset:
 ;  jsr ta_pop_context
 ;  rts
 
+; appends the char to the output area, scrolling
+; if needed. eol handled appropriately
+; inputs:
+;   CMDDATA0 - the char
+mo_append_char:
+  jsr int_set_mo_active
+  jsr ta_out_append_char
+  rts
+
 ; inputs:
 ;   CMDDATA0/1 - pointer to the data to append
 ;   CMDDATA2/3 - num chars to append
 mo_append_chars:
-  jsr int_set_mo_active
-  jsr ta_add_chars
+;  jsr int_set_mo_active
+;  jsr ta_add_chars
   rts
 
 mo_metadata: .tag TextArea

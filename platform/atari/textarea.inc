@@ -20,19 +20,20 @@ TEXT_AREA_INC = 1
 .global   ta_bytes_remaining
 .global   ta_find_last_line
 
-.global ta_edit_move_cursor_up
-.global ta_edit_move_cursor_down
-.global ta_edit_move_cursor_left
-.global ta_edit_move_cursor_right
-.global ta_edit_type_char
-.global ta_edit_backspace
-.global ta_edit_line_insert
-.global ta_edit_char_insert
-.global ta_edit_line_delete
-.global ta_edit_char_delete
-
-.global ta_add_lines
-.global ta_add_chars
+.global   ta_edit_move_cursor_up
+.global   ta_edit_move_cursor_down
+.global   ta_edit_move_cursor_left
+.global   ta_edit_move_cursor_right
+.global   ta_edit_type_char
+.global   ta_edit_backspace
+.global   ta_edit_line_insert
+.global   ta_edit_char_insert
+.global   ta_edit_line_delete
+.global   ta_edit_char_delete
+.global   ta_out_scroll_up_one_line
+.global   ta_out_append_chars_eol
+.global   ta_out_append_char
+.global   ta_out_append_lines
 
 first_line_data_ptr_lo    = ta_metadata+TextArea::first_line_data_ptr
 first_line_data_ptr_hi    = ta_metadata+TextArea::first_line_data_ptr+1
