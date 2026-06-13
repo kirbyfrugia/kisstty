@@ -196,42 +196,6 @@ int_update_cursor_line:
 @done:
   rts
 
-; moves cursorx/cursory after appending chars after the cursor
-; inputs:
-;   CMDDATA0/1 - number of chars added after the cursor
-;   cursorx/cursory - current (pre-append) cursor position
-int_move_cursor_xy:
-  ; total = count + cursorx  (16-bit, in CMDDATA0/1)
-  lda CMDDATA0
-  clc
-  adc ta_metadata+TextArea::cursorx
-  sta CMDDATA0
-  bcc @added_wrap
-  inc CMDDATA1
-@added_wrap:
-  ; cursory += total / width, remainder -> cursorx
-@div_loop:
-  lda CMDDATA1
-  bne @subtract ; total > width, keep going
-  lda CMDDATA0
-  cmp ta_metadata+TextArea::width
-  bcc @done     ; total < width -> remainder is in CMDDATA0
-@subtract:
-  lda CMDDATA0
-  sec
-  sbc ta_metadata+TextArea::width
-  sta CMDDATA0
-  bcs @no_borrow
-  dec CMDDATA1
-@no_borrow:
-  inc ta_metadata+TextArea::cursory
-  jmp @div_loop
-@done:
-  lda CMDDATA0
-  sta ta_metadata+TextArea::cursorx
-  jsr int_update_cursor_line
-  rts
-
 ta_hide_cursor:
   lda ta_metadata+TextArea::type
   cmp #TA_TYPE_OUTPUT
@@ -788,57 +752,69 @@ int_shift_lines_up_from_cursor:
   jsr MM_MOVEDOWN
   rts
 
-; scrolls the entire text area up one line.
-; cursor stays where it is.
+; calculates number of bytes for N lines.
 ;
+; inputs:
+;   A - the number of lines
+; outputs:
+;   MM_SIZEL/MM_SIZEH - A * width
 ; modifies:
-;   a,x,y,ZPB0-5
-ta_out_scroll_up_one_line:
+;   a,x,ZPB4-5
+int_lines_to_bytes:
+  tax
+  lda #0
+  sta MM_SIZEL
+  sta MM_SIZEH
+  cpx #0
+  beq @done
+@loop:
+  lda MM_SIZEL
+  clc
+  adc ta_metadata+TextArea::width
+  sta MM_SIZEL
+  bcc @nowrap
+  inc MM_SIZEH
+@nowrap:
+  dex
+  bne @loop
+@done:
+  rts
+
+; scrolls the entire text area up N lines, discarding
+; the top N lines.
+;
+; only moves data. the bottom N lines will now have
+; garbage and the screen will need to be repainted. that
+; is up to the caller.
+;
+; also doesn't protect against N >= height. do that yourself.
+; inputs:
+;   a - the number of lines to scroll up (N)
+; modifies:
+;   a,x,ZPB0-5
+int_out_scroll_up_lines:
+  jsr int_lines_to_bytes
+
+  ; move everything below the top N lines up to the
+  ; start of the buffer.
   lda first_line_data_ptr_lo
   sta MM_TO
   clc
-  adc ta_metadata+TextArea::width
+  adc MM_SIZEL
   sta MM_FROM
   lda first_line_data_ptr_hi
   sta MM_TO+1
-  adc #0
+  adc MM_SIZEH
   sta MM_FROM+1
 
   lda ta_metadata+TextArea::size
   sec
-  sbc ta_metadata+TextArea::width
+  sbc MM_SIZEL
   sta MM_SIZEL
   lda ta_metadata+TextArea::size+1
-  sbc #0
+  sbc MM_SIZEH
   sta MM_SIZEH
   jsr MM_MOVEDOWN
-
-  ; now clear the last row
-  lda first_line_data_ptr_lo
-  clc
-  adc ta_metadata+TextArea::size
-  sta temp_line_data_ptr_lo
-  lda first_line_data_ptr_hi
-  adc ta_metadata+TextArea::size+1
-  sta temp_line_data_ptr_hi
-
-  lda temp_line_data_ptr_lo
-  sec
-  sbc ta_metadata+TextArea::width
-  sta temp_line_data_ptr_lo
-  lda temp_line_data_ptr_hi
-  sbc #0
-  sta temp_line_data_ptr_hi
-
-  lda #' '
-  ldy ta_metadata+TextArea::width
-  dey
-@clear_loop:
-  sta (temp_line_data_ptr_lo),y
-  dey
-  bpl @clear_loop
-
-  jsr ta_repaint
   rts
 
 ; moves the cursor to the start of the next line,
@@ -855,9 +831,12 @@ ta_out_next_line:
   sta ta_metadata+TextArea::cursorx
   beq @done
 @scroll:
-  jsr ta_out_scroll_up_one_line
-  ; no need to set cursory, was already on
-  ; last line
+  ; scroll up. already on last line so no need
+  ; to update cursor line or cursory
+  lda #1
+  jsr int_out_scroll_up_lines
+  jsr int_clear_cursor_line
+  jsr ta_repaint
   lda #0
   sta ta_metadata+TextArea::cursorx
 @done:
@@ -928,9 +907,98 @@ ta_out_println:
   jsr int_update_cursor_line
   rts
 
-; appends the given lines of data starting one row
-; below the current cursor. Cursor will be at the
-; end of the appended lines
+; appends to_add lines of data into the text area.
+;
+; the block always starts on a blank line: if the cursor is
+; at column 0 it starts on the cursor's line, otherwise it
+; starts on the next line down and the partial current line
+; is preserved. the area is scrolled up first if the block
+; plus its trailing line won't fit. the cursor is left on the
+; blank line just below the block.
+;
+; the caller must ensure the block fits within the area height.
+;
+; inputs:
+;   CMDDATA0/1 - ptr to the data to append
+;   CMDDATA2   - number of lines to append
+; modifies:
+;   a,x,y,ZPB0-5,CMDDATA3,CMDDATA4
 ta_out_append_lines:
+  to_add     = CMDDATA2
+  scroll     = CMDDATA3
+  cursor_row = CMDDATA4
+
+  ; figure everything out before mutating anything.
+  ;   start_row = cursory + (cursorx != 0 ? 1 : 0)
+  ;   end_row   = start_row + to_add
+  ;   scroll    = max(0, end_row - cursor_maxy)
+  ;   cursor_row (final) = end_row - scroll = min(end_row, maxy)
+  lda ta_metadata+TextArea::cursory
+  ldx ta_metadata+TextArea::cursorx
+  beq @have_start
+  clc
+  adc #1
+@have_start:
+  clc
+  adc to_add          ; a = end_row
+  sta cursor_row      ; tentative: no scroll needed
+  lda #0
+  sta scroll
+
+  lda cursor_row
+  sec
+  sbc ta_metadata+TextArea::cursor_maxy
+  bcc @room           ; end_row < maxy
+  beq @room           ; end_row == maxy
+  ; end_row > maxy, a = end_row - maxy = lines to scroll
+  sta scroll
+  lda ta_metadata+TextArea::cursor_maxy
+  sta cursor_row
+@room:
+
+  ; make room. the existing content (and the partial current
+  ; line, if any) slides up with the scroll.
+  lda scroll
+  beq @write_data
+  jsr int_out_scroll_up_lines
+@write_data:
+  ; point the cursor at the block start (cursor_row - to_add)
+  ; and drop the data in there a row at a time.
+  lda cursor_row
+  sec
+  sbc to_add
+  sta ta_metadata+TextArea::cursory
+  jsr int_update_cursor_line
+
+  lda to_add
+  jsr int_lines_to_bytes ; sets MM_SIZEL/H
+
+  lda cursor_line_data_ptr_lo
+  sta MM_TO
+  lda cursor_line_data_ptr_hi
+  sta MM_TO+1
+
+  lda CMDDATA0
+  sta MM_FROM
+  lda CMDDATA1
+  sta MM_FROM+1
+
+  jsr MM_MOVEDOWN
+
+  ; land the cursor on the blank line just below the block.
+  lda cursor_row
+  sta ta_metadata+TextArea::cursory
+  lda #0
+  sta ta_metadata+TextArea::cursorx
+  jsr int_update_cursor_line
+
+  ; if we scrolled, that landing line is the bottom row the
+  ; scroll left dirty, so clear it. no scroll means we never
+  ; touched it.
+  lda scroll
+  beq @repaint
+  jsr int_clear_cursor_line
+@repaint:
+  jsr ta_repaint
   rts
 

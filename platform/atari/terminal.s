@@ -263,9 +263,9 @@ int_cmd_line_mode_return:
   sta CMDDATA0
   lda #>mi_data
   sta CMDDATA1
-  lda mi_metadata+TextArea::size
+  lda mi_metadata+TextArea::height
   sta CMDDATA2
-  jsr mo_append_chars
+  jsr mo_append_lines
   jsr mi_shift_clear
   rts
 
@@ -472,40 +472,40 @@ int_addr_to_copy_buf:
   rts
 
 int_handle_kiss_frame:
-  ldy #0
-  lda #KissFrameHeader::source
-  jsr int_addr_to_copy_buf
-  
-  iny
-  lda #'>'
-  sta g_copy_buffer40,y
-
-  iny
-  lda #KissFrameHeader::dest
-  jsr int_addr_to_copy_buf
-
-  iny
-  lda #':'
-  sta g_copy_buffer40,y
-
-  iny
-  sty g_copy_buffer40_size
-
-  lda #<g_copy_buffer40
-  sta CMDDATA0
-  lda #>g_copy_buffer40
-  sta CMDDATA1
-  lda g_copy_buffer40_size
-  sta CMDDATA2
-  jsr mo_append_chars
-
-  lda #<g_rx_buf
-  sta CMDDATA0
-  lda #>g_rx_buf
-  sta CMDDATA1
-  lda g_rx_buf_num_chars
-  sta CMDDATA2
-  jsr mo_append_chars
+;  ldy #0
+;  lda #KissFrameHeader::source
+;  jsr int_addr_to_copy_buf
+;  
+;  iny
+;  lda #'>'
+;  sta g_copy_buffer40,y
+;
+;  iny
+;  lda #KissFrameHeader::dest
+;  jsr int_addr_to_copy_buf
+;
+;  iny
+;  lda #':'
+;  sta g_copy_buffer40,y
+;
+;  iny
+;  sty g_copy_buffer40_size
+;
+;  lda #<g_copy_buffer40
+;  sta CMDDATA0
+;  lda #>g_copy_buffer40
+;  sta CMDDATA1
+;  lda g_copy_buffer40_size
+;  sta CMDDATA2
+;  jsr mo_append_chars
+;
+;  lda #<g_rx_buf
+;  sta CMDDATA0
+;  lda #>g_rx_buf
+;  sta CMDDATA1
+;  lda g_rx_buf_num_chars
+;  sta CMDDATA2
+;  jsr mo_append_chars
   rts
 
 int_print_status:

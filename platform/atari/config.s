@@ -887,13 +887,13 @@ mode_menu_item_label_line:     .byte "Line",$00
 protocol_menu:                 .tag Menu
 protocol_menu_header:          .byte '0'|$80,"Protocol",$00
 protocol_menu_item_values:
-  .byte TERMINAL_PROTOCOL::TERMINAL
   .byte TERMINAL_PROTOCOL::APRS
+  .byte TERMINAL_PROTOCOL::TERMINAL
   .byte TERMINAL_PROTOCOL::RTTY
 protocol_menu_item_values_end:
 protocol_menu_item_labels:
-protocol_menu_item_label_term: .byte "Terminal",$00
 protocol_menu_item_label_aprs: .byte "APRS",$00
+protocol_menu_item_label_term: .byte "Terminal",$00
 protocol_menu_item_label_rtty: .byte "RTTY",$00
 
 presets:                .byte "Presets:",$00

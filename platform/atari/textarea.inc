@@ -53,7 +53,6 @@ TEXT_AREA_INC = 1
 .global   ta_edit_char_insert
 .global   ta_edit_line_delete
 .global   ta_edit_char_delete
-.global   ta_out_scroll_up_one_line
 .global   ta_out_append_char
 .global   ta_out_append_lines
 .global   ta_out_next_line

@@ -107,10 +107,10 @@ mo_append_char:
 
 ; inputs:
 ;   CMDDATA0/1 - pointer to the data to append
-;   CMDDATA2/3 - num chars to append
-mo_append_chars:
-;  jsr int_set_context
-;  jsr ta_add_chars
+;   CMDDATA2   - number of lines to append
+mo_append_lines:
+  jsr int_set_context
+  jsr ta_out_append_lines
   rts
 
 mo_metadata: .tag TextArea
