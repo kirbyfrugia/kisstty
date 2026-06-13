@@ -1,6 +1,15 @@
 .ifndef RS232_INC
 RS232_INC = 1
 
+.global rs232_open
+.global rs232_close
+.global rs232_status
+.global rs232_getchr
+.global rs232_putchr
+.global rs232_last_status
+.global rs232_input_buffer_size
+.global rs232_output_buffer_size
+
 ; enums for configuring rs232
 
 .enum RS232_BAUD

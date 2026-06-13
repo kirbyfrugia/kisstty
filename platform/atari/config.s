@@ -1,24 +1,14 @@
-.SETCPU "6502"
+.setcpu "6502"
 
-.INCLUDE "atari.inc" ; /usr/share/cc65/asminc/atari.inc
-.INCLUDE "common.inc"
-.INCLUDE "config.inc"
-.INCLUDE "macros.inc"
-.INCLUDE "rs232.inc"
-.INCLUDE "terminal.inc"
+.include "atari.inc" ; /usr/share/cc65/asminc/atari.inc
+.include "config.inc"
+.include "globals.inc"
+.include "rs232.inc"
+.include "terminal.inc"
+.include "utils.inc"
 
-.IMPORT g_kbd_key_pressed
-.IMPORT g_kbdcode_raw
-.IMPORT g_kbdcode_raw_stripped
-.IMPORT g_kbdcode_atascii
-.IMPORT utils_atascii_to_icode
-.EXPORT cfg_init
-.EXPORT cfg_activate
-.EXPORT cfg_tick
-.EXPORT cfg_config_done
-.EXPORT cfg_saved_config
 
-.SEGMENT "ZEROPAGE"
+.segment "ZEROPAGE"
 cfg_ptr_lo:                  .res 1
 cfg_ptr_hi:                  .res 1
 cfg_scr_ptr_lo:              .res 1
@@ -26,8 +16,8 @@ cfg_scr_ptr_hi:              .res 1
 cfg_data_ptr_lo:             .res 1
 cfg_data_ptr_hi:             .res 1
 
-.SEGMENT "CODE"
-.LINECONT +
+.segment "CODE"
+.linecont +
 
 .define MENU_MARGIN_TOP 1
 
@@ -43,7 +33,7 @@ cfg_init:
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
                   RS232_PARITY::NONE, \
-                  RS232_CTS::ON, \
+                  RS232_CTS::OFF, \
                   RS232_DSR::OFF, \
                   RS232_DTR::ON, \
                   RS232_RTS::ON
@@ -58,7 +48,7 @@ cfg_init:
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
                   RS232_PARITY::NONE, \
-                  RS232_CTS::ON, \
+                  RS232_CTS::OFF, \
                   RS232_DSR::OFF, \
                   RS232_DTR::ON, \
                   RS232_RTS::ON
@@ -73,8 +63,8 @@ cfg_init:
                   RS232_WORDSIZE::N7, \
                   RS232_STOPBITS::N1, \
                   RS232_PARITY::EVEN, \
-                  RS232_CTS::ON, \
-                  RS232_DSR::ON, \
+                  RS232_CTS::OFF, \
+                  RS232_DSR::OFF, \
                   RS232_DTR::ON, \
                   RS232_RTS::ON
   make_preset preset_vintage, preset_vintage_config, \
@@ -88,7 +78,7 @@ cfg_init:
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
                   RS232_PARITY::NONE, \
-                  RS232_CTS::ON, \
+                  RS232_CTS::OFF, \
                   RS232_DSR::OFF, \
                   RS232_DTR::ON, \
                   RS232_RTS::ON
@@ -96,8 +86,8 @@ cfg_init:
               preset_APRS_label, OFFSET 
 
   ; default config
-  copy_struct_abs_to_abs preset_APRS_config, cfg_draft_config, Config
-  copy_struct_abs_to_abs preset_APRS_config, cfg_saved_config, Config
+  ut_copy_struct_abs_to_abs preset_APRS_config, cfg_draft_config, Config
+  ut_copy_struct_abs_to_abs preset_APRS_config, cfg_saved_config, Config
 
   OFFSET        .set (MENU_MARGIN_TOP+1) * SCREEN_WIDTH + 2
   NUM_ITEMS     .set 7
@@ -213,7 +203,7 @@ int_draw_menu_items:
   ldy menu_data_offset 
   lda (cfg_data_ptr_lo),y
   beq @menu_item_done ; null terminator
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   ldy draw_menu_tempy
   sta (cfg_scr_ptr_lo),y
   iny
@@ -280,7 +270,7 @@ int_draw_menu_border:
 @header_loop:
   lda (cfg_data_ptr_lo),y
   beq @header_loop_done
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   iny
   sta (cfg_scr_ptr_lo),y
   jmp @header_loop
@@ -352,7 +342,7 @@ int_draw_preset:
 @loop:
   lda (cfg_data_ptr_lo),y
   beq @loop_done ; null char
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   sta (cfg_scr_ptr_lo),y
   iny
   bne @loop
@@ -370,7 +360,7 @@ int_draw_banners:
   ;lda #' '|$80
   lda #' '
   eor #$80
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
 @top_bar_loop:
   sta (cfg_scr_ptr_lo),y
   dey
@@ -389,7 +379,7 @@ int_draw_banners:
   lda top_banner,y
   beq @top_banner_done
   eor #$80
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   sta (cfg_scr_ptr_lo),y
   iny
   jmp @top_banner_loop
@@ -408,7 +398,7 @@ int_draw_banners:
 @serial_preset_loop:
   lda presets,y
   beq @serial_preset_done
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   sta (cfg_scr_ptr_lo),y
   iny
   jmp @serial_preset_loop
@@ -449,7 +439,7 @@ cfg_activate:
   lda #0
   sta cfg_config_done
 
-  copy_struct_abs_to_abs cfg_saved_config, cfg_draft_config, Config
+  ut_copy_struct_abs_to_abs cfg_saved_config, cfg_draft_config, Config
 
   jsr int_draw_menu_borders
   jsr int_refresh_menus
@@ -596,22 +586,22 @@ int_cmd_cancel:
   rts
 
 int_cmd_preset_fastchar:
-  copy_struct_abs_to_abs preset_fastchar_config, cfg_draft_config, Config
+  ut_copy_struct_abs_to_abs preset_fastchar_config, cfg_draft_config, Config
   jsr int_refresh_menus
   rts
 
 int_cmd_preset_fastline:
-  copy_struct_abs_to_abs preset_fastline_config, cfg_draft_config, Config
+  ut_copy_struct_abs_to_abs preset_fastline_config, cfg_draft_config, Config
   jsr int_refresh_menus
   rts
 
 int_cmd_preset_vintage:
-  copy_struct_abs_to_abs preset_vintage_config, cfg_draft_config, Config
+  ut_copy_struct_abs_to_abs preset_vintage_config, cfg_draft_config, Config
   jsr int_refresh_menus
   rts
 
 int_cmd_preset_APRS:
-  copy_struct_abs_to_abs preset_APRS_config, cfg_draft_config, Config
+  ut_copy_struct_abs_to_abs preset_APRS_config, cfg_draft_config, Config
   jsr int_refresh_menus
   rts
 
@@ -688,7 +678,7 @@ int_cmd_protocol:
 int_cmd_accept:
   lda #1
   sta cfg_config_done
-  copy_struct_abs_to_abs cfg_draft_config, cfg_saved_config, Config
+  ut_copy_struct_abs_to_abs cfg_draft_config, cfg_saved_config, Config
   rts
 
 int_handle_kbd:

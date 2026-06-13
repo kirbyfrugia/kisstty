@@ -1,25 +1,15 @@
-.SETCPU "6502"
-.INCLUDE "atari.inc"
-.INCLUDE "config.inc"
-.INCLUDE "macros.inc"
-.INCLUDE "rs232.inc"
+.setcpu "6502"
+.include "atari.inc"
+.include "config.inc"
+.include "rs232.inc"
+.include "utils.inc"
 
-.IMPORT cfg_saved_config
-.EXPORT rs232_open
-.EXPORT rs232_close
-.EXPORT rs232_status
-.EXPORT rs232_getchr
-.EXPORT rs232_putchr
-.EXPORT rs232_last_status
-.EXPORT rs232_input_buffer_size
-.EXPORT rs232_output_buffer_size
-
-.SEGMENT "CODE"
-.define WRITE_BUF_LEN              512
-.define CMD_CONFIGURE_TRANSLATION  $26
-.define CMD_CONTROL                $22
-.define CMD_CONCURRENCY_MODE       $28
-.define CMD_CONFIGURE_BAUD         $24
+.segment "CODE"
+WRITE_BUF_LEN             = 512
+CMD_CONFIGURE_TRANSLATION = $26
+CMD_CONTROL               = $22
+CMD_CONCURRENCY_MODE      = $28
+CMD_CONFIGURE_BAUD        = $24
 
 ; inputs:
 ;   x - channel

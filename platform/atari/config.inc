@@ -1,8 +1,13 @@
 .ifndef CONFIG_INC
 CONFIG_INC = 1
 
-.SEGMENT "CODE"
-.LINECONT +
+.global cfg_init
+.global cfg_activate
+.global cfg_tick
+.global cfg_config_done
+.global cfg_saved_config
+
+.linecont +
 
 .struct Menu
   scr_pos_ptr          .word

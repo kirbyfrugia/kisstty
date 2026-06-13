@@ -1,14 +1,8 @@
-; Keycode to ATASCII lookup tables
-; Index by keycode (0x00-0x3F) to get ATASCII value
-; $00 = no mapping (null/undefined)
-; Source: Atari OS User Manual Page 50
-.SETCPU "6502"
+.setcpu "6502"
 
-.EXPORT kbd_unmodified
-.EXPORT kbd_shifted
-.EXPORT kbd_ctrld
+.include "kbd.inc"
 
-.SEGMENT "CODE"
+.segment "CODE"
 ; $00 means you should ignore this key press
 
 ; neither shift nor ctrl pressed

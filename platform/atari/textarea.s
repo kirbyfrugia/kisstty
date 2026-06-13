@@ -1,78 +1,25 @@
-; This implements a text area component with a cursor. 
-; You can create your own text areas and can have more than one
-; on the screen at a time, each with its own cursor.
-;
-; It supports readonly and editable.
-;
-; # About textarea contexts.
-;
-; The ta_* routines do all operations on a TextArea struct
-; in the zero page.
-;
-; To do operations on your TextArea, you set the context. The
-; context is simply a pointer to a text area.
-;
-; For the purposes of this explanation, there are two contexts to
-; keep in mind:
-; * Existing context: the context currently applied to the text area
-; * New context: the context you are setting for the text area.
-;
-; When setting the context, the following happens:
-; 1. It copies zero page TextArea to existing context ptr
-;    location. It copies the full TextArea struct.
-; 2. It then copies the new TextArea to the ZP TextArea.
-; 3. It then updates its pointer to the location of the new
-;    TextArea so that it can do Step (1) if the context
-;    is changed again.
-;
-; There may be times where you want to swap out the existing context,
-; set a new context, and swap back in the prior context. For example,
-; during scrolling activities, you might want to scroll all the text
-; areas up by one and restore the context from prior to the scroll.
-;
-; Here's How:
-; 1. Call ta_push_context, which will save a pointer
-;    to the existing TextArea.
-; 2. Call ta_set_context, which will update the text area
-;    to point to the new location (saving data first)
-; 3. Do all your operations.
-; 4. Call ta_pop_context, which will restore the context
-;    and TextArea from the pushed location.
-; Note: it's not actually a stack operation. You can only
-;       push and pop one context.
-;
-; Note: the source only gets updated when a new context is set.
-;       However, the cursor data updates any time the cursor
-;       changes.
-;
-.SETCPU "6502"
-.include "common.inc"
+.setcpu "6502"
 .include "config.inc"
+.include "globals.inc"
 .include "macros.inc"
 .include "memmove.inc"
 .include "textarea.inc"
-
-
-.IMPORT utils_atascii_to_icode
-.IMPORT utils_dump_mem_line
-.IMPORT copy_buffer40
-.IMPORT copy_buffer40_size
-.IMPORT scr_rows_lo,scr_rows_hi
+.include "utils.inc"
 
 .segment "ZEROPAGE"
+
 ta_metadata:           .tag TextArea
 context_ptr_lo:        .res 1
 context_ptr_hi:        .res 1
 context_ptr_saved_lo:  .res 1
 context_ptr_saved_hi:  .res 1
-; temp pointers used by various functions
 temp_line_scr_ptr_lo:  .res 1
 temp_line_scr_ptr_hi:  .res 1
 temp_line_data_ptr_lo: .res 1
 temp_line_data_ptr_hi: .res 1
 
-
 .segment "CODE"
+
 ta_init_context:
   lda #0
   sta context_ptr_lo
@@ -88,6 +35,14 @@ ta_init_context:
 ; inputs:
 ;   CMDDATA0/1 - pointer to a text area
 ta_set_context:
+  ; exit early if context already matches
+  lda CMDDATA0
+  cmp context_ptr_lo
+  bne do_switch
+  lda CMDDATA1
+  cmp context_ptr_hi
+  beq set_context_done
+do_switch:
   lda context_ptr_hi
   bne cache_exists
   lda context_ptr_lo
@@ -96,7 +51,7 @@ cache_exists:
   ; copy our local cache to the existing source TextArea
   copy_struct_abs_to_zp ta_metadata, context_ptr_lo, TextArea
 no_cache:
-  ; update our pointer to the new text area
+  ; now point to the new text area
   lda CMDDATA0
   sta context_ptr_lo
   lda CMDDATA1
@@ -105,49 +60,7 @@ no_cache:
   ; copy data from the new TextArea to the local cache in
   ; the zero page.
   copy_struct_zp_to_abs context_ptr_lo, ta_metadata, TextArea
-  rts
-
-; saves the existing context ptr so that it can
-; be reused. First updates the source TextArea with
-; what is currently in the cache. Make sure there's
-; actually a context set before doing this.
-ta_push_context:
-  pha
-  txa
-  pha
-  tya
-  pha
-  copy_struct_abs_to_zp ta_metadata, context_ptr_lo, TextArea
-  lda context_ptr_lo
-  sta context_ptr_saved_lo
-  lda context_ptr_hi
-  sta context_ptr_saved_hi
-  pla
-  tay
-  pla
-  tax
-  pla
-  rts
-
-; restores pushed context to the local cache. Updates
-; the context pointer and the cached data.
-ta_pop_context:
-  pha
-  txa
-  pha
-  tya
-  pha
-  copy_struct_abs_to_zp ta_metadata, context_ptr_lo, TextArea
-  copy_struct_zp_to_abs context_ptr_saved_lo, ta_metadata, TextArea
-  lda context_ptr_saved_lo
-  sta context_ptr_lo
-  lda context_ptr_saved_hi
-  sta context_ptr_hi
-  pla
-  tay
-  pla
-  tax
-  pla
+set_context_done:
   rts
 
 ; initializes a text area
@@ -350,7 +263,6 @@ int_cursor_home:
   jsr int_update_cursor_line
   rts
 
-; TODO: done, not tested
 ta_clear_and_repaint:
   lda first_line_scr_ptr_lo
   sta temp_line_scr_ptr_lo
@@ -394,7 +306,6 @@ ta_clear_and_repaint:
 @done:
   rts
 
-; TODO: done, not tested
 ; repaints the entire text area. Useful when data changes.
 ; Not so efficient, but I'll worry about that later.
 ta_repaint:
@@ -414,7 +325,7 @@ ta_repaint:
   dey
 @col_loop:
   lda (temp_line_data_ptr_lo),y
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   sta (temp_line_scr_ptr_lo),y
   dey
   bpl @col_loop
@@ -447,47 +358,31 @@ ta_shift_clear:
   jsr ta_show_cursor
   rts
 
-; TODO: done, not tested
 ; shifts all lines from the cursor line downwards
-; down by one. 
+; down by one.
 int_shift_lines_down:
-  ; figure out how many lines we need to move
-  lda ta_metadata+TextArea::cursor_maxy
-  sec
-  sbc ta_metadata+TextArea::cursory
-  beq @done ; no shift if on last line
-  tax ; num lines to copy downward
-
   jsr ta_find_last_line
-  jsr int_prev_line ; penultimate line
-@line_loop:
-  ; copy line to line below it
-  ldy ta_metadata+TextArea::width
-@col_loop:
-  lda (temp_line_data_ptr_lo),y
-  pha
-  lda (temp_line_scr_ptr_lo),y
-  pha
-  sty tempy
-  tya
+  lda cursor_line_data_ptr_lo
+  sta MM_FROM
   clc
   adc ta_metadata+TextArea::width
-  tay
-  pla
-  sta (temp_line_scr_ptr_lo),y
-  pla
-  sta (temp_line_data_ptr_lo),y
-  ldy tempy
-  dey
-  bpl @col_loop
-  dex
-  beq @done
-  jsr int_prev_line
-  jmp @line_loop
- @done: 
+  sta MM_TO
+  lda cursor_line_data_ptr_hi
+  sta MM_FROM+1
+  adc #0
+  sta MM_TO+1
+
+  lda temp_line_data_ptr_lo
+  sec
+  sbc cursor_line_data_ptr_lo
+  sta MM_SIZEL
+  lda temp_line_data_ptr_hi
+  sbc cursor_line_data_ptr_hi
+  sta MM_SIZEH
+
+  jsr MM_MOVEUP_SS
   rts
 
-; TODO: done, not tested
 ; calculates the bytes remaining from the cursor
 ; position to the end of the buffer
 ; outputs:
@@ -517,15 +412,21 @@ ta_bytes_remaining:
   sbc cursor_line_data_ptr_hi
   sta MM_SIZEH
 
-  ; - cursorx - 1
+  ; - cursorx
   lda MM_SIZEL
   sec
   sbc ta_metadata+TextArea::cursorx
-  sbc #1
   sta MM_SIZEL
   lda MM_SIZEH
   sbc #0
   sta MM_SIZEH
+
+  ; - 1
+  lda MM_SIZEL
+  bne @nowrap
+  dec MM_SIZEH
+@nowrap:
+  dec MM_SIZEL
   rts
 
 ta_move_cursor_to_start_of_last_line:
@@ -538,14 +439,15 @@ ta_move_cursor_to_start_of_last_line:
   jsr ta_show_cursor
   rts
 
-
-; TODO: check for repaints
-
-; TODO: done, not tested
-.export ta_edit_move_cursor_up
 ta_edit_move_cursor_up:
   jsr ta_hide_cursor
+  jsr int_move_cursor_up
+  jsr ta_show_cursor
+  rts
 
+; moves the cursor up one line (wrapping to the bottom).
+; does not touch the cursor highlight; callers own hide/show.
+int_move_cursor_up:
   lda ta_metadata+TextArea::cursory
   beq @wrapped
   dec ta_metadata+TextArea::cursory
@@ -555,14 +457,17 @@ ta_edit_move_cursor_up:
   sta ta_metadata+TextArea::cursory
 @updated:
   jsr int_update_cursor_line
+  rts
+
+ta_edit_move_cursor_down:
+  jsr ta_hide_cursor
+  jsr int_move_cursor_down
   jsr ta_show_cursor
   rts
 
-; TODO: done, not tested
-.export ta_edit_move_cursor_down
-ta_edit_move_cursor_down:
-  jsr ta_hide_cursor
-
+; moves the cursor down one line (wrapping to the top).
+; does not touch the cursor highlight; callers own hide/show.
+int_move_cursor_down:
   lda ta_metadata+TextArea::cursory
   cmp ta_metadata+TextArea::cursor_maxy
   beq @wrapped
@@ -574,10 +479,8 @@ ta_edit_move_cursor_down:
   sta ta_metadata+TextArea::cursory
 @updated:
   jsr int_update_cursor_line
-  jsr ta_show_cursor
   rts
 
-; TODO: done, not tested
 ; moves the cursor left if possible.
 ;
 ; pass CMDDATA0 to define behavior when we wrap to the left.
@@ -586,10 +489,19 @@ ta_edit_move_cursor_down:
 ;
 ; inputs:
 ;   CMDDATA0 - cursor behavior on wrap
-.export ta_edit_move_cursor_left
 ta_edit_move_cursor_left:
   jsr ta_hide_cursor
+  jsr int_move_cursor_left
+  jsr ta_show_cursor
+  rts
 
+; moves the cursor left one column. see CMDDATA0 docs above for
+; wrap behavior. does not touch the cursor highlight; callers
+; own hide/show.
+;
+; inputs:
+;   CMDDATA0 - cursor behavior on wrap
+int_move_cursor_left:
   lda ta_metadata+TextArea::cursorx
   beq @wrapped
   dec ta_metadata+TextArea::cursorx
@@ -615,14 +527,21 @@ ta_edit_move_cursor_left:
 @updated:
   jsr int_update_cursor_line
 @done:
+  rts
+
+ta_edit_move_cursor_right:
+  jsr ta_hide_cursor
+  jsr int_move_cursor_right
   jsr ta_show_cursor
   rts
 
-; TODO: done, not tested
-.export ta_edit_move_cursor_right
-ta_edit_move_cursor_right:
-  jsr ta_hide_cursor
-
+; moves the cursor right one column. see CMDDATA0 docs above for
+; wrap behavior. does not touch the cursor highlight; callers
+; own hide/show.
+;
+; inputs:
+;   CMDDATA0 - cursor behavior on wrap
+int_move_cursor_right:
   lda ta_metadata+TextArea::cursorx
   cmp ta_metadata+TextArea::cursor_maxx
   beq @wrapped
@@ -651,11 +570,8 @@ ta_edit_move_cursor_right:
 @updated:
   jsr int_update_cursor_line
 @done:
-  jsr ta_show_cursor
-
   rts
 
-; TODO: done, not tested
 ; updates the char at the current cursor position
 ; to A.
 ; modifies:
@@ -663,40 +579,40 @@ ta_edit_move_cursor_right:
 int_update_char:
   ldy ta_metadata+TextArea::cursorx
   sta (cursor_line_data_ptr_lo),y
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   sta (cursor_line_scr_ptr_lo),y
   rts
 
-; TODO: done, not tested
-; sets the character at the current cursor location to A.
-; moves the cursor to the right.
+; sets the character at the current cursor location to the
+; char in CMDDATA0. moves the cursor to the right.
 ;
 ; inputs
-;   - A the character
-.export ta_edit_type_char
+;   CMDDATA0 - the character
 ta_edit_type_char:
+  jsr ta_hide_cursor
+  lda CMDDATA0
   jsr int_update_char
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
   sta CMDDATA0
-  jsr ta_edit_move_cursor_right
+  jsr int_move_cursor_right
+  jsr ta_show_cursor
   rts
 
-; TODO: done, not tested
 ; erases character under cursor, moves cursor left.
 ; atari style doesn't shift data left.
-.export ta_edit_backspace
 ta_edit_backspace:
+  jsr ta_hide_cursor
   lda #CURSOR_BEHAVIOR_WRAP_CHANGE_LINES
   sta CMDDATA0
-  jsr ta_edit_move_cursor_left
+  jsr int_move_cursor_left
   lda #' '
   jsr int_update_char
+  jsr ta_show_cursor
   rts
 
 ; moves all lines down from current cursor
 ; including current line and clears current line
 ; cursor stays where it is.
-.export ta_edit_line_insert
 ta_edit_line_insert:
   lda ta_metadata+TextArea::cursory
   cmp ta_metadata+TextArea::cursor_maxy
@@ -707,23 +623,18 @@ ta_edit_line_insert:
   jsr int_shift_lines_down
   jsr int_clear_cursor_line
 
+  jsr ta_repaint
   jsr ta_show_cursor
 @done:
   rts
 
-; TODO - done, not tested
-.export ta_edit_char_insert
 ta_edit_char_insert:
   jsr ta_hide_cursor
   jsr int_shift_chars_right
-  lda #' '
-  jsr int_update_char
+  jsr ta_repaint
   jsr ta_show_cursor
-@done:
   rts
 
-; TODO: done, not tested
-.export ta_edit_line_delete
 ta_edit_line_delete:
   jsr ta_hide_cursor
   lda ta_metadata+TextArea::cursory
@@ -733,13 +644,12 @@ ta_edit_line_delete:
   jsr int_shift_lines_up_from_cursor
 @last_line:
   jsr int_clear_last_line
+  jsr ta_repaint
   jsr ta_show_cursor
   rts
 
-; TODO: done, not tested
 ; erases the char under the cursor by moving all
 ; the characters to the right one space left.
-.export ta_edit_char_delete
 ta_edit_char_delete:
   ldy ta_metadata+TextArea::cursory
   cpy ta_metadata+TextArea::cursor_maxy
@@ -752,57 +662,53 @@ ta_edit_char_delete:
   jsr ta_hide_cursor
   jsr int_shift_chars_left
   jsr int_clear_last_char
+  jsr ta_repaint
   jsr ta_show_cursor
 @done:
   rts
 
-; TODO: done, not tested
 ; clears the data in the current line
 int_clear_cursor_line:
   ldy ta_metadata+TextArea::width
   dey
-  lda #' '
 @loop:
+  lda #' '
   sta (cursor_line_data_ptr_lo),y
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   sta (cursor_line_scr_ptr_lo),y
   dey
   bpl @loop
   rts
 
-; TODO: done, not tested
 int_clear_last_char:
   jsr ta_find_last_line
   ldy ta_metadata+TextArea::width
   dey
   lda #' '
   sta (temp_line_data_ptr_lo),y
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   sta (temp_line_scr_ptr_lo),y
   rts
 
-; TODO: done, not tested
 int_clear_last_line:
   jsr ta_find_last_line
   jsr int_clear_line
   rts
 
-; TODO: done, not tested
 ; inputs:
 ;   temp_line_data_ptr_lo/hi
 int_clear_line:
   ldy ta_metadata+TextArea::width
   dey
-  lda #' '
 @loop:
+  lda #' '
   sta (temp_line_data_ptr_lo),y
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   sta (temp_line_scr_ptr_lo),y
   dey
   bpl @loop
   rts
 
-; TODO: done, not tested
 ; shifts all characters from cursor position to the
 ; right by one. Last char is lost. Blanks the cursor
 ; position with a space.
@@ -811,9 +717,12 @@ int_clear_line:
 int_shift_chars_right:
   jsr ta_bytes_remaining
   lda cursor_line_data_ptr_lo
+  clc
+  adc ta_metadata+TextArea::cursorx
   sta MM_FROM
   sta MM_TO
   lda cursor_line_data_ptr_hi
+  adc #0
   sta MM_FROM+1
   sta MM_TO+1
 
@@ -828,28 +737,29 @@ int_shift_chars_right:
 
   rts
 
-; TODO: done, not tested
 ; shifts all characters to the right of the cursor
 ; to the left one space, leaving last space garbage.
 int_shift_chars_left:
   jsr ta_bytes_remaining
   lda cursor_line_data_ptr_lo
-  sta MM_FROM
+  clc
+  adc ta_metadata+TextArea::cursorx
   sta MM_TO
   lda cursor_line_data_ptr_hi
-  sta MM_FROM+1
+  adc #0
   sta MM_TO+1
 
   lda MM_TO
-  bne @nowrap_dest
-  dec MM_TO+1
-@nowrap_dest:
-  dec MM_TO
+  clc
+  adc #1
+  sta MM_FROM
+  lda MM_TO+1
+  adc #0
+  sta MM_FROM+1
 
   jsr MM_MOVEDOWN
   rts
 
-; TODO: done, not tested
 ; shifts all lines up from below the cursor line
 ; to the cursor line, leaving last line garbage
 int_shift_lines_up_from_cursor:
@@ -880,6 +790,9 @@ int_shift_lines_up_from_cursor:
 
 ; scrolls the entire text area up one line.
 ; cursor stays where it is.
+;
+; modifies:
+;   a,x,y,ZPB0-5
 ta_out_scroll_up_one_line:
   lda first_line_data_ptr_lo
   sta MM_TO
@@ -928,32 +841,12 @@ ta_out_scroll_up_one_line:
   jsr ta_repaint
   rts
 
-; appends the data char by char until an eol ($9b)
-; is reached. Moves cursor to the next line,
-; scrolling the viewport up if needed.
-ta_out_append_chars_eol:
-  rts
-
-; appends the char. If it's an eol or we reach
-; the end of the line, it moves to the next line,
-; scrolling the viewport up if needed.
+; moves the cursor to the start of the next line,
+; scrolling the output up if needed
 ;
-; inputs:
-;   CMDDATA0 - the char
-ta_out_append_char:
-  jsr ta_hide_cursor
-  lda CMDDATA0
-  cmp #$9b
-  beq @eol
-  jsr int_update_char
-
-  ldx ta_metadata+TextArea::cursorx
-  cpx ta_metadata+TextArea::cursor_maxx
-  beq @eol
-  inx
-  stx ta_metadata+TextArea::cursorx
-  bne @done
-@eol:
+; modifies:
+;   a,x,y,ZPB0-5
+ta_out_next_line:
   ldx ta_metadata+TextArea::cursory
   cpx ta_metadata+TextArea::cursor_maxy
   beq @scroll
@@ -968,8 +861,71 @@ ta_out_append_char:
   lda #0
   sta ta_metadata+TextArea::cursorx
 @done:
+  rts
+
+; appends the char. If it's an eol or we reach
+; the end of the line, it moves to the next line,
+; scrolling the viewport up if needed.
+;
+; sets the carry flag if it was an eol character
+;
+; inputs:
+;   CMDDATA0 - the char
+; modifies:
+;   a,x,y,ZPB0-5
+ta_out_append_char:
+  lda CMDDATA0
+  cmp #TA_EOL
+  beq @eol
+  jsr int_update_char
+
+  ldx ta_metadata+TextArea::cursorx
+  cpx ta_metadata+TextArea::cursor_maxx
+  beq @eol
+  inx
+  stx ta_metadata+TextArea::cursorx
+  bne @done
+@eol:
+  jsr ta_out_next_line
+@done:
   jsr int_update_cursor_line
-  jsr ta_show_cursor
+  rts
+
+; prints a null terminated string. Handles eol appropriately.
+; Not terribly efficient since it adds chars one by one amongst
+; other issues. If you know you have full lines, use other
+; routines as well.
+;
+; inputs:
+;   CMDDATA0/1 - the str
+; modifies:
+;   a,x,y,ZPB0-5
+ta_out_println:
+  ldy #0
+@loop:
+  lda (CMDDATA0),y
+  beq @done
+  tya
+  pha
+  lda CMDDATA0
+  pha
+  lda CMDDATA1
+  pha
+
+  lda (CMDDATA0),y
+  sta CMDDATA0
+  jsr ta_out_append_char
+  pla
+  sta CMDDATA1
+  pla
+  sta CMDDATA0
+  pla
+  tay
+  iny
+  bne @loop
+@done:
+  jsr ta_out_next_line
+  jsr int_update_cursor_line
   rts
 
 ; appends the given lines of data starting one row
@@ -978,92 +934,3 @@ ta_out_append_char:
 ta_out_append_lines:
   rts
 
-;; appends the given data starting at the current cursor
-;; location and moves the cursor to the end of the new data.
-;; Also repaints.
-;;
-;; Note: it's up to you to make sure that number of chars
-;;       is <= the size of this buffer.
-;; Note: it also assumes that your data does not overlap
-;;       with this text area.
-;;
-;; inputs:
-;;   CMDDATA0/1 - ptr to data to append
-;;   CMDDATA2/3 - number of chars to append
-;ta_add_chars:
-;  jsr ta_hide_cursor
-;  ; Basic algorithm
-;  ; 1. See if there's space to fit the new chars.
-;  ;    If yes, go to step 5.
-;  ; 2. Figure out how much space we need to add.
-;  ; 3. Move the existing data up by the amount needed.
-;  ; 4. Set the cursor position to the end of the existing
-;  ;    data.
-;  ; 5. Move the new data to the cursor position.
-;  ; 6. Repaint the part of the text area that changed.
-;  ; first let's make room for the new chars
-;  ; by moving
-;
-;  jsr ta_bytes_remaining
-;
-;  cmp16 CMDDATA2, MM_SIZEL, @fits, @fits, @make_space
-;@make_space:
-;  ; if here, num chars to add is greater than space we
-;  ; have remaining.
-;
-;  ; subtract the num to add - space we have remaining
-;  lda CMDDATA2
-;  sec
-;  sbc MM_SIZEL
-;  sta MM_SIZEL
-;  lda CMDDATA3
-;  sbc MM_SIZEH
-;  sta MM_SIZEH
-;
-;  ; and move up by that amount
-;  lda first_line_data_ptr_lo
-;  sta MM_TO
-;  clc
-;  adc MM_SIZEL
-;  sta MM_FROM
-;  lda first_line_data_ptr_hi
-;  sta MM_TO+1
-;  adc MM_SIZEH
-;  sta MM_FROM+1
-;  jsr MM_MOVEUP_SS
-;@fits:
-;  lda CMDDATA2
-;  sta MM_SIZEL
-;  lda CMDDATA3
-;  sta MM_SIZEH
-;@append_text:
-;  lda CMDDATA0
-;  sta MM_FROM
-;  lda CMDDATA1
-;  sta MM_FROM+1
-;
-;  lda cursor_line_data_ptr_lo
-;  clc
-;  adc ta_metadata+TextArea::cursorx
-;  sta MM_TO
-;  lda cursor_line_data_ptr_hi
-;  adc #0
-;  sta MM_TO+1
-;  ; doesn't matter if up or down, since it's not overlapping
-;  ; move down is probably a little faster, so using it
-;  jsr MM_MOVEDOWN
-;
-;  ; now move the cursor
-;  lda MM_SIZEL
-;  sta CMDDATA0
-;  lda MM_SIZEH
-;  sta CMDDATA1
-;  jsr int_move_cursor_xy
-;  ; TODO: only repaint what changed
-;  jsr ta_repaint
-;  
-;  jsr ta_show_cursor
-;  rts
-
-
-tempy:                         .byte 0

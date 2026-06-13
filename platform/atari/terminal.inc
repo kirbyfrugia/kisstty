@@ -1,8 +1,11 @@
 .ifndef TERMINAL_INC
 TERMINAL_INC = 1
 
-TERMINAL_WIDTH = 38
+.global trm_init
+.global trm_activate
+.global trm_tick
 
+TERMINAL_WIDTH = 38
 
 .enum TERMINAL_MODE
   CHAR = %10000000
@@ -16,39 +19,36 @@ TERMINAL_WIDTH = 38
   RTTY     = %00100000
 .endenum
 
-.macro err_code_to_buf error_code, offset
-  lda #<copy_buffer40
+.macro print_str str
+  lda #<str
   sta CMDDATA0
-  lda #>copy_buffer40
+  lda #>str
   sta CMDDATA1
-  ldy #offset
-  lda error_code
-  jsr utils_hex_to_atascii
+
+  jsr mo_println
 .endmacro
 
-.macro str_to_buf str_addr, fill_size, backfill_char
-  lda #<str_addr
+.macro print_str_with_code str, buf, err_code
+  lda #<str
   sta CMDDATA0
-  lda #>str_addr
-  sta CMDDATA1
-  lda #fill_size
-  sta CMDDATA2
-  lda #backfill_char
-  sta CMDDATA3
-  jsr str_to_copy_buffer40_with_fill
-
-  lda copy_buffer40_size
-  sta CMDDATA2
-  lda #<copy_buffer40
-  sta CMDDATA0
-  lda #>copy_buffer40
+  lda #>str
   sta CMDDATA1
 
-  lda #0
+  lda #<buf
+  sta CMDDATA2
+  lda #>buf
   sta CMDDATA3
 
+  lda err_code
+  sta CMDDATA4
+  jsr ut_str_with_code_to_buf
+
+  lda #<buf
+  sta CMDDATA0
+  lda #>buf
+  sta CMDDATA1
+  jsr mo_println
 .endmacro
-
 
 .endif
 

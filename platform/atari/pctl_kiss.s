@@ -1,21 +1,14 @@
-.SETCPU "6502"
-.INCLUDE "atari.inc"
-.INCLUDE "common.inc"
-.INCLUDE "macros.inc"
-.INCLUDE "pctl_kiss.inc"
+.setcpu "6502"
+.include "atari.inc"
+.include "globals.inc"
+.include "macros.inc"
+.include "pctl_kiss.inc"
 
-.IMPORTZP g_rx_buf_num_chars, g_disp_buf_num_chars
-.IMPORT   g_rx_buf, g_disp_buf
-.EXPORT   pk_reset
-.EXPORT   pk_new_byte
-.EXPORT   pk_next_frame
-.EXPORT   pk_state
-.EXPORT   pk_frame_header
-
-.SEGMENT "ZEROPAGE"
+.segment "ZEROPAGE"
 buf_counter:  .res 1
 addr_counter: .res 1
-.SEGMENT "CODE"
+
+.segment "CODE"
 
 pk_reset:
   lda #KISS_STATE_NEW

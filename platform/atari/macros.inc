@@ -1,8 +1,6 @@
 .ifndef MACROS_INC
 MACROS_INC = 1
 
-.SEGMENT "CODE"
-
 ; compares 16 bit x to y, branches appropriately
 .macro cmp16 _x, _y, branch_xlty, branch_xeqy, branch_xgty
   lda _x+1

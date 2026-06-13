@@ -1,8 +1,6 @@
 .ifndef MEMMOVE_INC
 MEMMOVE_INC = 1
 
-.include "common.inc"
-
 .global MM_MOVEDOWN
 .global MM_MOVEUP_SS
 .global MM_MOVEUP_E1E1

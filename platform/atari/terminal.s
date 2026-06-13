@@ -1,63 +1,24 @@
-.SETCPU "6502"
+.setcpu "6502"
 
 .include "atari.inc" ; /usr/share/cc65/asminc/atari.inc
-.include "common.inc"
+.include "boot850.inc"
 .include "config.inc"
+.include "globals.inc"
 .include "macros.inc"
+.include "main_input.inc"
 .include "main_output.inc"
 .include "pctl_kiss.inc"
+.include "rs232.inc"
 .include "terminal.inc"
 .include "textarea.inc"
+.include "utils.inc"
 
-.importzp g_rx_buf_num_chars
-.importzp utils_result
-.import   boot850_check 
-.import   boot850_bootstrap 
-.import   copy_buffer40
-.import   copy_buffer40_size
-.import   str_to_copy_buffer40_with_fill
-.import   g_rx_buf
-.import   g_kbd_key_pressed
-.import   g_kbdcode_raw
-.import   g_kbdcode_raw_stripped
-.import   g_kbdcode_atascii
-.import   utils_atascii_to_icode
-.import   utils_hex_table_atascii
-.import   utils_hex_to_atascii
-.import   utils_bin_to_bcd
-.import   cfg_saved_config
-.import   mi_init
-.import   mi_metadata
-.import   mi_data
-.import   mi_repaint
-.import   mi_reset
-.import   mi_main_input_metadata
-.import   mi_hide_cursor
-.import   mi_show_cursor
-.import   pk_frame_header
-.import   pk_frame_info
-.import   pk_new_byte
-.import   pk_next_frame
-.import   pk_reset
-.import   pk_state
-.import   rs232_open
-.import   rs232_close
-.import   rs232_status
-.import   rs232_getchr
-.import   rs232_putchr
-.import   rs232_last_status
-.import   rs232_input_buffer_size
-.import   rs232_output_buffer_size
-.export   trm_init
-.export   trm_activate
-.export   trm_tick
+.segment "CODE"
 
-.SEGMENT "CODE"
+RS232_CHANNEL     = 32 ; channel 2 (2 * 16)
 
-.define RS232_CHANNEL 32 ; channel 2 (2 * 16)
-
-.define PORT_STATUS_OK    %00000000
-.define PORT_STATUS_ERROR %10000000
+PORT_STATUS_OK    = %00000000
+PORT_STATUS_ERROR = %10000000
 
 trm_init:
   lda #PORT_STATUS_OK
@@ -122,7 +83,7 @@ int_draw_ui_base:
   ldy #(SCREEN_WIDTH-1)
   lda #' '
   eor #$80
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
 @top_bar_loop:
   sta (ZPB0),y
   dey
@@ -141,7 +102,7 @@ int_draw_ui_base:
   lda top_banner,y
   beq @top_banner_done
   eor #$80
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
   sta (ZPB0),y
   iny
   jmp @top_banner_loop
@@ -207,8 +168,7 @@ int_reset:
 @char_mode:
   jsr int_reset_char_mode
 @welcome:
-  str_to_buf str_welcome, TERMINAL_WIDTH, ' '
-  jsr int_print_str
+  print_str str_welcome
 @done:
   rts
 
@@ -247,58 +207,58 @@ trm_tick:
 
 
 int_cmd_line_mode_move_cursor_up:
-  jsr ta_edit_move_cursor_up
+  jsr mi_edit_move_cursor_up
   rts
 
 int_cmd_line_mode_move_cursor_down:
-  jsr ta_edit_move_cursor_down
+  jsr mi_edit_move_cursor_down
   rts
 
 int_cmd_line_mode_move_cursor_left:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
-  jsr ta_edit_move_cursor_left
+  jsr mi_edit_move_cursor_left
   rts
 
 int_cmd_line_mode_move_cursor_right:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
-  jsr ta_edit_move_cursor_right
+  jsr mi_edit_move_cursor_right
   rts
 
 int_cmd_line_mode_handle_char:
   lda g_kbdcode_atascii
   beq @done
-  jsr ta_edit_type_char
+  sta CMDDATA0
+  jsr mi_edit_type_char
 @done:
   rts
 
 int_cmd_line_mode_backspace:
-  jsr ta_edit_backspace
+  jsr mi_edit_backspace
   rts
 
 int_cmd_line_mode_shift_clear:
-  jsr ta_shift_clear
+  jsr mi_shift_clear
   rts
 
 int_cmd_line_mode_line_insert:
-  jsr ta_edit_line_insert
+  jsr mi_edit_line_insert
   rts
 
 int_cmd_line_mode_char_insert:
-  jsr ta_edit_char_insert
+  jsr mi_edit_char_insert
   rts
 
 int_cmd_line_mode_line_delete:
-  jsr ta_edit_line_delete
+  jsr mi_edit_line_delete
   rts
 
 int_cmd_line_mode_char_delete:
-  jsr ta_edit_char_delete
+  jsr mi_edit_char_delete
   rts
 
 int_cmd_line_mode_return:
-  jsr ta_push_context
   lda #<mi_data
   sta CMDDATA0
   lda #>mi_data
@@ -306,8 +266,7 @@ int_cmd_line_mode_return:
   lda mi_metadata+TextArea::size
   sta CMDDATA2
   jsr mo_append_chars
-  jsr ta_pop_context
-  jsr ta_shift_clear
+  jsr mi_shift_clear
   rts
 
 int_handle_kbd_char_mode:
@@ -315,7 +274,7 @@ int_handle_kbd_char_mode:
   beq @done
   lda g_kbdcode_atascii
   beq @done
-;  jsr int_cmd_put_rs232
+  jsr int_cmd_put_rs232
 
 ;  jsr ta_push_context
 ;  lda #<g_kbdcode_atascii
@@ -327,11 +286,11 @@ int_handle_kbd_char_mode:
 ;  jsr mo_append_chars
 ;  jsr ta_pop_context
 
-  jsr ta_push_context
-  lda g_kbdcode_atascii
-  sta CMDDATA0
-  jsr mo_append_char
-  jsr ta_pop_context
+;  jsr ta_push_context
+;  lda g_kbdcode_atascii
+;  sta CMDDATA0
+;  jsr mo_append_char
+;  jsr ta_pop_context
 @done:
   rts
 
@@ -407,20 +366,18 @@ int_handle_kbd_line_mode:
 int_cmd_boot850:
   jsr boot850_check
   bcc @rhandler_loaded
+  print_str str_loading_850
   jsr boot850_bootstrap
   bcc @rhandler_bootstrapped
-  str_to_buf str_error_loading_850, TERMINAL_WIDTH, ' '
-  jsr int_print_str
+  print_str str_error_loading_850
   jmp @error
 @rhandler_bootstrapped:
   jsr boot850_check
   bcc @rhandler_loaded
-  str_to_buf str_error_missing_850, TERMINAL_WIDTH, ' '
-  jsr int_print_str
+  print_str str_error_missing_850
   jmp @error
 @rhandler_loaded:
-  str_to_buf str_loaded_850, TERMINAL_WIDTH, ' '
-  jsr int_print_str
+  print_str str_loaded_850
   jmp @done
 @error:
   lda #PORT_STATUS_ERROR 
@@ -429,21 +386,17 @@ int_cmd_boot850:
   rts
 
 int_cmd_open_rs232:
-  str_to_buf str_opening_rs232, TERMINAL_WIDTH, ' '
-  jsr int_print_str
+  print_str str_opening_rs232
   ldx #RS232_CHANNEL
   jsr rs232_open
   bcs @error
-  str_to_buf str_opened_rs232, TERMINAL_WIDTH, ' '
-  jsr int_print_str
+  print_str str_opened_rs232
   jmp @done
 @error:
   sty command_error
   sty port_status
-  str_to_buf str_error_rs232_open, TERMINAL_WIDTH, ' '
-  err_code_to_buf command_error,\
-                  str_error_rs232_open_code-str_error_rs232_open-1
-  jsr int_print_str
+  print_str_with_code str_error_rs232_open, g_copy_buffer40, command_error
+  jsr int_print_status
 @done:
   rts
 
@@ -455,13 +408,9 @@ int_handle_byte_read:
   beq @aprs
   bne @done
 @terminal:
-  lda #<rs232_byte_read
+  lda rs232_byte_read
   sta CMDDATA0
-  lda #>rs232_byte_read
-  sta CMDDATA1
-  lda #1
-  sta CMDDATA2
-  jsr mo_append_chars
+  jsr mo_append_char
   jmp @done
 @aprs:
   lda rs232_byte_read
@@ -490,36 +439,36 @@ int_addr_to_copy_buf:
   lda pk_frame_header,x
   cmp #$20
   beq @loop_done
-  sta copy_buffer40,y
+  sta g_copy_buffer40,y
   iny
   inx
   cpx addr_index_var
   bne @loop
 @loop_done:
   lda #'-'
-  sta copy_buffer40,y
+  sta g_copy_buffer40,y
 
   ldx addr_index_var    ; index to ssid
   lda pk_frame_header,x ; ssid
-  jsr utils_bin_to_bcd
+  jsr ut_bin_to_bcd
 
-  lda utils_result
+  lda ut_result
   lsr
   lsr
   lsr
   lsr
   beq @no_tens
   tax
-  lda utils_hex_table_atascii,x
+  lda ut_hex_table_atascii,x
   iny
-  sta copy_buffer40,y 
+  sta g_copy_buffer40,y 
 @no_tens:
   iny
-  lda utils_result
+  lda ut_result
   and #%00001111
   tax
-  lda utils_hex_table_atascii,x
-  sta copy_buffer40,y
+  lda ut_hex_table_atascii,x
+  sta g_copy_buffer40,y
   rts
 
 int_handle_kiss_frame:
@@ -529,7 +478,7 @@ int_handle_kiss_frame:
   
   iny
   lda #'>'
-  sta copy_buffer40,y
+  sta g_copy_buffer40,y
 
   iny
   lda #KissFrameHeader::dest
@@ -537,16 +486,16 @@ int_handle_kiss_frame:
 
   iny
   lda #':'
-  sta copy_buffer40,y
+  sta g_copy_buffer40,y
 
   iny
-  sty copy_buffer40_size
+  sty g_copy_buffer40_size
 
-  lda #<copy_buffer40
+  lda #<g_copy_buffer40
   sta CMDDATA0
-  lda #>copy_buffer40
+  lda #>g_copy_buffer40
   sta CMDDATA1
-  lda copy_buffer40_size
+  lda g_copy_buffer40_size
   sta CMDDATA2
   jsr mo_append_chars
 
@@ -557,7 +506,12 @@ int_handle_kiss_frame:
   lda g_rx_buf_num_chars
   sta CMDDATA2
   jsr mo_append_chars
+  rts
 
+int_print_status:
+  jsr rs232_status
+  print_str_with_code str_last_status, g_copy_buffer40, rs232_last_status
+@done:
   rts
 
 int_cmd_get_rs232:
@@ -581,18 +535,14 @@ int_cmd_get_rs232:
 @error_status:
   sty command_error
   sty port_status
-  str_to_buf str_error_rs232_status, TERMINAL_WIDTH, ' '
-  err_code_to_buf command_error,\
-                  str_error_rs232_status_code-str_error_rs232_status-1
-  jsr int_print_str
+  print_str_with_code str_error_rs232_status, g_copy_buffer40, command_error
+  jsr int_print_status
   jmp @done
 @error_getchr:
   sty command_error
   sty port_status
-  str_to_buf str_error_rs232_getchr, TERMINAL_WIDTH, ' '
-  err_code_to_buf command_error,\
-                  str_error_rs232_getchr_code-str_error_rs232_getchr-1
-  jsr int_print_str
+  print_str_with_code str_error_rs232_getchr, g_copy_buffer40, command_error
+  jsr int_print_status
 @done:
   rts
 
@@ -610,28 +560,9 @@ int_cmd_put_rs232:
 @error_putchr:
   sty command_error
   sty port_status
-  str_to_buf str_error_rs232_putchr, TERMINAL_WIDTH, ' '
-  err_code_to_buf command_error,\
-                  str_error_rs232_putchr_code-str_error_rs232_putchr-1
-  jsr int_print_str
+  print_str_with_code str_error_rs232_putchr, g_copy_buffer40, command_error
+  jsr int_print_status
 @done:
-  rts
-
-; TODO this is just a temp hack
-int_print_str:
-  rts
-  jsr ta_push_context
-  lda #<copy_buffer40
-  sta CMDDATA0
-  lda #>copy_buffer40
-  sta CMDDATA1
-  lda copy_buffer40_size
-  sta CMDDATA2
-  lda #0
-  sta CMDDATA3
-  jsr mo_append_chars
-
-  jsr ta_pop_context
   rts
 
 addr_index_var:              .byte $00
@@ -641,20 +572,21 @@ top_banner:                  .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
 current_mode:                .res 1
 str_welcome:                 .byte "Welcome!",$00
 
-str_loading_850:             .byte "Loading 850...",$9b
-str_loaded_850:              .byte "850 handler loaded",$9b
-str_error_missing_850:       .byte "850 not in HATABS",$9b
-str_error_loading_850:       .byte "850 load error",$9b
-str_error:                   .byte "Error: ",$9b
-str_opening_rs232:           .byte "Opening RS232 port...",$9b
-str_opened_rs232:            .byte "RS232 port opened",$9b
-str_error_rs232_open:        .byte "Error opening RS232 port: ",$9b
+str_loading_850:             .byte "Loading 850...",$00
+str_loaded_850:              .byte "850 handler loaded",$00
+str_error_missing_850:       .byte "850 not in HATABS",$00
+str_error_loading_850:       .byte "850 load error",$00
+str_error:                   .byte "Error",$00
+str_last_status:             .byte "Last status",$00
+str_opening_rs232:           .byte "Opening RS232 port...",$00
+str_opened_rs232:            .byte "RS232 port opened",$00
+str_error_rs232_open:        .byte "Error opening RS232 port",$00
 str_error_rs232_open_code:   ; used as index to print error code for above str
-str_error_rs232_status:      .byte "Error on RS232 status: ",$9b
+str_error_rs232_status:      .byte "Error on RS232 status",$00
 str_error_rs232_status_code: ; used as index to print error code for above str
-str_error_rs232_getchr:      .byte "Error on RS232 getchr: ",$9b
+str_error_rs232_getchr:      .byte "Error on RS232 getchr",$00
 str_error_rs232_getchr_code: ; used as index to print error code for above str
-str_error_rs232_putchr:      .byte "Error on RS232 putchr: ",$9b
+str_error_rs232_putchr:      .byte "Error on RS232 putchr",$00
 str_error_rs232_putchr_code: ; used as index to print error code for above str
 command_error:               .byte 0
 

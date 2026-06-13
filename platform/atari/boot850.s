@@ -1,38 +1,25 @@
-; =============================================================================
-; Bootstraps the Atari 850 R: handler
-; * (mostly) Handles ROM revisions automatically since it uses the info
-;   from the 850. See readme for a possible exception.
-;
-; Source: Altirra Hardware Reference Manual (Avery Lee) pages 251-253
-;
-; Requirements:
-;   $0500-$0658 must be free
-; =============================================================================
+.setcpu "6502"
+.include "atari.inc"
+.include "boot850.inc"
+.include "utils.inc"
 
-.SETCPU "6502"
-.INCLUDE "atari.inc"
-.INCLUDE "macros.inc"
+.segment "CODE"
 
-.EXPORT boot850_bootstrap ; bootstrap the 850 (only thing you really need to call)
-.EXPORT boot850_check     ; check if R: handler present in HATABS
+POLL_DDEVIC    = $50       ; Device ID for 850 RS232 port
+POLL_DUNIT     = $01       ; Device number 1
+POLL_DCOMND    = $3f       ; Poll command to see if devices have handlers to load
+POLL_DSTATS    = %01000000 ; Bit 6 - receive data
+POLL_DBUF      = $0664     ; Poll response from 850 to retrieve loader (known safe location)
+POLL_DTIMLO    = $02       ; Time to wait for the 850 to respond in seconds
+POLL_DBYT      = 12        ; Num bytes in 850 response
+POLL_DAUX1     = $01       ; Forces the device to always respond
+POLL_DAUX2     = $00       ; Unused
 
-.SEGMENT "CODE"
+BOOTSTRAP      = $0506     ; Booter/relocator load address and entry point, hardcoded in DOS II's AUTORUN.sys
+LOAD_RHANDLER  = $0ab3     ; Adds the R: handler to HATABS
 
-.define POLL_DDEVIC    $50       ; Device ID for 850 RS232 port
-.define POLL_DUNIT     $01       ; Device number 1
-.define POLL_DCOMND    $3f       ; Poll command to see if devices have handlers to load
-.define POLL_DSTATS    %01000000 ; Bit 6 - receive data
-.define POLL_DBUF      $0664     ; Poll response from 850 to retrieve loader (known safe location)
-.define POLL_DTIMLO    $02       ; Time to wait for the 850 to respond in seconds
-.define POLL_DBYT      12        ; Num bytes in 850 response
-.define POLL_DAUX1     $01       ; Forces the device to always respond
-.define POLL_DAUX2     $00       ; Unused
-
-.define BOOTSTRAP      $0506     ; Booter/relocator load address and entry point, hardcoded in DOS II's AUTORUN.sys
-.define LOAD_RHANDLER  $0ab3     ; Adds the R: handler to HATABS
-
-.define HATABS_ENTRIES 8
-.define HATABS_SIZE    HATABS_ENTRIES * 3
+HATABS_ENTRIES = 8
+HATABS_SIZE    = HATABS_ENTRIES * 3
 
 ; Boot the 850. Bootstraps and loads the 850's R: handler
 ; outputs:

@@ -1,3 +1,26 @@
+; This implements a text area component with a cursor. 
+; You can create your own text areas and can have more than one
+; on the screen at a time, each with its own cursor.
+;
+; It supports readonly and editable.
+;
+; The ta_* routines do all operations on a TextArea struct
+; in the zero page. To do operations on your TextArea, you set
+; the context. The context is simply a pointer to a text area.
+;
+; When setting the context, the following happens:
+; 1. It copies the zero page TextArea to existing context ptr
+;    location. The full TextArea struct.
+; 2. It then copies the new TextArea to the ZP TextArea.
+; 3. It then updates its pointer to the location of the new
+;    TextArea so that it can do Step (1) if the context
+;    is changed again.
+;
+; Note: the source only gets updated when a new context is set.
+;       However, the source cursor data updates any time the cursor
+;       changes.
+;
+
 .ifndef TEXT_AREA_INC
 TEXT_AREA_INC = 1
 
@@ -31,9 +54,10 @@ TEXT_AREA_INC = 1
 .global   ta_edit_line_delete
 .global   ta_edit_char_delete
 .global   ta_out_scroll_up_one_line
-.global   ta_out_append_chars_eol
 .global   ta_out_append_char
 .global   ta_out_append_lines
+.global   ta_out_next_line
+.global   ta_out_println
 
 first_line_data_ptr_lo    = ta_metadata+TextArea::first_line_data_ptr
 first_line_data_ptr_hi    = ta_metadata+TextArea::first_line_data_ptr+1
@@ -44,6 +68,7 @@ cursor_line_scr_ptr_hi    = ta_metadata+TextArea::cursor_line_scr_ptr+1
 cursor_line_data_ptr_lo   = ta_metadata+TextArea::cursor_line_data_ptr
 cursor_line_data_ptr_hi   = ta_metadata+TextArea::cursor_line_data_ptr+1
 
+TA_EOL                            = $0d
 TA_TYPE_INPUT                     = %10000000
 TA_TYPE_OUTPUT                    = %01000000
 TA_SCROLL_BACKFILL_ENABLED        = %10000000 ; when scrolling, backfill

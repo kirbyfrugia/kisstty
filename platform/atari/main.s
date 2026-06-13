@@ -1,37 +1,25 @@
-.SETCPU "6502"
-.INCLUDE "atari.inc" ; /usr/share/cc65/asminc/atari.inc
-.INCLUDE "macros.inc"
-.INCLUDE "common.inc"
+.setcpu "6502"
+.include "atari.inc" ; /usr/share/cc65/asminc/atari.inc
+.include "config.inc"
+.include "globals.inc"
+.include "kbd.inc"
+.include "terminal.inc"
+.include "textarea.inc"
+.include "utils.inc"
 
-.IMPORT g_kbd_key_pressed
-.IMPORT g_kbdcode_raw
-.IMPORT g_kbdcode_raw_stripped
-.IMPORT g_kbdcode_atascii
-.IMPORT utils_atascii_to_icode
-.IMPORT kbd_unmodified
-.IMPORT kbd_shifted
-.IMPORT kbd_ctrld
-.IMPORT ta_init_context
-.IMPORT cfg_init
-.IMPORT cfg_activate
-.IMPORT cfg_tick
-.IMPORT cfg_config_done
-.IMPORT trm_init
-.IMPORT trm_activate
-.IMPORT trm_tick
 .ifdef DEBUG
-.IMPORT wozmon_main
+.include "wozmon.inc"
 .endif
-.EXPORT start
+.export start
 
-.SEGMENT "CODE"
+.segment "CODE"
 
-.define STATE_CONFIG           %10000000
-.define STATE_TERMINAL         %01000000
-.define CTRL_SHIFT_FLAG_CTRL   %10000000
-.define CTRL_SHIFT_FLAG_SHIFT  %01000000
-.define CTRL_SHIFT_FLAG_LOWER  %00000000
-.define DEBOUNCE_NUM_FRAMES    20
+STATE_CONFIG          = %10000000
+STATE_TERMINAL        = %01000000
+CTRL_SHIFT_FLAG_CTRL  = %10000000
+CTRL_SHIFT_FLAG_SHIFT = %01000000
+CTRL_SHIFT_FLAG_LOWER = %00000000
+DEBOUNCE_NUM_FRAMES   = 20
 
 start:
 .ifdef DEBUG
@@ -315,7 +303,7 @@ cls:
 @row_loop:
   ldy #39
   lda #' '
-  jsr utils_atascii_to_icode
+  jsr ut_atascii_to_icode
 @col_loop:
   sta (ZPB0),y
   dey

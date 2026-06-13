@@ -1,16 +1,16 @@
-.SETCPU "6502"
-.INCLUDE "atari.inc"
-.INCLUDE "common.inc"
-.INCLUDE "macros.inc"
-.INCLUDE "utils.inc"
+.setcpu "6502"
+.include "atari.inc"
+.include "globals.inc"
+.include "utils.inc"
 
 
-.SEGMENT "ZEROPAGE"
+.segment "ZEROPAGE"
+
 bcd_tmp:      .res 1
-utils_result: .res 4
-utils_input:  .res 4
+ut_result: .res 4
+ut_input:  .res 4
 
-.SEGMENT "CODE"
+.segment "CODE"
 
 ; converts an atascii character to icode,
 ; used for screen display
@@ -21,7 +21,7 @@ utils_input:  .res 4
 ;   a - the character in atascii
 ; modifies/outputs:
 ;   a - the char in icode
-utils_atascii_to_icode:
+ut_atascii_to_icode:
   cmp #32
   bcs @check_gteq_32
   ; 0 to 31, add 64
@@ -65,7 +65,7 @@ utils_atascii_to_icode:
 ;   - CMDDATA0/CMDDATA1 - location to print
 ;   - y - offset from location
 ;   - a - byte to print 
-utils_hex_to_atascii:
+ut_hex_to_atascii:
   sta tmp_byte_to_str
   txa
   pha
@@ -78,13 +78,13 @@ utils_hex_to_atascii:
   lsr
   lsr
   tax
-  lda utils_hex_table_atascii,x
+  lda ut_hex_table_atascii,x
   sta (CMDDATA0),y
   lda tmp_byte_to_str
   and #%00001111
   tax
   iny
-  lda utils_hex_table_atascii,x
+  lda ut_hex_table_atascii,x
   sta (CMDDATA0),y
 
   pla
@@ -101,7 +101,7 @@ utils_hex_to_atascii:
 ;   - CMDDATA0/CMDDATA1 - location to print
 ;   - y - offset from location
 ;   - a - byte to print 
-utils_hex_to_icode:
+ut_hex_to_icode:
   sta tmp_byte_to_str
   txa
   pha
@@ -138,17 +138,17 @@ utils_hex_to_icode:
 ; 91 * n = n + 2n + 8n +16n + 64n
 ;
 ; inputs:
-utils_mult_32bitX91:
+ut_mult_32bitX91:
 
   ; TODO: obviously I haven't implemented this yet.
-  lda utils_input+0
-  sta utils_result+0
-  lda utils_input+1
-  sta utils_result+1
-  lda utils_input+2
-  sta utils_result+2
-  lda utils_input+3
-  sta utils_result+3
+  lda ut_input+0
+  sta ut_result+0
+  lda ut_input+1
+  sta ut_result+1
+  lda ut_input+2
+  sta ut_result+2
+  lda ut_input+3
+  sta ut_result+3
 
   rts
 
@@ -160,29 +160,105 @@ utils_mult_32bitX91:
 ;   bcd_result+1 = hundreds digit
 ; modifies:
 ;   A and X
-utils_bin_to_bcd:
+ut_bin_to_bcd:
   sta bcd_tmp
   lda #0
-  sta utils_result+0
-  sta utils_result+1
+  sta ut_result+0
+  sta ut_result+1
   ldx #8
 
   sed
 @loop:
   asl bcd_tmp
-  lda utils_result+0
-  adc utils_result+0
-  sta utils_result+0
-  lda utils_result+1
-  adc utils_result+1
-  sta utils_result+1
+  lda ut_result+0
+  adc ut_result+0
+  sta ut_result+0
+  lda ut_result+1
+  adc ut_result+1
+  sta ut_result+1
   dex
   bne @loop
   cld
 
   rts
 
-utils_hex_table_atascii: .byte "0123456789ABCDEF"
+; copies the null-terminated string to the given
+; output buffer.
+;
+; inputs:
+;   CMDDATA0/1 - ptr to string
+;   CMDDATA2/3 - ptr to buf
+; outputs:
+;   y - index of the null byte character
+; modifies:
+;   y
+ut_str_to_buf:
+  ldy #0
+@loop:
+  lda (CMDDATA0),y
+  beq @done
+  sta (CMDDATA2),y
+  iny
+  bne @loop
+@done:
+  sta (CMDDATA2),y ; add the null at the end
+  rts
+
+; writes the null-terminated string and byte code
+; in bcd to the given output buffer with a ": "
+; separating. Writes a null at the end of the str.
+;
+; inputs:
+;   CMDDATA0/1 - ptr to string
+;   CMDDATA2/3 - ptr to buf
+;   CMDDATA4   - error code
+ut_str_with_code_to_buf:
+  jsr ut_str_to_buf
+  lda #':'
+  sta (CMDDATA2),y
+  iny
+  lda #' '
+  sta (CMDDATA2),y
+
+  lda CMDDATA4
+  jsr ut_bin_to_bcd
+
+  lda ut_result+1
+  beq @no_hundreds
+  tax
+  lda ut_hex_table_atascii,x
+  iny
+  sta (CMDDATA2),y 
+@no_hundreds:
+  lda ut_result
+  lsr
+  lsr
+  lsr
+  lsr
+  beq @no_tens
+  tax
+  lda ut_hex_table_atascii,x
+  iny
+  sta (CMDDATA2),y 
+@no_tens:
+  iny
+  lda ut_result
+  and #%00001111
+  tax
+  lda ut_hex_table_atascii,x
+  sta (CMDDATA2),y
+
+  iny
+  lda #$00
+  sta (CMDDATA2),y
+
+  rts
+
+; outputs:
+;   bcd_result+0 = low nibble is ones, high nibble is 10s
+;   bcd_result+1 = hundreds digit
+
+ut_hex_table_atascii: .byte "0123456789ABCDEF"
 
 ; subtract 32 from their ATASCII since all are 32 to 95
 hex_table_scr:
