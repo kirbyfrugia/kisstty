@@ -49,17 +49,8 @@ mi_init:
   lda #(HEIGHT-1)
   sta mi_metadata+TextArea::cursor_maxy
 
-  ; fill the data
-  lda #' '
-  ldy #0
-@loop:
-  sta mi_data,y
-  iny
-  cpy #SIZE
-  bne @loop
-
   jsr int_set_context
-  jsr ta_init_textarea
+  jsr ta_shift_clear
   rts
 
 int_set_context:

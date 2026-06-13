@@ -33,7 +33,6 @@ TEXT_AREA_INC = 1
 .global   ta_set_context
 .global   ta_push_context
 .global   ta_pop_context
-.global   ta_init_textarea
 .global   ta_hide_cursor
 .global   ta_move_cursor_to_start_of_last_line
 .global   ta_show_cursor

@@ -11,10 +11,6 @@ MO_MARGIN_LEFT = 1
 MO_WIDTH       = 38
 MO_MAX_SIZE    = MO_WIDTH*MO_MAX_HEIGHT
 
-; initializes the text output area
-;
-; inputs:
-;   CMDDATA0/1 - pointer to the upper left of the real screen
 mo_init:
   lda #0
   sta mo_metadata+TextArea::cursorx

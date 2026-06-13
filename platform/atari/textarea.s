@@ -63,18 +63,6 @@ no_cache:
 set_context_done:
   rts
 
-; initializes a text area
-;
-; assumes:
-;   SCR_PTR_LO already set
-ta_init_textarea:
-  lda #0
-  sta ta_metadata+TextArea::pending_newline
-  jsr int_update_cursor_line
-  jsr ta_clear_and_repaint
-  jsr ta_show_cursor
-  rts
-
 ; subtracts one line from the scr_line and data_line
 ; ptrs
 int_prev_line:
