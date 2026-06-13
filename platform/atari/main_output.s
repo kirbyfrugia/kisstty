@@ -7,10 +7,9 @@
 .include "textarea.inc"
 
 .segment "CODE"
-MARGIN_LEFT = 1
-WIDTH       = 38
-HEIGHT      = 18
-SIZE        = WIDTH*HEIGHT
+MO_MARGIN_LEFT = 1
+MO_WIDTH       = 38
+MO_MAX_SIZE    = MO_WIDTH*MO_MAX_HEIGHT
 
 ; initializes the text output area
 ;
@@ -27,39 +26,26 @@ mo_init:
   sta mo_metadata+TextArea::type
 
   MARGIN_TOP .set 1
-  lda #<(MARGIN_TOP*SCREEN_WIDTH+MARGIN_LEFT)
+  lda #<(MARGIN_TOP*SCREEN_WIDTH+MO_MARGIN_LEFT)
   clc
   adc SCR_PTR_LO
   sta mo_metadata+TextArea::first_line_scr_ptr
-  lda #>(MARGIN_TOP*SCREEN_WIDTH+MARGIN_LEFT)
+  lda #>(MARGIN_TOP*SCREEN_WIDTH+MO_MARGIN_LEFT)
   adc SCR_PTR_HI
   sta mo_metadata+TextArea::first_line_scr_ptr+1
 
-  lda #WIDTH
+  lda #MO_WIDTH
   sta mo_metadata+TextArea::width
-  lda #HEIGHT
-  sta mo_metadata+TextArea::height
-  lda #<SIZE
-  sta mo_metadata+TextArea::size
-  lda #>SIZE
-  sta mo_metadata+TextArea::size+1
-  lda #(WIDTH-1)
+  lda #(MO_WIDTH-1)
   sta mo_metadata+TextArea::cursor_maxx
-  lda #(HEIGHT-1)
-  sta mo_metadata+TextArea::cursor_maxy
 
   lda #<mo_data
   sta mo_metadata+TextArea::first_line_data_ptr
   lda #>mo_data
   sta mo_metadata+TextArea::first_line_data_ptr+1
 
-  lda #<mo_metadata
-  sta CMDDATA0
-  lda #>mo_metadata
-  sta CMDDATA1
-  jsr ta_set_context
-  jsr ta_init_textarea
-  jsr ta_shift_clear
+  lda #MO_LINE_HEIGHT
+  jsr mo_resize
 
   rts
 
@@ -84,12 +70,36 @@ mo_repaint:
   jsr ta_repaint
   rts
 
-mo_reset:
+; resizes the output area to a new height
+; inputs:
+;   a - the new height in rows
+mo_resize:
+  pha
   jsr int_set_context
-  jsr ta_shift_clear
-@reset_done:
-  rts
+  pla
 
+  sta ta_metadata+TextArea::height
+  sec
+  sbc #1
+  sta ta_metadata+TextArea::cursor_maxy
+
+  lda #0
+  sta ta_metadata+TextArea::size
+  sta ta_metadata+TextArea::size+1
+  ldx ta_metadata+TextArea::height
+@size_loop:
+  lda ta_metadata+TextArea::size
+  clc
+  adc #MO_WIDTH
+  sta ta_metadata+TextArea::size
+  bcc @size_nowrap
+  inc ta_metadata+TextArea::size+1
+@size_nowrap:
+  dex
+  bne @size_loop
+
+  jsr ta_shift_clear
+  rts
 
 mo_println:
   jsr int_set_context
@@ -114,7 +124,7 @@ mo_append_lines:
   rts
 
 mo_metadata: .tag TextArea
-mo_data:     .res SIZE
+mo_data:     .res MO_MAX_SIZE
 
 new_line: .repeat SCREEN_WIDTH, I
              .byte ' '

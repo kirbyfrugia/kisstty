@@ -30,11 +30,17 @@
 .ifndef MAIN_OUTPUT_INC
 MAIN_OUTPUT_INC = 1
 
+; output area heights per terminal mode. char mode reclaims
+; the rows that line mode reserves for its multi-line input.
+MO_LINE_HEIGHT = 18
+MO_CHAR_HEIGHT = 21
+MO_MAX_HEIGHT  = MO_CHAR_HEIGHT
+
 .global mo_init
 .global mo_append_char
 .global mo_append_lines
 .global mo_println
 .global mo_repaint
-.global mo_reset
+.global mo_resize
 
 .endif

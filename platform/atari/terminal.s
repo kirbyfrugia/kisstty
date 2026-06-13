@@ -5,6 +5,7 @@
 .include "config.inc"
 .include "globals.inc"
 .include "macros.inc"
+.include "main.inc"
 .include "main_input.inc"
 .include "main_output.inc"
 .include "pctl_kiss.inc"
@@ -117,7 +118,8 @@ int_repaint_line_mode:
   rts
 
 int_reset_line_mode:
-  jsr mo_reset
+  lda #MO_LINE_HEIGHT
+  jsr mo_resize
   jsr mi_reset
   jsr int_draw_ui_line_mode
   rts
@@ -128,7 +130,8 @@ int_repaint_char_mode:
   rts
 
 int_reset_char_mode:
-  jsr mo_reset
+  lda #MO_CHAR_HEIGHT
+  jsr mo_resize
   jsr int_draw_ui_char_mode
   rts
 
@@ -159,6 +162,7 @@ int_repaint:
   rts
 
 int_reset:
+  jsr cls
   jsr int_reset_protocol
   lda cfg_saved_config+Config::mode
   cmp #TERMINAL_MODE::CHAR

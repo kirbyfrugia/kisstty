@@ -3,6 +3,7 @@
 .include "config.inc"
 .include "globals.inc"
 .include "kbd.inc"
+.include "main.inc"
 .include "terminal.inc"
 .include "textarea.inc"
 .include "utils.inc"
@@ -10,7 +11,6 @@
 .ifdef DEBUG
 .include "wozmon.inc"
 .endif
-.export start
 
 .segment "CODE"
 
