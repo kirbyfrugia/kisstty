@@ -3,10 +3,8 @@
 # Tools:   ca65 + ld65 from cc65 package
 #
 # pre-req on CachyOS/Arch:
-#   paru -S cc65-git atari800 vice applecommander dir2atr
+#   paru -S cc65-git vice applecommander dir2atr
 #
-#   Note: you might need to recompile atari800 with --enable-riodevice, e.g.:
-#     configure --enable-riodevice
 # =============================================================================
 
 CA65           = ca65
@@ -89,12 +87,6 @@ $(ATARI_ATR_DBG): $(ATARI_XEX_DBG) | $(ATARI_ATR_DIR_DBG)
         #PicoDos version
 	cp $(ATARI_XEX_DBG) $(ATARI_ATR_DIR_DBG)/autorun.sys
 	dir2atr -S -a -b MyPicoDos406N $@ $(ATARI_ATR_DIR_DBG)
-
-run-atari: $(ATARI_ATR)
-	atari800 -atari -nobasic -rdevice $(PORT) $(ATARI_ATR)
-
-debug-atari: $(ATARI_ATR_DBG)
-	atari800 -atari -nobasic -rdevice $(PORT) $(ATARI_ATR_DBG)
 
 # =============================================================================
 # C64
