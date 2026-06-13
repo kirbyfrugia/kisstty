@@ -93,6 +93,7 @@ CURSOR_BEHAVIOR_WRAP_SAME_LINE    = %00000000
   cursor_maxx          .byte
   cursor_maxy          .byte
   type                 .byte
+  pending_newline      .byte
 .endstruct
 
 .endif

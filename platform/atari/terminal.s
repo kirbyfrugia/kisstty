@@ -276,25 +276,11 @@ int_handle_kbd_char_mode:
   beq @done
   jsr int_cmd_put_rs232
 
-;  jsr ta_push_context
-;  lda #<g_kbdcode_atascii
-;  sta CMDDATA0
-;  lda #>g_kbdcode_atascii
-;  sta CMDDATA1
-;  lda #1
-;  sta CMDDATA2
-;  jsr mo_append_chars
-;  jsr ta_pop_context
-
-;  jsr ta_push_context
 ;  lda g_kbdcode_atascii
 ;  sta CMDDATA0
 ;  jsr mo_append_char
-;  jsr ta_pop_context
 @done:
   rts
-
-
   
 int_handle_kbd_line_mode:
   lda g_kbd_key_pressed

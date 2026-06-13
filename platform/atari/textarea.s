@@ -68,6 +68,8 @@ set_context_done:
 ; assumes:
 ;   SCR_PTR_LO already set
 ta_init_textarea:
+  lda #0
+  sta ta_metadata+TextArea::pending_newline
   jsr int_update_cursor_line
   jsr ta_clear_and_repaint
   jsr ta_show_cursor
@@ -224,6 +226,7 @@ int_cursor_home:
   lda #0
   sta ta_metadata+TextArea::cursorx
   sta ta_metadata+TextArea::cursory
+  sta ta_metadata+TextArea::pending_newline
   jsr int_update_cursor_line
   rts
 
@@ -817,22 +820,30 @@ int_out_scroll_up_lines:
   jsr MM_MOVEDOWN
   rts
 
-; moves the cursor to the start of the next line,
-; scrolling the output up if needed
+; if pending_newline is set, advance to the start of the next line,
+; scrolling the output up if we're already on the last line,
+; and clear the flag.
+;
+; purpose is to not scroll until we actually need the space.
 ;
 ; modifies:
 ;   a,x,y,ZPB0-5
-ta_out_next_line:
+int_flush_pending_newline:
+  lda ta_metadata+TextArea::pending_newline
+  beq @done
+  lda #0
+  sta ta_metadata+TextArea::pending_newline
+
   ldx ta_metadata+TextArea::cursory
   cpx ta_metadata+TextArea::cursor_maxy
   beq @scroll
   inc ta_metadata+TextArea::cursory
   lda #0
   sta ta_metadata+TextArea::cursorx
-  beq @done
+  jsr int_update_cursor_line
+  rts
 @scroll:
-  ; scroll up. already on last line so no need
-  ; to update cursor line or cursory
+  ; already on last line
   lda #1
   jsr int_out_scroll_up_lines
   jsr int_clear_cursor_line
@@ -840,6 +851,19 @@ ta_out_next_line:
   lda #0
   sta ta_metadata+TextArea::cursorx
 @done:
+  rts
+
+; ends the current line and flags that there is now a new
+; line pending.
+;
+; if a new line was previously pending, flush that first.
+;
+; modifies:
+;   a,x,y,ZPB0-5
+ta_out_next_line:
+  jsr int_flush_pending_newline
+  lda #1
+  sta ta_metadata+TextArea::pending_newline
   rts
 
 ; appends the char. If it's an eol or we reach
@@ -853,6 +877,10 @@ ta_out_next_line:
 ; modifies:
 ;   a,x,y,ZPB0-5
 ta_out_append_char:
+  ; settle any owed newline before placing the char, so it
+  ; lands on the right (possibly scrolled) line.
+  jsr int_flush_pending_newline
+
   lda CMDDATA0
   cmp #TA_EOL
   beq @eol
@@ -863,11 +891,14 @@ ta_out_append_char:
   beq @eol
   inx
   stx ta_metadata+TextArea::cursorx
-  bne @done
+  clc
+  rts
 @eol:
-  jsr ta_out_next_line
-@done:
-  jsr int_update_cursor_line
+  ; eol char, or we filled the last column. owe a newline
+  ; instead of advancing now.
+  lda #1
+  sta ta_metadata+TextArea::pending_newline
+  sec
   rts
 
 ; prints a null terminated string. Handles eol appropriately.
@@ -907,14 +938,16 @@ ta_out_println:
   jsr int_update_cursor_line
   rts
 
-; appends to_add lines of data into the text area.
+; appends N lines of data into the text area.
 ;
-; the block always starts on a blank line: if the cursor is
-; at column 0 it starts on the cursor's line, otherwise it
-; starts on the next line down and the partial current line
-; is preserved. the area is scrolled up first if the block
-; plus its trailing line won't fit. the cursor is left on the
-; blank line just below the block.
+; the new block always starts on a blank line using
+; the following rules:
+;   * If cursorx is at 0, start at the cursor location
+;   * If cursorx is not at zero, start on the next line.
+;
+; the cursor is left on the last line of the block with a
+; newline owed (pending), so the block fills right down to the
+; bottom right corner.
 ;
 ; the caller must ensure the block fits within the area height.
 ;
@@ -928,11 +961,15 @@ ta_out_append_lines:
   scroll     = CMDDATA3
   cursor_row = CMDDATA4
 
-  ; figure everything out before mutating anything.
+  ; if we had a pending newline from a prior write,
+  ; flush it so we start from the correct cursor
+  ; position.
+  jsr int_flush_pending_newline
+
+  ; basic algorithm (cursor lands on the last block line):
   ;   start_row = cursory + (cursorx != 0 ? 1 : 0)
-  ;   end_row   = start_row + to_add
-  ;   scroll    = max(0, end_row - cursor_maxy)
-  ;   cursor_row (final) = end_row - scroll = min(end_row, maxy)
+  ;   last_row  = start_row + to_add - 1
+  ;   scroll    = max(0, last_row - cursor_maxy)
   lda ta_metadata+TextArea::cursory
   ldx ta_metadata+TextArea::cursorx
   beq @have_start
@@ -940,38 +977,41 @@ ta_out_append_lines:
   adc #1
 @have_start:
   clc
-  adc to_add          ; a = end_row
-  sta cursor_row      ; tentative: no scroll needed
+  adc to_add
+  sec
+  sbc #1         ; a = last_row = start_row + to_add - 1
+  sta cursor_row
   lda #0
   sta scroll
 
   lda cursor_row
   sec
   sbc ta_metadata+TextArea::cursor_maxy
-  bcc @room           ; end_row < maxy
-  beq @room           ; end_row == maxy
-  ; end_row > maxy, a = end_row - maxy = lines to scroll
+  bcc @room       ; last_row < maxy
+  beq @room       ; last_row == maxy
+  ; last_row > maxy, a = last_row - maxy = lines to scroll
   sta scroll
   lda ta_metadata+TextArea::cursor_maxy
   sta cursor_row
 @room:
-
   ; make room. the existing content (and the partial current
   ; line, if any) slides up with the scroll.
   lda scroll
   beq @write_data
   jsr int_out_scroll_up_lines
 @write_data:
-  ; point the cursor at the block start (cursor_row - to_add)
+  ; point the cursor at the block start (cursor_row - to_add + 1)
   ; and drop the data in there a row at a time.
   lda cursor_row
   sec
   sbc to_add
+  clc
+  adc #1
   sta ta_metadata+TextArea::cursory
   jsr int_update_cursor_line
 
   lda to_add
-  jsr int_lines_to_bytes ; sets MM_SIZEL/H
+  jsr int_lines_to_bytes
 
   lda cursor_line_data_ptr_lo
   sta MM_TO
@@ -985,20 +1025,15 @@ ta_out_append_lines:
 
   jsr MM_MOVEDOWN
 
-  ; land the cursor on the blank line just below the block.
+  ; leave the cursor on the last block line and set pending_newline.
   lda cursor_row
   sta ta_metadata+TextArea::cursory
   lda #0
   sta ta_metadata+TextArea::cursorx
+  lda #1
+  sta ta_metadata+TextArea::pending_newline
   jsr int_update_cursor_line
 
-  ; if we scrolled, that landing line is the bottom row the
-  ; scroll left dirty, so clear it. no scroll means we never
-  ; touched it.
-  lda scroll
-  beq @repaint
-  jsr int_clear_cursor_line
-@repaint:
   jsr ta_repaint
   rts
 
