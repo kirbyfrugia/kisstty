@@ -97,6 +97,8 @@ mo_resize:
   jsr ta_shift_clear
   rts
 
+; see ta_out_println for what this does. Not super
+; efficient, but fine for short strings like "welcome"
 mo_println:
   jsr int_set_context
   jsr ta_out_println
@@ -111,6 +113,8 @@ mo_append_char:
   jsr ta_out_append_char
   rts
 
+; appends N lines to the current row if blank
+; or the next blank row, scrolling if necessary
 ; inputs:
 ;   CMDDATA0/1 - pointer to the data to append
 ;   CMDDATA2   - number of lines to append

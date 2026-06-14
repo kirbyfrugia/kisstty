@@ -415,12 +415,14 @@ int_handle_byte_read:
 @done:
   rts
 
+; TODO: just a hack for now. It really only works
+; for the first line...
 ; inputs:
 ;   A - offset in frame header to address
 ;   Y - offset in copy buffer to store address
 ; modifies:
 ;   addr_index_var, X, Y
-int_addr_to_copy_buf:
+int_addr_to_disp_buf:
   tax
   clc
   adc #6
@@ -429,14 +431,14 @@ int_addr_to_copy_buf:
   lda pk_frame_header,x
   cmp #$20
   beq @loop_done
-  sta g_copy_buffer40,y
+  sta g_disp_buf,y
   iny
   inx
   cpx addr_index_var
   bne @loop
 @loop_done:
   lda #'-'
-  sta g_copy_buffer40,y
+  sta g_disp_buf,y
 
   ldx addr_index_var    ; index to ssid
   lda pk_frame_header,x ; ssid
@@ -451,51 +453,54 @@ int_addr_to_copy_buf:
   tax
   lda ut_hex_table_atascii,x
   iny
-  sta g_copy_buffer40,y 
+  sta g_disp_buf,y 
 @no_tens:
   iny
   lda ut_result
   and #%00001111
   tax
   lda ut_hex_table_atascii,x
-  sta g_copy_buffer40,y
+  sta g_disp_buf,y
   rts
 
 int_handle_kiss_frame:
-;  ldy #0
-;  lda #KissFrameHeader::source
-;  jsr int_addr_to_copy_buf
-;  
-;  iny
-;  lda #'>'
-;  sta g_copy_buffer40,y
-;
-;  iny
-;  lda #KissFrameHeader::dest
-;  jsr int_addr_to_copy_buf
-;
-;  iny
-;  lda #':'
-;  sta g_copy_buffer40,y
-;
-;  iny
-;  sty g_copy_buffer40_size
-;
-;  lda #<g_copy_buffer40
-;  sta CMDDATA0
-;  lda #>g_copy_buffer40
-;  sta CMDDATA1
-;  lda g_copy_buffer40_size
-;  sta CMDDATA2
-;  jsr mo_append_chars
-;
-;  lda #<g_rx_buf
-;  sta CMDDATA0
-;  lda #>g_rx_buf
-;  sta CMDDATA1
-;  lda g_rx_buf_num_chars
-;  sta CMDDATA2
-;  jsr mo_append_chars
+  ; for now, I'm testing a 4 line message.
+  ; it's just a hack for now, get over it.
+  
+  ; clear out the first 4 lines of the display buf
+
+  ldy #0
+  lda #' '
+@clear_loop:
+  sta g_disp_buf, y
+  iny
+  cpy #(38*4)
+  bne @clear_loop
+
+  ldy #0
+  lda #KissFrameHeader::source
+  jsr int_addr_to_disp_buf
+  
+  iny
+  lda #'>'
+  sta g_disp_buf,y
+
+  iny
+  lda #KissFrameHeader::dest
+  jsr int_addr_to_disp_buf
+
+  iny
+  lda #':'
+  sta g_disp_buf,y
+
+  lda #<g_disp_buf
+  sta CMDDATA0
+  lda #>g_disp_buf
+  sta CMDDATA1
+  lda #4
+  sta CMDDATA2
+  jsr mo_append_lines
+  
   rts
 
 int_print_status:
@@ -582,3 +587,4 @@ command_error:               .byte 0
 
 rs232_byte_read:             .byte 0
 port_status:                 .byte 0
+tempy_delete_later:          .byte 0
