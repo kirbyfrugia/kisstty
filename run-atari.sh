@@ -11,8 +11,8 @@
 #     up from Altirra64.exe (e.g. mine's at ~/.altirra-firmware)
 #     get it from: https://github.com/ascrnet/FW-Altirra/raw/refs/heads/main/Automatic/850.rom
 #
-# platform/atari/altirra/Altirra.ini has a profile with the 850 + TCP (port 9000) serial
-# port configured.
+# Altirra.ini is generated from Altirra.ini.template (a profile with the 850 +
+# TCP port 9000 serial configured). Delete it to regenerate.
 
 set -euo pipefail
 
@@ -30,6 +30,22 @@ esac
 
 # Wine maps Z: to the host root
 winpath() { printf 'Z:%s' "$(realpath "$1" | sed 's#/#\\\\#g')"; }
+
+# Generate Altirra.ini from the template when missing (so Altirra's own edits
+# to it survive), substituting %%PROJECT_ROOT%% and %%DIST%%. The .ini escapes
+# backslashes, so each "/" becomes "\\"; awk via ENVIRON keeps them literal,
+# where sed or bash ${//} would mangle them. The mounted disk is set by the CLI
+# arg below regardless, so a stale %%DIST%% here only affects Altirra's own UI.
+if [[ ! -f "$ini" ]]; then
+  [[ -f "$ini.template" ]] || { echo "missing template: $ini.template" >&2; exit 1; }
+  proj_root="$(realpath .)"
+  proj_root="${proj_root//\//\\\\}"
+  PROJECT_ROOT="$proj_root" DIST="$1" awk '
+    BEGIN { FS="%%PROJECT_ROOT%%"; root=ENVIRON["PROJECT_ROOT"]; dist=ENVIRON["DIST"] }
+    { line=$1; for (i=2;i<=NF;i++) line=line root $i; gsub(/%%DIST%%/, dist, line); print line }
+  ' "$ini.template" > "$ini"
+  echo "generated $ini from template" >&2
+fi
 
 exec flatpak run --command=bottles-cli com.usebottles.bottles \
   run -b "$bottle" -e "$ALTIRRA_EXE" --args-replace -- \

@@ -3,7 +3,7 @@
 ## Building kiss8b
 
 ```
-# to build the release release
+# to build the release
 make atari
 
 # to build the debug mode with wozmon built in
@@ -36,7 +36,7 @@ flatpak override --user com.usebottles.bottles --filesystem=home
 # 4. Get the 850 firmware and save it two directories up from Altirra64.exe:
 #    https://github.com/ascrnet/FW-Altirra/raw/refs/heads/main/Automatic/850.rom
 #    -> .altirra-firmware/850.rom
-#     (or edit the firmware path in platform/atari/altirra/Altirra.ini if you'd rather put it elsewhere)
+#     (or edit the firmware path in platform/atari/altirra/Altirra.ini.template if you'd rather put it elsewhere)
 
 # 5. Point at Altirra inside the bottle, e.g.:
 export ALTIRRA_EXE="$HOME/Applications/Altirra-4.40/Altirra64.exe"
@@ -45,6 +45,10 @@ export ALTIRRA_EXE="$HOME/Applications/Altirra-4.40/Altirra64.exe"
 ./run-atari.sh debug      # build/atari/debug/kiss8b.atr
 ./run-atari.sh release    # build/atari/release/kiss8b.atr
 ```
+
+run-atari.sh generates `platform/atari/altirra/Altirra.ini` from
+`Altirra.ini.template` on first run, resolving the checkout path. Delete it to
+regenerate (e.g. after moving the checkout).
 
 #### Talking to the emulated 850 over TCP
 
@@ -84,18 +88,14 @@ brk     ; re-enters wozmon
 
 ## Connecting to direwolf
 
-kiss8b talks KISS to direwolf over a serial link. direwolf runs on a
-Linux box (a PC would work too, but I haven't tested it), configured
-with a serial KISS port. My config lives in
-`~/.config/direwolf/direwolf.conf`.
+kiss8b talks KISS to direwolf over a serial link. The use cases below differ
+only in where the Atari/Altirra and direwolf live, and how the serial link
+between them is made.
 
-You can also run direwolf on proxmox as a service, which is what I
-actually do, but if you're already running proxmox I'm sure you know
-how to do that already.
-
-kissutil ships with direwolf and lets you inject a test packet without a
-radio. I have used it quite a bit during development vs waiting for
-real packets.
+To test without a radio, `tests/send-test-packet.sh` decodes a generated packet
+through a temporary direwolf and injects it over serial KISS (use case 2);
+`kissutil` (ships with direwolf) does the same for the cross-machine cases
+(1 and 3).
 
 ### Use case 1: Physical Atari, direwolf on a separate box
 
@@ -125,27 +125,30 @@ W7TTY>DEST:this is a test
 
 ### Use case 2: Altirra and direwolf on the same machine
 
-```
-# Put this in ~/.config/direwolf/direwolf.conf:
-KISSPORT 8001
-SERIALKISS /tmp/altirra-tty 9600
+`tests/send-test-packet.sh` handles the direwolf side: it fills SERIALKISS in
+`tests/direwolf.conf.template` with the PTY (`-s`, default `/tmp/altirra-tty`),
+runs a temporary direwolf, and injects the decoded frame over that serial KISS
+link. The packet then flows PTY -> socat -> TCP 9000 -> Altirra's 850 -> kiss8b.
 
+```
 # Run kiss8b in Altirra and start APRS mode. This opens the 850 serial
 # port so Altirra starts listening on TCP 9000. Do this BEFORE socat
 # or it has nothing to connect to.
 
-# Bridge Altirra's TCP serial to a PTY direwolf can open:
+# Bridge Altirra's TCP serial to the PTY direwolf writes to (the script's
+# default -s device):
 socat -d -d PTY,link=/tmp/altirra-tty,raw,echo=0 TCP:127.0.0.1:9000
 
-# Launch direwolf:
+# Send a test packet to kiss8b:
+./tests/send-test-packet.sh tests/aprs/position.txt
+```
+
+For ongoing two-way APRS (rather than a one-off test packet), skip
+send-test-packet.sh and run a persistent direwolf against the same PTY, with a
+config containing `KISSPORT 8001` and `SERIALKISS /tmp/altirra-tty 9600`:
+
+```
 direwolf -c ~/.config/direwolf/direwolf.conf -t 0
-
-# (optional) test receive using kissutil.
-# Stop direwolf first so it isn't holding the PTY. Then:
-kissutil -v -p /tmp/altirra-tty
-
-# Then type this:
-W7TTY>DEST:this is a test
 ```
 
 ### Use case 3: Altirra connected by serial to a separate direwolf box

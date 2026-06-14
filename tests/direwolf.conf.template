@@ -1,0 +1,39 @@
+#############################################################
+# direwolf.conf.template - kiss6502 dev/test
+#
+# Template for send-test-packet.sh, which generates the direwolf.conf it runs.
+#
+# Placeholder:
+#   %%SERIALKISS%%  Replaced with "SERIALKISS <device>" when run with
+#                   -s <device>, or removed when -s is not given.
+#
+# Set MYCALL to your callsign before running, or pass it
+# via environment:  MYCALL=W7TTY send-test-packet.sh ...
+#
+# This file is intentionally checked into the repo without
+# a real callsign.
+#############################################################
+
+# RX from WAV via stdin; TX to system audio (PipeWire/pulse)
+ADEVICE stdin pulse
+
+CHANNEL 0
+
+MYCALL NOCALL
+
+MODEM 1200
+
+# KISS TCP - kiss6502 connects here
+KISSPORT 8001
+
+# KISS over a serial device - filled in by send-test-packet.sh -s <device>
+%%SERIALKISS%%
+
+# AGW port - for tools like YAAC if needed
+AGWPORT 8000
+
+# No beaconing in dev
+# PBEACON ...
+
+# Suppress Avahi/DNS-SD spam
+DNSSD 0

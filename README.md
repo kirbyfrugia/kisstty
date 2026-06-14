@@ -25,6 +25,7 @@ Special thanks to:
 
 
 **Note on AI usage:**
+
 My intent with this project is to write all the assembly code myself.
 I'm writing the code, the UI, the logic. Basically, all the assembly.
 I'm debugging it myself, painful as that is at times.
