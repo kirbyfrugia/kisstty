@@ -141,8 +141,8 @@ socat -d -d PTY,link=/tmp/altirra-tty,raw,echo=0 TCP:127.0.0.1:9000
 direwolf -c ~/.config/direwolf/direwolf.conf -t 0
 
 # (optional) test receive using kissutil.
-# Stop direwolf first so it isn't holding the port. Then:
-kissutil -v -p 9000
+# Stop direwolf first so it isn't holding the PTY. Then:
+kissutil -v -p /tmp/altirra-tty
 
 # Then type this:
 W7TTY>DEST:this is a test
