@@ -8,9 +8,8 @@
 
 MARGIN_LEFT = 1
 MARGIN_TOP  = 20
-WIDTH       = 38
 HEIGHT      = 4
-SIZE        = WIDTH * HEIGHT
+SIZE        = TERMINAL_WIDTH * HEIGHT
 
 ; initializes the text input area
 ;
@@ -36,7 +35,7 @@ mi_init:
   sta mi_metadata+TextArea::first_line_data_ptr
   lda #>mi_data
   sta mi_metadata+TextArea::first_line_data_ptr+1
-  lda #WIDTH
+  lda #TERMINAL_WIDTH
   sta mi_metadata+TextArea::width
   lda #HEIGHT
   sta mi_metadata+TextArea::height
@@ -44,7 +43,7 @@ mi_init:
   sta mi_metadata+TextArea::size
   lda #0
   sta mi_metadata+TextArea::size+1
-  lda #(WIDTH-1)
+  lda #(TERMINAL_WIDTH-1)
   sta mi_metadata+TextArea::cursor_maxx
   lda #(HEIGHT-1)
   sta mi_metadata+TextArea::cursor_maxy

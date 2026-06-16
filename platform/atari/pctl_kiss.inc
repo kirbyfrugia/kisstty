@@ -32,23 +32,24 @@ PCTL_KISS_INC = 1
 .global pk_reset
 .global pk_new_byte
 .global pk_next_frame
+.global pk_process_frame
 .global pk_state
 .global pk_frame_header
 
-KISS_STATE_NEW    = %10000000 ; waiting for first FEND
-KISS_STATE_FESC   = %01000000 ; in an FESC waiting for next byte
-KISS_STATE_ADDR   = %00100000 ; the address portion of the frame
-KISS_STATE_BTWN   = %00010000 ; the bytes between addr and info
-KISS_STATE_INFO   = %00001000 ; the info portion
-KISS_FRAME_READY  = %00000100 ; frame complete and ready to be processed
+KISS_STATE_NEW           = %10000000 ; waiting for first FEND
+KISS_STATE_FESC          = %01000000 ; in an FESC waiting for next byte
+KISS_STATE_ADDR          = %00100000 ; the address portion of the frame
+KISS_STATE_BTWN          = %00010000 ; the bytes between addr and info
+KISS_STATE_INFO          = %00001000 ; the info portion
+KISS_FRAME_READY         = %00000100 ; frame complete and ready to be processed
 
-KISS_FEND         = $c0
-KISS_FESC         = $db
-KISS_TFEND        = $dc
-KISS_TFESC        = $dd
+KISS_FEND                = $c0
+KISS_FESC                = $db
+KISS_TFEND               = $dc
+KISS_TFESC               = $dd
 
-KISS_DUPLEX_HALF  = %00000000
-KISS_DUPLEX_FULL  = %11111111
+KISS_DUPLEX_HALF         = %00000000
+KISS_DUPLEX_FULL         = %11111111
 
 ; commands 
 ; all the times/delays are in 10ms units,
@@ -77,6 +78,7 @@ KISS_DUPLEX_FULL  = %11111111
   digipeater  .res 8 * .sizeof(KissFrameAddr)
   control     .res 1
   protocol_id .res 1
+  num_digi    .res 1 ; number of digipeater addresses
 .endstruct
 
 .endif

@@ -5,8 +5,6 @@ TERMINAL_INC = 1
 .global trm_activate
 .global trm_tick
 
-TERMINAL_WIDTH = 38
-
 .enum TERMINAL_MODE
   CHAR = %10000000
   LINE = %01000000

@@ -92,7 +92,7 @@ kiss8b talks KISS to direwolf over a serial link. The use cases below differ
 only in where the Atari/Altirra and direwolf live, and how the serial link
 between them is made.
 
-To test without a radio, `tests/send-test-packet.sh` decodes a generated packet
+To test without a radio, `tests/inject-test-packet.sh` decodes a generated packet
 through a temporary direwolf and injects it over serial KISS (use case 2);
 `kissutil` (ships with direwolf) does the same for the cross-machine cases
 (1 and 3).
@@ -125,7 +125,7 @@ W7TTY>DEST:this is a test
 
 ### Use case 2: Altirra and direwolf on the same machine
 
-`tests/send-test-packet.sh` handles the direwolf side: it fills SERIALKISS in
+`tests/inject-test-packet.sh` handles the direwolf side: it fills SERIALKISS in
 `tests/direwolf.conf.template` with the PTY (`-s`, default `/tmp/altirra-tty`),
 runs a temporary direwolf, and injects the decoded frame over that serial KISS
 link. The packet then flows PTY -> socat -> TCP 9000 -> Altirra's 850 -> kiss8b.
@@ -140,11 +140,11 @@ link. The packet then flows PTY -> socat -> TCP 9000 -> Altirra's 850 -> kiss8b.
 socat -d -d PTY,link=/tmp/altirra-tty,raw,echo=0 TCP:127.0.0.1:9000
 
 # Send a test packet to kiss8b:
-./tests/send-test-packet.sh tests/aprs/position.txt
+./tests/inject-test-packet.sh tests/aprs/position.txt
 ```
 
 For ongoing two-way APRS (rather than a one-off test packet), skip
-send-test-packet.sh and run a persistent direwolf against the same PTY, with a
+inject-test-packet.sh and run a persistent direwolf against the same PTY, with a
 config containing `KISSPORT 8001` and `SERIALKISS /tmp/altirra-tty 9600`:
 
 ```

@@ -74,6 +74,27 @@ loop:
   bpl loop
 .endmacro
 
+; fills char A from addr,y to addr,width-1
+; inputs:
+;   addr  - address at start of line
+;   width - line width
+;   A     - the char to fill
+;   Y     - index from ptr
+; modifies:
+;   Y - will be at one past end (unless it was past end when called)
+.macro ut_fill_to_end_ptr ptr, width
+  .local loop
+  .local loop_done
+loop:
+  cpy width
+  bcs loop_done
+  sta (ptr),y
+  iny
+  bne loop
+loop_done:
+
+.endmacro
+
 ; inverts a string on screen (bg/fg swap)
 .macro ut_invstr str
   .repeat .strlen(str), i

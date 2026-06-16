@@ -415,92 +415,54 @@ int_handle_byte_read:
 @done:
   rts
 
-; TODO: just a hack for now. It really only works
-; for the first line...
-; inputs:
-;   A - offset in frame header to address
-;   Y - offset in copy buffer to store address
-; modifies:
-;   addr_index_var, X, Y
-int_addr_to_disp_buf:
-  tax
-  clc
-  adc #6
-  sta addr_index_var ; last char of callsign
-@loop:
-  lda pk_frame_header,x
-  cmp #$20
-  beq @loop_done
-  sta g_disp_buf,y
-  iny
-  inx
-  cpx addr_index_var
-  bne @loop
-@loop_done:
-  lda #'-'
-  sta g_disp_buf,y
-
-  ldx addr_index_var    ; index to ssid
-  lda pk_frame_header,x ; ssid
-  jsr ut_bin_to_bcd
-
-  lda ut_result
-  lsr
-  lsr
-  lsr
-  lsr
-  beq @no_tens
-  tax
-  lda ut_hex_table_atascii,x
-  iny
-  sta g_disp_buf,y 
-@no_tens:
-  iny
-  lda ut_result
-  and #%00001111
-  tax
-  lda ut_hex_table_atascii,x
-  sta g_disp_buf,y
-  rts
-
 int_handle_kiss_frame:
-  ; for now, I'm testing a 4 line message.
-  ; it's just a hack for now, get over it.
-  
-  ; clear out the first 4 lines of the display buf
-
-  ldy #0
-  lda #' '
-@clear_loop:
-  sta g_disp_buf, y
-  iny
-  cpy #(38*4)
-  bne @clear_loop
-
-  ldy #0
-  lda #KissFrameHeader::source
-  jsr int_addr_to_disp_buf
-  
-  iny
-  lda #'>'
-  sta g_disp_buf,y
-
-  iny
-  lda #KissFrameHeader::dest
-  jsr int_addr_to_disp_buf
-
-  iny
-  lda #':'
-  sta g_disp_buf,y
+  jsr pk_process_frame
 
   lda #<g_disp_buf
   sta CMDDATA0
   lda #>g_disp_buf
   sta CMDDATA1
-  lda #4
+  lda g_disp_buf_num_lines
   sta CMDDATA2
   jsr mo_append_lines
-  
+
+;  ; for now, I'm testing a 4 line message.
+;  ; it's just a hack for now, get over it.
+;  
+;  ; clear out the first 4 lines of the display buf
+;
+;  ldy #0
+;  lda #' '
+;@clear_loop:
+;  sta g_disp_buf, y
+;  iny
+;  cpy #(38*4)
+;  bne @clear_loop
+;
+;  ldy #0
+;  lda #KissFrameHeader::source
+;  jsr int_addr_to_disp_buf
+;  
+;  iny
+;  lda #'>'
+;  sta g_disp_buf,y
+;
+;  iny
+;  lda #KissFrameHeader::dest
+;  jsr int_addr_to_disp_buf
+;
+;  iny
+;  lda #':'
+;  sta g_disp_buf,y
+;
+;  lda #<g_disp_buf
+;  sta CMDDATA0
+;  lda #>g_disp_buf
+;  sta CMDDATA1
+;  lda #4
+;  sta CMDDATA2
+;  jsr mo_append_lines
+;  
   rts
 
 int_print_status:
@@ -560,7 +522,6 @@ int_cmd_put_rs232:
 @done:
   rts
 
-addr_index_var:              .byte $00
 top_banner:                  .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
                              .byte 'S'|$80,'T'|$80,'A'|$80,'R'|$80,'T'|$80,"config "
                              .byte $00

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# send-test-packet.sh - Generate audio from an APRS packet file and feed it
-# through a temporary Direwolf instance (KISS TCP on port 8001).
+# inject-test-packet.sh - Simulate an APRS packet arriving at kiss8b: generate the
+# packet's audio and feed it through a temporary Direwolf, which decodes it to KISS.
 #
 # Usage:
-#   send-test-packet.sh [options] <packet-file>
+#   inject-test-packet.sh [options] <packet-file>
 #
 # Options:
 #   -c <conf>      Path to direwolf.conf template (default: direwolf.conf.template
@@ -16,11 +16,11 @@
 #   -h             Show this help
 #
 # Examples:
-#   send-test-packet.sh tests/aprs/position.txt
-#   send-test-packet.sh -s /dev/ttyUSB0 tests/aprs/position.txt
-#   send-test-packet.sh -r 30 tests/aprs/position.txt
-#   send-test-packet.sh -n 5 tests/aprs/position.txt
-#   send-test-packet.sh -c ~/.config/direwolf/direwolf.conf.template tests/aprs/position.txt
+#   inject-test-packet.sh tests/aprs/position.txt
+#   inject-test-packet.sh -s /dev/ttyUSB0 tests/aprs/position.txt
+#   inject-test-packet.sh -r 30 tests/aprs/position.txt
+#   inject-test-packet.sh -n 5 tests/aprs/position.txt
+#   inject-test-packet.sh -c ~/.config/direwolf/direwolf.conf.template tests/aprs/position.txt
 
 set -euo pipefail
 
@@ -35,6 +35,7 @@ DW_PID=""
 WAV_FILE=""
 GEN_CONF=""
 FIFO=""
+LOG="/tmp/direwolf-test.log"
 
 usage() {
     sed -n '3,23p' "$0" | sed 's/^# \?//'
@@ -52,6 +53,7 @@ cleanup() {
     [[ -n "$WAV_FILE" ]] && rm -f "$WAV_FILE"
     [[ -n "$GEN_CONF" ]] && rm -f "$GEN_CONF"
     [[ -n "$FIFO" ]]     && rm -f "$FIFO"
+    [[ -f "$LOG" ]] && echo "direwolf log: $LOG"
 }
 
 while getopts ":c:s:r:n:h" opt; do
@@ -103,7 +105,7 @@ grep -v '^\s*#' "$PACKET_FILE" | grep -v '^\s*$' | gen_packets -o "$WAV_FILE" -
 # EOF between packets; it decodes each WAV we feed and forwards the frame to its
 # KISS client(s).
 exec 3<>"$FIFO"
-direwolf -t 0 -c "$GEN_CONF" < "$FIFO" > /tmp/direwolf-test.log 2>&1 &
+direwolf -t 0 -c "$GEN_CONF" < "$FIFO" > "$LOG" 2>&1 &
 DW_PID=$!
 echo "Started direwolf (pid $DW_PID)"
 

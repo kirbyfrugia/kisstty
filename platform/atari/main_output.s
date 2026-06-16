@@ -8,8 +8,7 @@
 
 .segment "CODE"
 MO_MARGIN_LEFT = 1
-MO_WIDTH       = 38
-MO_MAX_SIZE    = MO_WIDTH*MO_MAX_HEIGHT
+MO_MAX_SIZE    = TERMINAL_WIDTH*MO_MAX_HEIGHT
 
 mo_init:
   lda #0
@@ -30,9 +29,9 @@ mo_init:
   adc SCR_PTR_HI
   sta mo_metadata+TextArea::first_line_scr_ptr+1
 
-  lda #MO_WIDTH
+  lda #TERMINAL_WIDTH
   sta mo_metadata+TextArea::width
-  lda #(MO_WIDTH-1)
+  lda #(TERMINAL_WIDTH-1)
   sta mo_metadata+TextArea::cursor_maxx
 
   lda #<mo_data
@@ -86,7 +85,7 @@ mo_resize:
 @size_loop:
   lda ta_metadata+TextArea::size
   clc
-  adc #MO_WIDTH
+  adc #TERMINAL_WIDTH
   sta ta_metadata+TextArea::size
   bcc @size_nowrap
   inc ta_metadata+TextArea::size+1
