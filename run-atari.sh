@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Run a kiss8b build in Altirra (under Bottles/Wine).
+# Run a kisstty build in Altirra (under Bottles/Wine).
 #
-#   run-atari.sh debug      build/atari/debug/kiss8b.atr
-#   run-atari.sh release    build/atari/release/kiss8b.atr
+#   run-atari.sh debug      build/atari/debug/kisstty.atr
+#   run-atari.sh release    build/atari/release/kisstty.atr
 #
 # One-time setup:
 #   - flatpak override --user com.usebottles.bottles --filesystem=home
@@ -18,11 +18,11 @@ set -euo pipefail
 
 : "${ALTIRRA_EXE:?set ALTIRRA_EXE to the path of Altirra64.exe}"
 bottle="${ALTIRRA_BOTTLE:-altirra}"
-profile="${ALTIRRA_PROFILE:-kiss8b}"
+profile="${ALTIRRA_PROFILE:-kisstty}"
 ini="platform/atari/altirra/Altirra.ini"
 
 case "${1:-}" in
-  debug|release) atr="build/atari/$1/kiss8b.atr" ;;
+  debug|release) atr="build/atari/$1/kisstty.atr" ;;
   *) echo "usage: $0 debug|release" >&2; exit 1 ;;
 esac
 

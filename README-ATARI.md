@@ -1,6 +1,6 @@
-# kiss6502 - Atari
+# kisstty - Atari
 
-## Building kiss8b
+## Building kisstty
 
 ```
 # to build the release
@@ -11,9 +11,9 @@ make atari-debug
 ```
 This will create an xex file and an atr file in `build/atari/<dist>`.
 
-## Running kiss8b
+## Running kisstty
 
-You can run kiss8b on a real Atari or in Altirra.
+You can run kisstty on a real Atari or in Altirra.
 
 ### On a real Atari
 
@@ -42,8 +42,8 @@ flatpak override --user com.usebottles.bottles --filesystem=home
 export ALTIRRA_EXE="$HOME/Applications/Altirra-4.40/Altirra64.exe"
 
 # Usage:
-./run-atari.sh debug      # build/atari/debug/kiss8b.atr
-./run-atari.sh release    # build/atari/release/kiss8b.atr
+./run-atari.sh debug      # build/atari/debug/kisstty.atr
+./run-atari.sh release    # build/atari/release/kisstty.atr
 ```
 
 run-atari.sh generates `platform/atari/altirra/Altirra.ini` from
@@ -55,12 +55,12 @@ regenerate (e.g. after moving the checkout).
 ```
 # Altirra's networked serial port (on the 850) must be set to "Listen for an incoming connection" on port 9000
 #
-# Start kiss8b in Altirra and open the connection first. Altirra only
+# Start kisstty in Altirra and open the connection first. Altirra only
 # starts listening on 9000 once the 850 serial port is opened, so socat
 # has nothing to connect to otherwise.
 socat -d -d PTY,link=/tmp/altirra-tty,raw,echo=0 TCP:127.0.0.1:9000
 minicom -D /tmp/altirra-tty
-# Make sure your minicom settings match your kiss8b settings
+# Make sure your minicom settings match your kisstty settings
 ```
 
 ## Debugging
@@ -88,7 +88,7 @@ brk     ; re-enters wozmon
 
 ## Connecting to direwolf
 
-kiss8b talks KISS to direwolf over a serial link. The use cases below differ
+kisstty talks KISS to direwolf over a serial link. The use cases below differ
 only in where the Atari/Altirra and direwolf live, and how the serial link
 between them is made.
 
@@ -113,7 +113,7 @@ SERIALKISS /dev/COM1 9600    # the box's serial port wired to the 850
 # Launch direwolf:
 direwolf -c ~/.config/direwolf/direwolf.conf -t 0
 
-# Boot the Atari (kiss8b runs automatically) and start APRS mode.
+# Boot the Atari (kisstty runs automatically) and start APRS mode.
 
 # (optional) test receive using kissutil.
 # Stop direwolf first so it isn't holding the port. Then:
@@ -128,10 +128,10 @@ W7TTY>DEST:this is a test
 `tests/inject-test-packet.sh` handles the direwolf side: it fills SERIALKISS in
 `tests/direwolf.conf.template` with the PTY (`-s`, default `/tmp/altirra-tty`),
 runs a temporary direwolf, and injects the decoded frame over that serial KISS
-link. The packet then flows PTY -> socat -> TCP 9000 -> Altirra's 850 -> kiss8b.
+link. The packet then flows PTY -> socat -> TCP 9000 -> Altirra's 850 -> kisstty.
 
 ```
-# Run kiss8b in Altirra and start APRS mode. This opens the 850 serial
+# Run kisstty in Altirra and start APRS mode. This opens the 850 serial
 # port so Altirra starts listening on TCP 9000. Do this BEFORE socat
 # or it has nothing to connect to.
 
@@ -139,7 +139,7 @@ link. The packet then flows PTY -> socat -> TCP 9000 -> Altirra's 850 -> kiss8b.
 # default -s device):
 socat -d -d PTY,link=/tmp/altirra-tty,raw,echo=0 TCP:127.0.0.1:9000
 
-# Send a test packet to kiss8b:
+# Send a test packet to kisstty:
 ./tests/inject-test-packet.sh tests/aprs/position.txt
 ```
 
@@ -159,7 +159,7 @@ on the host machine and over a cable to the direwolf box.
 ```
 # --- on the Altirra machine ---
 
-# Run kiss8b in Altirra and start APRS mode. This opens the 850 serial
+# Run kisstty in Altirra and start APRS mode. This opens the 850 serial
 # port so Altirra starts listening on TCP 9000. Do this BEFORE socat
 # or it has nothing to connect to.
 
@@ -178,7 +178,7 @@ SERIALKISS /dev/COM1 9600  # this box's end of the serial cable
 direwolf -c ~/.config/direwolf/direwolf.conf -t 0
 
 # (optional) test receive.
-# On the Altirra machine, stop socat, leave kiss8b running, and inject
+# On the Altirra machine, stop socat, leave kisstty running, and inject
 # straight at Altirra's serial:
 kissutil -v -p 9000
 

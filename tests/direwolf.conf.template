@@ -1,5 +1,5 @@
 #############################################################
-# direwolf.conf.template - kiss6502 dev/test
+# direwolf.conf.template - kisstty dev/test
 #
 # Template for inject-test-packet.sh, which generates the direwolf.conf it runs.
 #
@@ -23,7 +23,7 @@ MYCALL NOCALL
 
 MODEM 1200
 
-# KISS TCP - kiss6502 connects here
+# KISS TCP - kisstty connects here
 KISSPORT 8001
 
 # KISS over a serial device - filled in by inject-test-packet.sh -s <device>

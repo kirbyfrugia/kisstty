@@ -1,9 +1,9 @@
-; WozMon for Atari 8-bit, ca65 port for kiss6502
+; WozMon for Atari 8-bit, ca65 port for kisstty
 ;
 ; Original: The WOZ Monitor for the Apple 1, Steve Wozniak, 1976
 ; Atari port: Frederik Holst, 2022/23, ABBUC Software Contest 2023
 ;   https://github.com/fredlcore/AtariWozMon
-; ca65/kiss6502 port: adapted from above, MIT licensed portions only
+; ca65/kisstty port: adapted from above, MIT licensed portions only
 ;
 ; Segments:
 ;   WOZMON_SPLASH  -> $0400 (cassette buffer, clobbered later, that's fine)

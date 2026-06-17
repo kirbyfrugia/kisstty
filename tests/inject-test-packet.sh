@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# inject-test-packet.sh - Simulate an APRS packet arriving at kiss8b: generate the
+# inject-test-packet.sh - Simulate an APRS packet arriving at kisstty: generate the
 # packet's audio and feed it through a temporary Direwolf, which decodes it to KISS.
 #
 # Usage:

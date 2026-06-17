@@ -1,5 +1,5 @@
 # =============================================================================
-# kiss8b - cross-platform 6502 KISS TNC client
+# kisstty - cross-platform 6502 KISS TNC client
 # Tools:   ca65 + ld65 from cc65 package
 #
 # pre-req on CachyOS/Arch:
@@ -43,18 +43,18 @@ ATARI_SRCS      = main.s \
 
 ATARI_BLDDIR   = $(BLDDIR)/atari/release
 ATARI_ATR_DIR  = $(ATARI_BLDDIR)/atr
-ATARI_XEX      = $(ATARI_BLDDIR)/kiss8b.xex
-ATARI_MAP      = $(ATARI_BLDDIR)/kiss8b.map
-ATARI_VICE_SYM = $(ATARI_BLDDIR)/kiss8b-vice-symbols.txt
-ATARI_ATR      = $(ATARI_BLDDIR)/kiss8b.atr
+ATARI_XEX      = $(ATARI_BLDDIR)/kisstty.xex
+ATARI_MAP      = $(ATARI_BLDDIR)/kisstty.map
+ATARI_VICE_SYM = $(ATARI_BLDDIR)/kisstty-vice-symbols.txt
+ATARI_ATR      = $(ATARI_BLDDIR)/kisstty.atr
 ATARI_OBJS     = $(patsubst %.s,$(ATARI_BLDDIR)/%.o,$(ATARI_SRCS))
 
 ATARI_BLDDIR_DBG   = $(BLDDIR)/atari/debug
 ATARI_ATR_DIR_DBG  = $(ATARI_BLDDIR_DBG)/atr
-ATARI_XEX_DBG      = $(ATARI_BLDDIR_DBG)/kiss8b.xex
-ATARI_MAP_DBG      = $(ATARI_BLDDIR_DBG)/kiss8b.map
-ATARI_VICE_SYM_DBG = $(ATARI_BLDDIR_DBG)/kiss8b-vice-symbols.txt
-ATARI_ATR_DBG      = $(ATARI_BLDDIR_DBG)/kiss8b.atr
+ATARI_XEX_DBG      = $(ATARI_BLDDIR_DBG)/kisstty.xex
+ATARI_MAP_DBG      = $(ATARI_BLDDIR_DBG)/kisstty.map
+ATARI_VICE_SYM_DBG = $(ATARI_BLDDIR_DBG)/kisstty-vice-symbols.txt
+ATARI_ATR_DBG      = $(ATARI_BLDDIR_DBG)/kisstty.atr
 ATARI_OBJS_DBG     = $(patsubst %.s,$(ATARI_BLDDIR_DBG)/%.o,$(ATARI_SRCS))
 
 #PORT ?= /dev/ttyUSB0
@@ -96,11 +96,11 @@ C64_CFG  = $(CC65_SHARE)/cfg/c64-asm.cfg
 C64_SRCS = c64-main.s
 
 C64_BLDDIR = $(BLDDIR)/c64/release
-C64_PRG    = $(C64_BLDDIR)/kiss8b.prg
+C64_PRG    = $(C64_BLDDIR)/kisstty.prg
 C64_OBJS   = $(patsubst %.s,$(C64_BLDDIR)/%.o,$(C64_SRCS))
 
 C64_BLDDIR_DBG = $(BLDDIR)/c64/debug
-C64_PRG_DBG    = $(C64_BLDDIR_DBG)/kiss8b.prg
+C64_PRG_DBG    = $(C64_BLDDIR_DBG)/kisstty.prg
 C64_OBJS_DBG   = $(patsubst %.s,$(C64_BLDDIR_DBG)/%.o,$(C64_SRCS))
 
 c64: $(C64_PRG)
@@ -138,13 +138,13 @@ APPLE2_MASTER_DSK = /usr/local/share/linapple/Master.dsk
 APPLE2_SRCS       = apple2-main.s
 
 APPLE2_BLDDIR = $(BLDDIR)/apple2/release
-APPLE2_BIN    = $(APPLE2_BLDDIR)/kiss8b.bin
-APPLE2_DSK    = $(APPLE2_BLDDIR)/kiss8b.dsk
+APPLE2_BIN    = $(APPLE2_BLDDIR)/kisstty.bin
+APPLE2_DSK    = $(APPLE2_BLDDIR)/kisstty.dsk
 APPLE2_OBJS   = $(patsubst %.s,$(APPLE2_BLDDIR)/%.o,$(APPLE2_SRCS))
 
 APPLE2_BLDDIR_DBG = $(BLDDIR)/apple2/debug
-APPLE2_BIN_DBG    = $(APPLE2_BLDDIR_DBG)/kiss8b.bin
-APPLE2_DSK_DBG    = $(APPLE2_BLDDIR_DBG)/kiss8b.dsk
+APPLE2_BIN_DBG    = $(APPLE2_BLDDIR_DBG)/kisstty.bin
+APPLE2_DSK_DBG    = $(APPLE2_BLDDIR_DBG)/kisstty.dsk
 APPLE2_OBJS_DBG   = $(patsubst %.s,$(APPLE2_BLDDIR_DBG)/%.o,$(APPLE2_SRCS))
 
 apple2: $(APPLE2_DSK)
@@ -171,15 +171,15 @@ $(APPLE2_DSK): $(APPLE2_BIN)
 	cp $(APPLE2_MASTER_DSK) $@
 	chmod 644 $@
 	$(AC) -d $@ HELLO
-	$(AC) -p $@ KISS6502 B 0x0803 < $(APPLE2_BIN)
-	printf '10 PRINT CHR$$(4);"BRUN KISS6502"\r' | $(ACX) import --basic --stdin --name=HELLO -d $@
+	$(AC) -p $@ KISSTTY B 0x0803 < $(APPLE2_BIN)
+	printf '10 PRINT CHR$$(4);"BRUN KISSTTY"\r' | $(ACX) import --basic --stdin --name=HELLO -d $@
 
 $(APPLE2_DSK_DBG): $(APPLE2_BIN_DBG)
 	cp $(APPLE2_MASTER_DSK) $@
 	chmod 644 $@
 	$(AC) -d $@ HELLO
-	$(AC) -p $@ KISS6502 B 0x0803 < $(APPLE2_BIN_DBG)
-	printf '10 PRINT CHR$$(4);"BRUN KISS6502"\r' | $(ACX) import --basic --stdin --name=HELLO -d $@
+	$(AC) -p $@ KISSTTY B 0x0803 < $(APPLE2_BIN_DBG)
+	printf '10 PRINT CHR$$(4);"BRUN KISSTTY"\r' | $(ACX) import --basic --stdin --name=HELLO -d $@
 
 run-apple2: $(APPLE2_DSK)
 	linapple --d1 $(APPLE2_DSK) --autoboot
