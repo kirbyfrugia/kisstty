@@ -2,7 +2,7 @@
 
 *A dead simple terminal and packet radio app for 8-bit computers and modern PCs*
 
-* KISS - Keep it Simple Stupid. A protocol used for APRS/Packet Radio.
+* KISS - Keep it Simple Stupid. A protocol used for APRS/Packet Radio. Also the design intent for this app.
 * TTY  - A text-only terminal. Not to be confused with teletype, but there's definitely some overlap here!
 
 This started as a project to build a terminal/aprs/rtty app for 8-bit computers.
