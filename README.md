@@ -1,14 +1,24 @@
-# kiss8b - Terminal and Packet Radio app for 8-bit computers
+# kisstty - Terminal and Packet Radio app for 8-bit computers and modern PCs!
 
-This will be a KISS TNC ("Keep It Simple, Stupid" Terminal Node Controller) client for Atari 8-bit computers, Apple II, and Commodore 64. The purpose is to have a nice terminal to be used for Packet Radio.
+This started as a project to build a terminal/aprs/rtty app for 8-bit computers.
+I wanted a purpose built app to trade messages with people and have real convos
+vs pure digital modes that are about just making contacts.
 
-If you're looking at this, you're probably one of only a few people who are into both ham radio and 8-bit computers. So, really I'm just building it for me.
+It is still that and I almost have that part fully working for the Atari 800. Almost.
 
-As I've been working on it, I also ended up implementing a basic terminal, too. So you can use it as a generic terminal as well.
+But what I realized is that what I really wanted a way to communicate over text
+with people and have real conversations. Ok, not voice conversations, but text
+conversations over radio. I think some software exists out there, but I want this
+to be as dead simple as possible. No realtime maps, not fancy features. Just a simple
+text interface that will work in a broadcast/monitor mode and a QSO mode.
+
+Target platforms in order:
+* Atari 800 (in active development). Can be used already as a standard terminal and with basic KISS message mode (rx).
+* Linux and Windows (next). Will be built in rust.
+* Apple II
+* Commodore 64
 
 # Status
-
-It's in the early phases. I'm intending to create the Atari 800 first, then the Apple II, then the Commodore.
 
 The Atari version is far enough along that you can use it as a standard terminal. KISS/APRS in progress.
 
