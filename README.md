@@ -6,16 +6,20 @@
 * TTY  - A text-only terminal. Not to be confused with teletype, but there's definitely some overlap here!
 
 This started as a project to build a terminal/aprs/rtty app for 8-bit computers.
-I wanted a purpose built app to trade messages with people and have real convos
-vs pure digital modes that are about just making contacts.
+This program is still that, and I almost have that part fully working for the Atari 800.
 
-It is still that and I almost have that part fully working for the Atari 800. Almost.
+I wanted a purpose-built app to trade messages with people and have real convos
+vs pure digital modes that are just about making "contacts." Don't get me wrong,
+I like those, too. But I wanted something more conversational.
 
 But what I realized is that what I really wanted a way to communicate over text
 with people and have real conversations. Ok, not voice conversations, but text
 conversations over radio. I think some software exists out there, but I want this
 to be as dead simple as possible. No realtime maps, not fancy features. Just a simple
 text interface that will work in a broadcast/monitor mode and a QSO mode.
+
+Basically, a purpose-built app to trade messages with people and a community.
+Kinda like IRC or discord, but over the air and even simpler.
 
 Target platforms in order:
 * Atari 800 (in active development). Can be used already as a standard terminal and with basic KISS message mode (rx).
