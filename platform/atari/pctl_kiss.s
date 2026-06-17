@@ -182,24 +182,29 @@ pk_process_frame:
   lda #>g_disp_buf
   sta disp_buf_ptr_hi
 
-  jsr int_process_addresses
+  ;jsr int_process_addresses
 
   inc buf_counter
   lda g_rx_buf+0
-  cmp #'!'
-  beq position_no_ts
-  cmp #'='
-  beq position_no_ts
-  cmp #'/'
-  beq position_ts
-  cmp #'@'
-  beq position_ts
-position_no_ts:
-  jmp int_process_position_no_ts
-  jmp pkpf_done
-position_ts:
-  jmp int_process_position_ts
-  jmp pkpf_done
+  cmp #':'
+  beq pkpf_message
+  bne pkpf_done
+;  cmp #'!'
+;  beq pkpf_position_no_ts
+;  cmp #'='
+;  beq pkpf_position_no_ts
+;  cmp #'/'
+;  beq pkpf_position_ts
+;  cmp #'@'
+;  beq pkpf_position_ts
+;pkpf_position_no_ts:
+;  jmp int_process_position_no_ts
+;  jmp pkpf_done
+;pkpf_position_ts:
+;  jmp int_process_position_ts
+;  jmp pkpf_done
+pkpf_message:
+  jmp int_process_message
 pkpf_done:
   rts
 
@@ -215,9 +220,63 @@ int_fend:
 @done:
   rts
 
-int_next_line:
+int_process_message:
+  ldy #0
+  ldx #KissFrameHeader::source
+  stx addr_index_var
+  jsr int_addr_to_disp_buf
+
+  ; y is already set to the end of the source call sign
+  ; string in the disp buf
+
+  lda #1
+  sta g_disp_buf_num_lines
+  ldx #0
+@loop:
+  lda g_rx_buf,x
+  ;cmp #'{'
+  ;beq @msg_id
+  sta (disp_buf_ptr_lo),y
+  cpy #0
+  bne @no_inc
+  ; if on first char of a line, we inc number of lines
+  inc g_disp_buf_num_lines
+@no_inc:
+  inx
+  beq ipm_done; >255, too many chars
+  cpx g_rx_buf_num_chars
+  beq @fill
+  iny
+  cpy #TERMINAL_WIDTH
+  bne @loop
+  lda disp_buf_ptr_lo
+  clc
+  adc #TERMINAL_WIDTH
+  sta disp_buf_ptr_lo
+  bcc @nowrap_buf_ptr
+  inc disp_buf_ptr_hi
+@nowrap_buf_ptr:
+  ldy #0
+  beq @loop
+@msg_id:
+  ; here's where we will ack the message,
+  ; but for now, just stop printing
+  ;iny
+  ;beq @calc_lines ; rolled over
+  ;lda g_rx_buf,y
+  ; TODO: handle ack'
+  ; jsr int_ack_message
+@fill:
+  iny
+  lda #' '
+  ut_fill_to_end_ptr disp_buf_ptr_lo, #TERMINAL_WIDTH
+ipm_done:
   rts
 
+int_ack_message:
+  rts
+
+; may use later, not used now
 int_process_addresses:
   ldx #0
   lda g_disp_buf_line_ptrs_lo,x
@@ -269,12 +328,6 @@ ipa_loop:
   
   ; TODO
 ipa_done:
-  rts
-
-int_process_position_no_ts:
-  rts
-
-int_process_position_ts:
   rts
 
 ; inputs:

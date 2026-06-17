@@ -1,2 +1,2 @@
 # Object report. Object name is TESTOBJ, live (*), with position.
-NOCALL>APRS,WIDE1-1,WIDE2-1:;TESTOBJ  *111111z4433.37N/12318.23W>Test object
+NOCALL>APZ001,WIDE1-1,WIDE2-1:;TESTOBJ  *111111z4433.37N/12318.23W>Test object

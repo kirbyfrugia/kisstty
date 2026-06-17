@@ -96,9 +96,11 @@ else
     sed '/^%%SERIALKISS%%$/d' "$CONF" > "$GEN_CONF"
 fi
 
-# Generate WAV (strip comment lines before passing to gen_packets)
+# Generate WAV. Strip comment/blank lines, and feed the packet with no trailing
+# newline -- gen_packets would otherwise keep it as a stray <0x0a> in the info
+# field (which an APRS message's {seq number runs into, for example).
 echo "Generating WAV from: $PACKET_FILE"
-grep -v '^\s*#' "$PACKET_FILE" | grep -v '^\s*$' | gen_packets -o "$WAV_FILE" -
+printf '%s' "$(grep -v '^\s*#' "$PACKET_FILE" | grep -v '^\s*$')" | gen_packets -o "$WAV_FILE" -
 
 # direwolf reads RX audio from the FIFO (ADEVICE stdin in the conf). Open the
 # FIFO read-write on fd 3 first so the open never blocks and direwolf never sees
