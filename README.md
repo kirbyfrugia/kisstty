@@ -8,10 +8,6 @@
 This started as a project to build a terminal/aprs/rtty app for 8-bit computers.
 This program is still that, and I almost have that part fully working for the Atari 800.
 
-I wanted a purpose-built app to trade messages with people and have real convos
-vs pure digital modes that are just about making "contacts." Don't get me wrong,
-I like those, too. But I wanted something more conversational.
-
 But what I realized is that what I really wanted a way to communicate over text
 with people and have real conversations. Ok, not voice conversations, but text
 conversations over radio. I think some software exists out there, but I want this
