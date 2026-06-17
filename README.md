@@ -1,4 +1,9 @@
-# kisstty - Terminal and Packet Radio app for 8-bit computers and modern PCs!
+# kisstty
+
+*A dead simple terminal and packet radio app for 8-bit computers and modern PCs*
+
+KISS - Keep it Simple Stupid. A protocol used for APRS/Packet Radio.
+TTY  - Not teletype (though coming) so much as a terminal.
 
 This started as a project to build a terminal/aprs/rtty app for 8-bit computers.
 I wanted a purpose built app to trade messages with people and have real convos
