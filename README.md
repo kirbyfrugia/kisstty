@@ -43,15 +43,12 @@ Special thanks to:
 
 **Note on AI usage:**
 
-My intent with this project is to write all the assembly code myself.
-I'm writing the code, the UI, the logic. Basically, all the assembly.
-I'm debugging it myself, painful as that is at times.
+My intent with this project is to write all the code myself, and that's what I'm doing. I'm writing the code, the UI, the logic. I'm debugging it myself, painful as that is at times.
 
 I also designed it and built all the hardware I used for it (serial cables, TNC cables).
 
-Here are the ways I used AI (or intend to) to do the stuff I don't care about:
+But I am using UI for some of the stuff I don't care to do myself:
 * I used AI to do some OCR of images. Specifically, I wrote code that dumped memory to my screen and I took a photo with my phone. I had Claude convert that to text for a file on my PC.
 * I copied and pasted the keycode to ATASCII lookup table from the Atari OS User's manual and had Claude turn that into a lookup file for me.
 * I used it to tweak some of the instructions in my readme files, though I mostly wrote them. It's just a pain in the butt and I don't care if AI does it.
-* I had it write some of the helper scripts like run-atari.sh. I didn't care enough to write them myself. I wanted to focus on the actual code.
-* I'm going to have it generate some test APRS files for me.
+* I had it write some of the helper scripts like run-atari.sh since I hate writing shell scripts and I wanted to focus on the actual program code.
