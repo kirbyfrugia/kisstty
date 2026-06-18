@@ -198,13 +198,13 @@ pk_process_frame:
 ;  cmp #'@'
 ;  beq pkpf_position_ts
 ;pkpf_position_no_ts:
-;  jmp int_process_position_no_ts
+;  jsr int_process_position_no_ts
 ;  jmp pkpf_done
 ;pkpf_position_ts:
-;  jmp int_process_position_ts
+;  jsr int_process_position_ts
 ;  jmp pkpf_done
 pkpf_message:
-  jmp int_process_message
+  jsr int_process_msg
 pkpf_done:
   rts
 
@@ -223,16 +223,21 @@ int_fend:
 ; inputs:
 ;   
 int_process_msg:
+  lda #<g_disp_buf
+  sta data_ptr_lo
+  lda #>g_disp_buf
+  sta data_ptr_hi
+
   ldy #0
   ldx #KissFrameHeader::source
   stx x_index_var
   jsr int_addr_to_buf
 
+  lda #'>'
+  sta g_disp_buf,y
 
-  lda #<g_disp_buf
-  sta data_ptr_lo
-  lda #>g_disp_buf
-  sta data_ptr_hi
+  iny
+
   lda #KISS_TYPE_MSG_ADDRESSEE_IDX
   sta x_index_var
   lda #KISS_TYPE_MSG_END_COLON_IDX
@@ -249,6 +254,15 @@ int_process_msg:
   sta terminator
   jsr int_read_until_terminator
 
+  ; now update the number of lines
+  tya
+@loop:
+  inc g_disp_buf_num_lines
+  sec
+  sbc #TERMINAL_WIDTH
+  beq @done
+  bcs @loop
+@done:
   rts
 
 int_process_status:
@@ -261,7 +275,7 @@ int_process_status:
 ;
 ; inputs:
 ;   terminator         - char to search for or $00 until
-;   data_ptr_lo/hi - pointer to where to store output
+;   data_ptr_lo/hi     - pointer to where to store output
 ;   x_index_var        - start index to check
 ;   x_index_var_end    - end index to check (one past)
 ;   y                  - start index to write to
@@ -429,7 +443,7 @@ ipa_done:
 ;   y                  - offset in disp buffer to store address
 ; modifies:
 ;   x_index_var        - will be one past end of this address
-;   a,x,y              - can't count on these
+;   a,x,y
 int_addr_to_buf:
   lda x_index_var
   tax
