@@ -51,6 +51,13 @@ KISS_TFESC               = $dd
 KISS_DUPLEX_HALF         = %00000000
 KISS_DUPLEX_FULL         = %11111111
 
+KISS_TYPE_STATUS_TIMESTAMP_IDX = 7
+
+KISS_TYPE_MSG_START_COLON_IDX  = 1
+KISS_TYPE_MSG_ADDRESSEE_IDX    = 2
+KISS_TYPE_MSG_END_COLON_IDX    = 11
+
+
 ; commands 
 ; all the times/delays are in 10ms units,
 ; e.g. a TX_DELAY of 50 = 500ms
