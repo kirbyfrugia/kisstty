@@ -188,23 +188,14 @@ pk_process_frame:
   lda g_rx_buf+0
   cmp #':'
   beq pkpf_message
+  cmp #'>'
+  beq pkpf_status
   bne pkpf_done
-;  cmp #'!'
-;  beq pkpf_position_no_ts
-;  cmp #'='
-;  beq pkpf_position_no_ts
-;  cmp #'/'
-;  beq pkpf_position_ts
-;  cmp #'@'
-;  beq pkpf_position_ts
-;pkpf_position_no_ts:
-;  jsr int_process_position_no_ts
-;  jmp pkpf_done
-;pkpf_position_ts:
-;  jsr int_process_position_ts
-;  jmp pkpf_done
 pkpf_message:
-  jsr int_process_msg
+  jsr int_process_message
+  jmp pkpf_done
+pkpf_status:
+  jsr int_process_status
 pkpf_done:
   rts
 
@@ -222,7 +213,7 @@ int_fend:
 
 ; inputs:
 ;   
-int_process_msg:
+int_process_message:
   lda #<g_disp_buf
   sta data_ptr_lo
   lda #>g_disp_buf
@@ -266,6 +257,120 @@ int_process_msg:
   rts
 
 int_process_status:
+  lda #<g_disp_buf
+  sta data_ptr_lo
+  lda #>g_disp_buf
+  sta data_ptr_hi
+
+  ldy #0
+  lda #'['
+  sta g_disp_buf,y
+
+  iny
+  ldx #KissFrameHeader::source
+  stx x_index_var
+  jsr int_addr_to_buf
+
+  lda #']'
+  sta g_disp_buf,y
+
+  iny
+  lda #' '
+  sta g_disp_buf,y
+
+  lda g_rx_buf_num_chars
+  cmp #KISS_TYPE_STATUS_TIMESTAMP_ZULU_IDX
+  bcc @nozulu
+  ldx #KISS_TYPE_STATUS_TIMESTAMP_ZULU_IDX
+  lda g_rx_buf,x
+  cmp #'z'
+  beq @zulu
+  cmp #'Z'
+  beq @zulu
+  ldx #1
+  bne @nozulu
+@zulu:
+  ; might be a timestamp, confirm
+  ldx #1
+  stx x_index_var
+  ldx #KISS_TYPE_STATUS_TIMESTAMP_ZULU_IDX
+  stx x_index_var_end
+  jsr int_all_digits
+  bcc @nozulu
+
+  lda #' '
+  sta g_disp_buf,y
+
+  ; it's a timestamp. Convert
+  ; from: DDHHmm
+  ; to:   HH:mm
+  ldx #1
+  inx
+  inx
+  iny
+  lda g_rx_buf,x
+  sta g_disp_buf,y
+  iny
+  inx
+  lda g_rx_buf,x
+  sta g_disp_buf,y
+  iny
+  lda #':'
+  sta g_disp_buf,y
+  iny
+  inx
+  lda g_rx_buf,x
+  sta g_disp_buf,y
+  iny
+  inx
+  lda g_rx_buf,x
+  sta g_disp_buf,y
+  iny
+  lda #' '
+  sta g_disp_buf,y
+  inx
+  inx
+@nozulu:
+  iny
+  stx x_index_var
+  lda g_rx_buf_num_chars
+  sta x_index_var_end
+  jsr int_read_until_end
+
+  ; now update the number of lines
+  tya
+@loop:
+  inc g_disp_buf_num_lines
+  sec
+  sbc #TERMINAL_WIDTH
+  beq @done
+  bcs @loop
+done:
+  rts
+
+; reads from x_index_var to x_index_var_end
+; and sets the carry bit if it's all digits,
+; otherwise it clears the carry bit
+; inputs:
+;   x_index_var        - start index to check
+;   x_index_var_end    - end index to check (one past)
+; outputs:
+;   C - sec if all digits, clc otherwise
+int_all_digits:
+  ldx x_index_var
+@loop:
+  lda g_rx_buf,x
+  cmp $30 ; ascii 0
+  bcc @nozulu
+  cmp $39 ; ascii 9 + 1
+  bcs @nozulu
+  inx
+  cpx x_index_var_end
+  bne @loop
+  sec
+  rts
+@nozulu:
+  clc
   rts
 
 ; reads from rx_buf from x_index_var to x_index_var_end
@@ -296,89 +401,30 @@ int_read_until_terminator:
 @done:
   rts
 
-int_process_message:
-  lda g_rx_buf_num_chars
-  cmp #KISS_TYPE_MSG_END_COLON_IDX
-  bcc ipm_done ; not a valid message
-
-  ldy #0
-  ldx #KissFrameHeader::source
-  stx x_index_var
-  jsr int_addr_to_buf
-
-  ; TODO: update the parse addr method to
-  ;       work with addresses that aren't
-  ;       just in the kiss frame header.
-  ;       Or maybe add to the header and rename?
-  ;       e.g. add it after num_digi and rename to
-  ;       KissFrameMetadata
-  ;       Actually the above won't work because
-  ;       this is a raw string, not a shifted char thing.
-
-  ; y is already set by now from the addr parser
-  lda #1
-  sta g_disp_buf_num_lines
-  ldx #0
-@addressee_loop:
-  lda g_rx_buf,x
-  cmp #' '
-  beq @addressee_colon_loop ; found first space, find next colon
-  sta (data_ptr_lo),y
-  iny
-  inx
-  cpx #KISS_TYPE_MSG_END_COLON_IDX
-  bne @addressee_loop
-  beq @loop ; no blank chars in addressee, parse actual msg
-@addressee_colon_loop:
-  ; get here if there were spaces in the addressee, proceed
-  ; until we find the colon
-  lda g_rx_buf,x
-  cmp #':'
-  beq @loop ; parse actual msg
-  ;iny ; don't increment y since we're ignoring spaces
-  inx
-  cpx #KISS_TYPE_MSG_END_COLON_IDX
-  bne @addressee_colon_loop
+; reads from rx_buf from x_index_var to x_index_var_end
+;
+; assumes x_index_var_end - x_index_var > 1
+;
+; inputs:
+;   data_ptr_lo/hi     - pointer to where to store output
+;   x_index_var        - start index to check
+;   x_index_var_end    - end index to check (one past)
+;   y                  - start index to write to
+; outputs:
+;   x - index of last read char + 1
+;   y - index of last written char + 1
+int_read_until_end:
+  ldx x_index_var
 @loop:
   lda g_rx_buf,x
-  ;cmp #'{'
-  ;beq @msg_id
   sta (data_ptr_lo),y
-  cpy #0
-  bne @no_inc
-  ; if on first char of a line, we inc number of lines
-  inc g_disp_buf_num_lines
-@no_inc:
+  iny
   inx
-  beq ipm_done; >255, too many chars
-  cpx g_rx_buf_num_chars
-  beq @fill
-  iny
-  cpy #TERMINAL_WIDTH
+  cpx x_index_var_end
   bne @loop
-  lda data_ptr_lo
-  clc
-  adc #TERMINAL_WIDTH
-  sta data_ptr_lo
-  bcc @nowrap_buf_ptr
-  inc data_ptr_hi
-@nowrap_buf_ptr:
-  ldy #0
-  beq @loop
-@msg_id:
-  ; here's where we will ack the message,
-  ; but for now, just stop printing
-  ;iny
-  ;beq @calc_lines ; rolled over
-  ;lda g_rx_buf,y
-  ; TODO: handle ack'
-  ; jsr int_ack_message
-@fill:
-  iny
-  lda #' '
-  ut_fill_to_end_ptr data_ptr_lo, #TERMINAL_WIDTH
-ipm_done:
+@done:
   rts
+
 
 int_ack_message:
   rts
@@ -489,6 +535,7 @@ int_addr_to_buf:
   inc x_index_var
   rts
 
+zulu:            .res 1
 terminator:      .res 1
 current_digi:    .res 1
 x_index_var:     .res 1
