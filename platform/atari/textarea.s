@@ -926,95 +926,60 @@ ta_out_println:
   jsr int_update_cursor_line
   rts
 
-; appends N lines of data into the text area.
+; appends N lines of data into the text area, scrolling up to make
+; room as needed. the block starts on a blank line, which is
+; the current line if cursorx is 0, otherwise the next line.
 ;
-; the new block always starts on a blank line using
-; the following rules:
-;   * If cursorx is at 0, start at the cursor location
-;   * If cursorx is not at zero, start on the next line.
+; the cursor lands on the last line with 'pending' set, so the next
+; write starts on a fresh line below. if CMDDATA3 > 0, the last
+; line is the final trailing blank line rather than the last line
+; of data.
 ;
-; the cursor is left on the last line of the block with a
-; newline owed (pending), so the block fills right down to the
-; bottom right corner.
-;
-; the caller must ensure the block fits within the area height.
+; the caller must ensure the block plus any trailing blank lines
+; fits within the area height.
 ;
 ; inputs:
-;   CMDDATA0/1 - ptr to the data to append
+;   CMDDATA0/1 - ptr to the block of data to append
 ;   CMDDATA2   - number of lines to append
+;   CMDDATA3   - number of trailing blank lines, 0 for none
 ; modifies:
-;   a,x,y,ZPB0-5,CMDDATA3,CMDDATA4
+;   a,x,y,ZPB0-5,CMDDATA4
 ta_out_append_lines:
-  to_add     = CMDDATA2
-  scroll     = CMDDATA3
-  cursor_row = CMDDATA4
+  to_append  = CMDDATA2
+  extra      = CMDDATA3
+  cursor_line = CMDDATA4
 
-  ; if we had a pending newline from a prior write,
-  ; flush it so we start from the correct cursor
-  ; position.
   jsr int_flush_pending_newline
 
-  ; basic algorithm (cursor lands on the last block line):
-  ;   start_row = cursory + (cursorx != 0 ? 1 : 0)
-  ;   last_row  = start_row + to_add - 1
-  ;   scroll    = max(0, last_row - cursor_maxy)
+  ; start_line = cursory + (cursorx != 0 ? 1 : 0)
+  ; last_line  = start_line + to_append + extra - 1
+  ; scroll     = max(0, last_line - cursor_maxy)
   lda ta_metadata+TextArea::cursory
   ldx ta_metadata+TextArea::cursorx
-  beq @have_start
+  beq @start_line_set
   clc
   adc #1
-@have_start:
+@start_line_set:
   clc
-  adc to_add
+  adc to_append
+  adc extra
   sec
-  sbc #1         ; a = last_row = start_row + to_add - 1
-  sta cursor_row
-  lda #0
-  sta scroll
+  sbc #1
+  sta cursor_line
 
-  lda cursor_row
+  lda cursor_line
   sec
   sbc ta_metadata+TextArea::cursor_maxy
-  bcc @room       ; last_row < maxy
-  beq @room       ; last_row == maxy
-  ; last_row > maxy, a = last_row - maxy = lines to scroll
-  sta scroll
+  bcc @room       ; last_line <= maxy. fits, no scroll.
+  beq @room       ; last_line == maxy. fits, no scroll.
+  pha             ; a = last_line - maxy, # lines to scroll up
   lda ta_metadata+TextArea::cursor_maxy
-  sta cursor_row
-@room:
-  ; make room. the existing content (and the partial current
-  ; line, if any) slides up with the scroll.
-  lda scroll
-  beq @write_data
+  sta cursor_line
+  pla
   jsr int_out_scroll_up_lines
-@write_data:
-  ; point the cursor at the block start (cursor_row - to_add + 1)
-  ; and drop the data in there a row at a time.
-  lda cursor_row
-  sec
-  sbc to_add
-  clc
-  adc #1
-  sta ta_metadata+TextArea::cursory
-  jsr int_update_cursor_line
-
-  lda to_add
-  jsr int_lines_to_bytes
-
-  lda cursor_line_data_ptr_lo
-  sta MM_TO
-  lda cursor_line_data_ptr_hi
-  sta MM_TO+1
-
-  lda CMDDATA0
-  sta MM_FROM
-  lda CMDDATA1
-  sta MM_FROM+1
-
-  jsr MM_MOVEDOWN
-
-  ; leave the cursor on the last block line and set pending_newline.
-  lda cursor_row
+@room:
+  ; land on the last line with a pending newline
+  lda cursor_line
   sta ta_metadata+TextArea::cursory
   lda #0
   sta ta_metadata+TextArea::cursorx
@@ -1022,6 +987,49 @@ ta_out_append_lines:
   sta ta_metadata+TextArea::pending_newline
   jsr int_update_cursor_line
 
+  ; MM_TO = block start = cursor line - (to_append + extra - 1) lines.
+  lda to_append
+  clc
+  adc extra
+  sec
+  sbc #1
+  jsr int_lines_to_bytes
+
+  lda cursor_line_data_ptr_lo
+  sec
+  sbc MM_SIZEL
+  sta MM_TO
+  lda cursor_line_data_ptr_hi
+  sbc MM_SIZEH
+  sta MM_TO+1
+
+  lda CMDDATA0
+  sta MM_FROM
+  lda CMDDATA1
+  sta MM_FROM+1
+  lda to_append
+  jsr int_lines_to_bytes
+  jsr MM_MOVEDOWN
+
+  ; blank the trailing lines. the cursor sits on the last of them,
+  ; so start there and walk up.
+  ldx extra
+  beq @done
+  lda cursor_line_data_ptr_lo
+  sta temp_line_data_ptr_lo
+  lda cursor_line_data_ptr_hi
+  sta temp_line_data_ptr_hi
+  lda cursor_line_scr_ptr_lo
+  sta temp_line_scr_ptr_lo
+  lda cursor_line_scr_ptr_hi
+  sta temp_line_scr_ptr_hi
+@clear_blank:
+  jsr int_clear_line
+  jsr int_prev_line
+  dex
+  bne @clear_blank
+
+@done:
   jsr ta_repaint
   rts
 

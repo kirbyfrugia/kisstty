@@ -214,6 +214,10 @@ int_fend:
 ; inputs:
 ;   
 int_process_message:
+  lda g_rx_buf_num_chars
+  cmp #KISS_TYPE_MSG_END_COLON_IDX
+  bcc @done ; not a valid message
+
   lda #<g_disp_buf
   sta data_ptr_lo
   lda #>g_disp_buf
@@ -244,15 +248,8 @@ int_process_message:
   lda #'{'
   sta terminator
   jsr int_read_until_terminator
-
-  ; now update the number of lines
-  tya
-@loop:
-  inc g_disp_buf_num_lines
-  sec
-  sbc #TERMINAL_WIDTH
-  beq @done
-  bcs @loop
+  sty y_index_var
+  jsr int_finalize_disp
 @done:
   rts
 
@@ -275,6 +272,14 @@ int_process_status:
   sta g_disp_buf,y
 
   iny
+
+  ; empty statuses are allowed, but we don't
+  ; want to try parsing the string
+  lda g_rx_buf_num_chars
+  cmp #2 ; first char is '>' no matter what
+  bcs @not_empty
+  jmp @finalize
+@not_empty:
   lda #' '
   sta g_disp_buf,y
 
@@ -301,12 +306,8 @@ int_process_status:
   lda #' '
   sta g_disp_buf,y
 
-  ; it's a timestamp. Convert
-  ; from: DDHHmm
-  ; to:   HH:mm
-  ldx #1
-  inx
-  inx
+  ; it's a timestamp. Convert from DDHHmm to HH:mm
+  ldx #3
   iny
   lda g_rx_buf,x
   sta g_disp_buf,y
@@ -336,16 +337,53 @@ int_process_status:
   lda g_rx_buf_num_chars
   sta x_index_var_end
   jsr int_read_until_end
+@finalize:
+  sty y_index_var
+  jsr int_finalize_disp
+@done:
+  rts
 
-  ; now update the number of lines
-  tya
-@loop:
+; finalizes the output once all the real data
+; has been added to the display buffer.
+;
+; Does the following:
+;   - sets line count
+;   - fills blank spaces to the end of the last line
+;
+; inputs
+;   y_index_var - one past last character already printed
+; modifies:
+;   a,y
+int_finalize_disp:
+  lda y_index_var
+  beq @done
+@mod_loop:
   inc g_disp_buf_num_lines
+  lda y_index_var
   sec
   sbc #TERMINAL_WIDTH
+  beq @mod_loop_done ; exactly at zero, on last line
+  bcc @mod_loop_done ; needed to borrow, on last line
+  ; not on last line yet
+  sta y_index_var ; remaining
+  lda data_ptr_lo
+  clc
+  adc #TERMINAL_WIDTH
+  sta data_ptr_lo
+  bcc @nowrap
+  inc data_ptr_hi
+@nowrap:
+  jmp @mod_loop
+@mod_loop_done:
+  lda #' '
+  ldy y_index_var
+@fill_loop:
+  cpy #TERMINAL_WIDTH
   beq @done
-  bcs @loop
-done:
+  sta (data_ptr_lo),y
+  iny
+  jmp @fill_loop
+@done:
   rts
 
 ; reads from x_index_var to x_index_var_end
@@ -540,6 +578,7 @@ terminator:      .res 1
 current_digi:    .res 1
 x_index_var:     .res 1
 x_index_var_end: .res 1
+y_index_var:     .res 1
 btwn_counter:    .res 1
 pk_state:        .res 1
 pk_frame_header: .tag KissFrameHeader

@@ -117,6 +117,7 @@ mo_append_char:
 ; inputs:
 ;   CMDDATA0/1 - pointer to the data to append
 ;   CMDDATA2   - number of lines to append
+;   CMDDATA3   - number of trailing blank lines (0 for none)
 mo_append_lines:
   jsr int_set_context
   jsr ta_out_append_lines

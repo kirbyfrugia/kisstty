@@ -6,7 +6,7 @@
 
 .segment "ZEROPAGE"
 
-bcd_tmp:      .res 1
+bcd_tmp:   .res 1
 ut_result: .res 4
 ut_input:  .res 4
 

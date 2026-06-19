@@ -269,6 +269,8 @@ int_cmd_line_mode_return:
   sta CMDDATA1
   lda mi_metadata+TextArea::height
   sta CMDDATA2
+  lda #0
+  sta CMDDATA3
   jsr mo_append_lines
   jsr mi_shift_clear
   rts
@@ -424,6 +426,8 @@ int_handle_kiss_frame:
   sta CMDDATA1
   lda g_disp_buf_num_lines
   sta CMDDATA2
+  lda #1
+  sta CMDDATA3
   jsr mo_append_lines
 
 ;  ; for now, I'm testing a 4 line message.
