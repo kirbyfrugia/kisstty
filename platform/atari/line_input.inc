@@ -2,12 +2,12 @@
 LINE_INPUT_INC = 1
 
 .struct LineInput
-  scr_ptr     .res 2
-  data_ptr    .res 2
-  scr_width   .res 1
-  data_len    .res 1
-  scr_cursor  .res 1
-  data_cursor .res 1
+  scr_ptr         .res 2
+  data_ptr        .res 2
+  scr_cursor_maxx .res 1
+  data_len        .res 1
+  scr_cursor      .res 1
+  data_cursor     .res 1
 .endstruct
 
 .globalzp li_metadata

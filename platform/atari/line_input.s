@@ -2,12 +2,12 @@
 .include "line_input.inc"
 .include "globals.inc"
 .include "macros.inc"
+.include "utils.inc"
 
 .segment "ZEROPAGE"
-
-li_metadata:           .tag LineInput
-context_ptr_lo:        .res 1
-context_ptr_hi:        .res 1
+li_metadata:    .tag LineInput
+context_ptr_lo: .res 1
+context_ptr_hi: .res 1
 
 .segment "CODE"
 
@@ -53,8 +53,7 @@ set_context_done:
   rts
 
 li_repaint:
-  ldy li_metadata+LineInput::scr_width
-  dey
+  ldy li_metadata+LineInput::scr_cursor_maxx
   lda #$00
 @loop:
   sta (scr_ptr_lo),y
@@ -82,6 +81,75 @@ li_show_cursor:
   rts
 
 li_move_cursor_left:
+  jsr li_hide_cursor
+  jsr int_move_cursor_left
+  jsr li_show_cursor
+  rts
+
+li_move_cursor_right:
+  jsr li_hide_cursor
+  jsr int_move_cursor_right
+  jsr li_show_cursor
+  rts
+
+li_char_delete:
+  rts
+
+li_char_insert:
+  rts
+
+; sets the character at the current cursor location to the
+; char in CMDDATA0. moves the cursor to the right.
+;
+; inputs
+;   CMDDATA0 - the character
+li_type_char:
+  jsr li_hide_cursor
+  lda CMDDATA0 
+  jsr int_update_char
+  jsr int_move_cursor_right
+  jsr li_show_cursor
+  rts
+
+li_backspace:
+  rts
+
+li_shift_clear:
+  jsr li_hide_cursor
+  jsr int_cursor_home
+  jsr int_clear
+  jsr li_repaint
+  jsr li_show_cursor
+
+  rts
+
+; updates the char at the current cursor position
+; to A.
+; modifies:
+;   A
+int_update_char:
+  ldy li_metadata+LineInput::data_cursor
+  sta (data_ptr_lo),y
+  jsr ut_atascii_to_icode
+  ldy li_metadata+LineInput::scr_cursor
+  sta (scr_ptr_lo),y
+  rts
+
+; clears the data
+; modifies:
+;   a,y
+int_clear:
+  lda li_metadata+LineInput::data_len
+  dey
+  lda #' '
+@loop:
+  sta (data_ptr_lo),y
+  dey
+  bne @loop
+  sta (data_ptr_lo),y
+  rts
+
+int_move_cursor_left:
   lda li_metadata+LineInput::data_cursor
   beq @done
 
@@ -99,7 +167,7 @@ li_move_cursor_left:
 @done:
   rts
 
-li_move_cursor_right:
+int_move_cursor_right:
   lda li_metadata+LineInput::data_cursor
   cmp li_metadata+LineInput::data_len
   bcc @move_allowed
@@ -108,7 +176,7 @@ li_move_cursor_right:
   jsr li_hide_cursor
 
   lda li_metadata+LineInput::scr_cursor
-  cmp li_metadata+LineInput::scr_width
+  cmp li_metadata+LineInput::scr_cursor_maxx
   beq @scroll
 
   inc li_metadata+LineInput::scr_cursor
@@ -117,43 +185,7 @@ li_move_cursor_right:
 @scroll:
 @show_cursor:
   jsr li_show_cursor
-
 @done:
-  rts
-
-li_char_delete:
-  rts
-
-li_char_insert:
-  rts
-
-li_type_char:
-  rts
-
-li_backspace:
-  rts
-
-li_shift_clear:
-  jsr li_hide_cursor
-  jsr int_cursor_home
-  jsr int_clear
-  jsr li_repaint
-  jsr li_show_cursor
-
-  rts
-
-; clears the data
-; modifies:
-;   a,y
-int_clear:
-  lda li_metadata+LineInput::data_len
-  dey
-  lda #' '
-@loop:
-  sta (data_ptr_lo),y
-  dey
-  bne @loop
-  sta (data_ptr_lo),y
   rts
 
 int_cursor_home:

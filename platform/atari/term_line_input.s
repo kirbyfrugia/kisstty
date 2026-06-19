@@ -30,8 +30,8 @@ tli_init:
   sta tli_metadata+LineInput::data_ptr
   lda #>tli_data
   sta tli_metadata+LineInput::data_ptr+1
-  lda #(TERMINAL_WIDTH-1)
-  sta tli_metadata+LineInput::scr_width
+  lda #(TERMINAL_WIDTH-1) ; relative to MARGIN_LEFT
+  sta tli_metadata+LineInput::scr_cursor_maxx
   lda #LI_MAX_LINE_LEN
   sta tli_metadata+LineInput::data_len
 
