@@ -4,9 +4,8 @@
 .include "config.inc"
 .include "globals.inc"
 .include "rs232.inc"
-.include "terminal.inc"
+.include "term.inc"
 .include "utils.inc"
-
 
 .segment "ZEROPAGE"
 cfg_ptr_lo:                  .res 1
@@ -23,8 +22,8 @@ cfg_init:
 
   OFFSET       .set (MENU_MARGIN_TOP+18) * SCREEN_WIDTH + 13
   make_config preset_fastchar_config, \
-                  TERMINAL_PROTOCOL::TERMINAL, \
-                  TERMINAL_MODE::CHAR, \
+                  TERM_PROTOCOL::TERM, \
+                  TERM_MODE::CHAR, \
                   RS232_BAUD::B9600, \
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
@@ -38,8 +37,8 @@ cfg_init:
 
   OFFSET       .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 13
   make_config preset_fastline_config, \
-                  TERMINAL_PROTOCOL::TERMINAL, \
-                  TERMINAL_MODE::LINE, \
+                  TERM_PROTOCOL::TERM, \
+                  TERM_MODE::LINE, \
                   RS232_BAUD::B9600, \
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
@@ -53,8 +52,8 @@ cfg_init:
 
   OFFSET       .set (MENU_MARGIN_TOP+18) * SCREEN_WIDTH + 25
   make_config preset_vintage_config, \
-                  TERMINAL_PROTOCOL::TERMINAL, \
-                  TERMINAL_MODE::CHAR, \
+                  TERM_PROTOCOL::TERM, \
+                  TERM_MODE::CHAR, \
                   RS232_BAUD::B1200, \
                   RS232_WORDSIZE::N7, \
                   RS232_STOPBITS::N1, \
@@ -68,8 +67,8 @@ cfg_init:
 
   OFFSET       .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 25
   make_config preset_APRS_config, \
-                  TERMINAL_PROTOCOL::APRS, \
-                  TERMINAL_MODE::CHAR, \
+                  TERM_PROTOCOL::APRS, \
+                  TERM_MODE::CHAR, \
                   RS232_BAUD::B9600, \
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
@@ -873,8 +872,8 @@ parity_menu_item_label2:       .byte "Odd",$00
 mode_menu:                     .tag Menu
 mode_menu_header:              .byte 'M'|$80,"ode",$00
 mode_menu_item_values:
-  .byte TERMINAL_MODE::CHAR
-  .byte TERMINAL_MODE::LINE
+  .byte TERM_MODE::CHAR
+  .byte TERM_MODE::LINE
 mode_menu_item_values_end:
 mode_menu_item_labels:
 mode_menu_item_label_char:     .byte "Char",$00
@@ -883,9 +882,9 @@ mode_menu_item_label_line:     .byte "Line",$00
 protocol_menu:                 .tag Menu
 protocol_menu_header:          .byte '0'|$80,"Protocol",$00
 protocol_menu_item_values:
-  .byte TERMINAL_PROTOCOL::APRS
-  .byte TERMINAL_PROTOCOL::TERMINAL
-  .byte TERMINAL_PROTOCOL::RTTY
+  .byte TERM_PROTOCOL::APRS
+  .byte TERM_PROTOCOL::TERM
+  .byte TERM_PROTOCOL::RTTY
 protocol_menu_item_values_end:
 protocol_menu_item_labels:
 protocol_menu_item_label_aprs: .byte "APRS",$00

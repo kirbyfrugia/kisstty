@@ -31,12 +31,13 @@ ATARI_SRCS      = main.s \
 		  config.s \
 		  globals.s \
 		  kbd.s \
-		  main_input.s \
-		  main_output.s \
+		  line_input.s \
 		  memmove.s \
 		  pctl_kiss.s \
-		  textarea.s \
-		  terminal.s \
+		  term.s \
+		  term_multi_input.s \
+		  term_output.s \
+		  text_area.s \
 		  rs232.s \
 		  utils.s \
 		  wozmon.s

@@ -3,7 +3,7 @@
 .include "globals.inc"
 .include "macros.inc"
 .include "memmove.inc"
-.include "textarea.inc"
+.include "text_area.inc"
 .include "utils.inc"
 
 .segment "ZEROPAGE"

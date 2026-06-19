@@ -6,12 +6,12 @@
 .include "globals.inc"
 .include "macros.inc"
 .include "main.inc"
-.include "main_input.inc"
-.include "main_output.inc"
+.include "term_multi_input.inc"
+.include "term_output.inc"
 .include "pctl_kiss.inc"
 .include "rs232.inc"
-.include "terminal.inc"
-.include "textarea.inc"
+.include "term.inc"
+.include "text_area.inc"
 .include "utils.inc"
 
 .segment "CODE"
@@ -24,11 +24,11 @@ PORT_STATUS_ERROR = %10000000
 trm_init:
   lda #PORT_STATUS_OK
   sta port_status
-  lda #TERMINAL_MODE::NONE
+  lda #TERM_MODE::NONE
   sta current_mode
 
-  jsr mo_init
-  jsr mi_init
+  jsr to_init
+  jsr tmi_init
 @done:
   rts
 
@@ -112,37 +112,37 @@ int_draw_ui_base:
   rts
 
 int_repaint_line_mode:
-  jsr mo_repaint
-  jsr mi_repaint
+  jsr to_repaint
+  jsr tmi_repaint
   jsr int_draw_ui_line_mode
   rts
 
 int_reset_line_mode:
-  lda #MO_LINE_HEIGHT
-  jsr mo_resize
-  jsr mi_reset
+  lda #TO_LINE_HEIGHT
+  jsr to_resize
+  jsr tmi_reset
   jsr int_draw_ui_line_mode
   rts
 
 int_repaint_char_mode:
-  jsr mo_repaint
+  jsr to_repaint
   jsr int_draw_ui_char_mode
   rts
 
 int_reset_char_mode:
-  lda #MO_CHAR_HEIGHT
-  jsr mo_resize
+  lda #TO_CHAR_HEIGHT
+  jsr to_resize
   jsr int_draw_ui_char_mode
   rts
 
 int_reset_protocol:
   lda cfg_saved_config+Config::protocol
-  cmp #TERMINAL_PROTOCOL::TERMINAL
-  beq @terminal
-  cmp #TERMINAL_PROTOCOL::APRS
+  cmp #TERM_PROTOCOL::TERM
+  beq @term
+  cmp #TERM_PROTOCOL::APRS
   beq @aprs
   bne @done
-@terminal:
+@term:
   jmp @done
 @aprs:
   jsr pk_reset
@@ -152,7 +152,7 @@ int_reset_protocol:
 
 int_repaint:
   lda cfg_saved_config+Config::mode
-  cmp #TERMINAL_MODE::CHAR
+  cmp #TERM_MODE::CHAR
   beq @char_mode
   jsr int_repaint_line_mode
   jmp @done
@@ -165,7 +165,7 @@ int_reset:
   jsr cls
   jsr int_reset_protocol
   lda cfg_saved_config+Config::mode
-  cmp #TERMINAL_MODE::CHAR
+  cmp #TERM_MODE::CHAR
   beq @char_mode
   jsr int_reset_line_mode
   jmp @welcome
@@ -195,7 +195,7 @@ trm_activate:
 
 trm_tick:
   lda cfg_saved_config+Config::mode
-  cmp #TERMINAL_MODE::CHAR
+  cmp #TERM_MODE::CHAR
   beq @char_mode
   jsr int_handle_kbd_line_mode
   jmp @rs232
@@ -211,68 +211,68 @@ trm_tick:
 
 
 int_cmd_line_mode_move_cursor_up:
-  jsr mi_edit_move_cursor_up
+  jsr tmi_edit_move_cursor_up
   rts
 
 int_cmd_line_mode_move_cursor_down:
-  jsr mi_edit_move_cursor_down
+  jsr tmi_edit_move_cursor_down
   rts
 
 int_cmd_line_mode_move_cursor_left:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
-  jsr mi_edit_move_cursor_left
+  jsr tmi_edit_move_cursor_left
   rts
 
 int_cmd_line_mode_move_cursor_right:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
-  jsr mi_edit_move_cursor_right
+  jsr tmi_edit_move_cursor_right
   rts
 
 int_cmd_line_mode_handle_char:
   lda g_kbdcode_atascii
   beq @done
   sta CMDDATA0
-  jsr mi_edit_type_char
+  jsr tmi_edit_type_char
 @done:
   rts
 
 int_cmd_line_mode_backspace:
-  jsr mi_edit_backspace
+  jsr tmi_edit_backspace
   rts
 
 int_cmd_line_mode_shift_clear:
-  jsr mi_shift_clear
+  jsr tmi_shift_clear
   rts
 
 int_cmd_line_mode_line_insert:
-  jsr mi_edit_line_insert
+  jsr tmi_edit_line_insert
   rts
 
 int_cmd_line_mode_char_insert:
-  jsr mi_edit_char_insert
+  jsr tmi_edit_char_insert
   rts
 
 int_cmd_line_mode_line_delete:
-  jsr mi_edit_line_delete
+  jsr tmi_edit_line_delete
   rts
 
 int_cmd_line_mode_char_delete:
-  jsr mi_edit_char_delete
+  jsr tmi_edit_char_delete
   rts
 
 int_cmd_line_mode_return:
-  lda #<mi_data
+  lda #<tmi_data
   sta CMDDATA0
-  lda #>mi_data
+  lda #>tmi_data
   sta CMDDATA1
-  lda mi_metadata+TextArea::height
+  lda tmi_metadata+TextArea::height
   sta CMDDATA2
   lda #0
   sta CMDDATA3
-  jsr mo_append_lines
-  jsr mi_shift_clear
+  jsr to_append_lines
+  jsr tmi_shift_clear
   rts
 
 int_handle_kbd_char_mode:
@@ -284,7 +284,7 @@ int_handle_kbd_char_mode:
 
 ;  lda g_kbdcode_atascii
 ;  sta CMDDATA0
-;  jsr mo_append_char
+;  jsr to_append_char
 @done:
   rts
   
@@ -394,15 +394,15 @@ int_cmd_open_rs232:
 
 int_handle_byte_read:
   lda cfg_saved_config+Config::protocol
-  cmp #TERMINAL_PROTOCOL::TERMINAL
-  beq @terminal
-  cmp #TERMINAL_PROTOCOL::APRS
+  cmp #TERM_PROTOCOL::TERM
+  beq @term
+  cmp #TERM_PROTOCOL::APRS
   beq @aprs
   bne @done
-@terminal:
+@term:
   lda rs232_byte_read
   sta CMDDATA0
-  jsr mo_append_char
+  jsr to_append_char
   jmp @done
 @aprs:
   lda rs232_byte_read
@@ -428,7 +428,7 @@ int_handle_kiss_frame:
   sta CMDDATA2
   lda #1
   sta CMDDATA3
-  jsr mo_append_lines
+  jsr to_append_lines
 
 ;  ; for now, I'm testing a 4 line message.
 ;  ; it's just a hack for now, get over it.
@@ -465,7 +465,7 @@ int_handle_kiss_frame:
 ;  sta CMDDATA1
 ;  lda #4
 ;  sta CMDDATA2
-;  jsr mo_append_lines
+;  jsr to_append_lines
 ;  
   rts
 

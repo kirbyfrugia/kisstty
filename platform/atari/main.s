@@ -4,8 +4,9 @@
 .include "globals.inc"
 .include "kbd.inc"
 .include "main.inc"
-.include "terminal.inc"
-.include "textarea.inc"
+.include "term.inc"
+.include "line_input.inc"
+.include "text_area.inc"
 .include "utils.inc"
 
 .ifdef DEBUG
@@ -32,7 +33,7 @@ start:
   jsr init
   jmp main_loop
 
-terminal_tick:
+term_tick:
   lda start_fired
   beq @handle_tick
   lda #0
@@ -65,13 +66,13 @@ main_loop:
   beq @check_kbd
   sta current_state
   cmp #STATE_TERMINAL
-  beq @switch_to_terminal
+  beq @switch_to_term
   jsr cls
   jsr cfg_activate
   lda #0
   sta switch_state
   jmp @check_kbd
-@switch_to_terminal:
+@switch_to_term:
   lda #0
   sta switch_state
   sta select_fired
@@ -83,8 +84,8 @@ main_loop:
   lda current_state
   and #STATE_CONFIG
   bne @config
-@terminal:
-  jsr terminal_tick
+@term:
+  jsr term_tick
   jmp @next_tick
 @config:
   jsr config_tick
@@ -177,6 +178,7 @@ init:
   sta debounce_count_start
 
   jsr set_vbi_handler
+  jsr li_init_context
   jsr ta_init_context
   jsr cfg_init
   jsr trm_init

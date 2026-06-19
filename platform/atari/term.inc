@@ -1,20 +1,20 @@
-.ifndef TERMINAL_INC
-TERMINAL_INC = 1
+.ifndef TERM_INC
+TERM_INC = 1
 
 .global trm_init
 .global trm_activate
 .global trm_tick
 
-.enum TERMINAL_MODE
+.enum TERM_MODE
   CHAR = %10000000
   LINE = %01000000
   NONE = %00000000
 .endenum
 
-.enum TERMINAL_PROTOCOL
-  TERMINAL = %10000000
-  APRS     = %01000000
-  RTTY     = %00100000
+.enum TERM_PROTOCOL
+  TERM = %10000000
+  APRS = %01000000
+  RTTY = %00100000
 .endenum
 
 .macro print_str str
@@ -23,7 +23,7 @@ TERMINAL_INC = 1
   lda #>str
   sta CMDDATA1
 
-  jsr mo_println
+  jsr to_println
 .endmacro
 
 .macro print_str_with_code str, buf, err_code
@@ -45,7 +45,7 @@ TERMINAL_INC = 1
   sta CMDDATA0
   lda #>buf
   sta CMDDATA1
-  jsr mo_println
+  jsr to_println
 .endmacro
 
 .endif

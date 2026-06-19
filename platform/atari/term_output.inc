@@ -7,7 +7,7 @@
 ; text areas. The cursor is used to know where to insert text, even
 ; if it is not visible.
 ;
-; main_output is responsible for managing flow between the text areas.
+; term_output is responsible for managing flow between the text areas.
 ; For example, if we receive text over serial, that text goes to the
 ; upper left of the upper text area. It keeps getting added to that text
 ; area until it overflows. At that point, new text goes to the next
@@ -27,20 +27,20 @@
 ; "EXTRA" text area in use.
 ;
 
-.ifndef MAIN_OUTPUT_INC
-MAIN_OUTPUT_INC = 1
+.ifndef TERM_OUTPUT_INC
+TERM_OUTPUT_INC = 1
 
 ; output area heights per terminal mode. char mode reclaims
 ; the rows that line mode reserves for its multi-line input.
-MO_LINE_HEIGHT = 18
-MO_CHAR_HEIGHT = 21
-MO_MAX_HEIGHT  = MO_CHAR_HEIGHT
+TO_LINE_HEIGHT = 18
+TO_CHAR_HEIGHT = 21
+TO_MAX_HEIGHT  = TO_CHAR_HEIGHT
 
-.global mo_init
-.global mo_append_char
-.global mo_append_lines
-.global mo_println
-.global mo_repaint
-.global mo_resize
+.global to_init
+.global to_append_char
+.global to_append_lines
+.global to_println
+.global to_repaint
+.global to_resize
 
 .endif

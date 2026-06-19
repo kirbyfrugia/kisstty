@@ -1,8 +1,8 @@
 .setcpu "6502"
-.include "main_input.inc"
+.include "term_multi_input.inc"
 .include "config.inc"
 .include "globals.inc"
-.include "textarea.inc"
+.include "text_area.inc"
 
 .segment "CODE"
 
@@ -15,38 +15,38 @@ SIZE        = TERMINAL_WIDTH * HEIGHT
 ;
 ; inputs:
 ;   CMDDATA0/1 - pointer to the upper left of the real screen
-mi_init:
+tmi_init:
   lda #0
-  sta mi_metadata+TextArea::cursorx
-  sta mi_metadata+TextArea::cursory
+  sta tmi_metadata+TextArea::cursorx
+  sta tmi_metadata+TextArea::cursory
 
   lda #<(MARGIN_TOP*SCREEN_WIDTH+MARGIN_LEFT)
   clc
   adc SCR_PTR_LO
-  sta mi_metadata+TextArea::first_line_scr_ptr
+  sta tmi_metadata+TextArea::first_line_scr_ptr
   lda #>(MARGIN_TOP*SCREEN_WIDTH+MARGIN_LEFT)
   adc SCR_PTR_HI
-  sta mi_metadata+TextArea::first_line_scr_ptr+1
+  sta tmi_metadata+TextArea::first_line_scr_ptr+1
 
   lda #TA_TYPE_INPUT
-  sta mi_metadata+TextArea::type
+  sta tmi_metadata+TextArea::type
 
-  lda #<mi_data
-  sta mi_metadata+TextArea::first_line_data_ptr
-  lda #>mi_data
-  sta mi_metadata+TextArea::first_line_data_ptr+1
+  lda #<tmi_data
+  sta tmi_metadata+TextArea::first_line_data_ptr
+  lda #>tmi_data
+  sta tmi_metadata+TextArea::first_line_data_ptr+1
   lda #TERMINAL_WIDTH
-  sta mi_metadata+TextArea::width
+  sta tmi_metadata+TextArea::width
   lda #HEIGHT
-  sta mi_metadata+TextArea::height
+  sta tmi_metadata+TextArea::height
   lda #SIZE
-  sta mi_metadata+TextArea::size
+  sta tmi_metadata+TextArea::size
   lda #0
-  sta mi_metadata+TextArea::size+1
+  sta tmi_metadata+TextArea::size+1
   lda #(TERMINAL_WIDTH-1)
-  sta mi_metadata+TextArea::cursor_maxx
+  sta tmi_metadata+TextArea::cursor_maxx
   lda #(HEIGHT-1)
-  sta mi_metadata+TextArea::cursor_maxy
+  sta tmi_metadata+TextArea::cursor_maxy
 
   jsr int_set_context
   jsr ta_shift_clear
@@ -59,9 +59,9 @@ int_set_context:
   pha
   lda CMDDATA1
   pha
-  lda #<mi_metadata
+  lda #<tmi_metadata
   sta CMDDATA0
-  lda #>mi_metadata
+  lda #>tmi_metadata
   sta CMDDATA1
   jsr ta_set_context
   pla
@@ -71,86 +71,86 @@ int_set_context:
   rts
 
 
-mi_hide_cursor:
+tmi_hide_cursor:
   jsr int_set_context
   jsr ta_show_cursor
   rts
 
-mi_show_cursor:
+tmi_show_cursor:
   jsr int_set_context
   jsr ta_show_cursor
   rts
 
-mi_repaint:
+tmi_repaint:
   jsr int_set_context
   jsr ta_repaint
   rts
 
-mi_reset:
+tmi_reset:
   jsr int_set_context
   jsr ta_shift_clear
   rts
 
-mi_edit_move_cursor_up:
+tmi_edit_move_cursor_up:
   jsr int_set_context
   jsr ta_edit_move_cursor_up
   rts
 
-mi_edit_move_cursor_down:
+tmi_edit_move_cursor_down:
   jsr int_set_context
   jsr ta_edit_move_cursor_down
   rts
 
 ; inputs:
 ;   CMDDATA0 - cursor behavior on wrap
-mi_edit_move_cursor_left:
+tmi_edit_move_cursor_left:
   jsr int_set_context
   jsr ta_edit_move_cursor_left
   rts
 
 ; inputs:
 ;   CMDDATA0 - cursor behavior on wrap
-mi_edit_move_cursor_right:
+tmi_edit_move_cursor_right:
   jsr int_set_context
   jsr ta_edit_move_cursor_right
   rts
 
 ; inputs:
 ;   CMDDATA0 - the char to type
-mi_edit_type_char:
+tmi_edit_type_char:
   jsr int_set_context
   jsr ta_edit_type_char
   rts
 
-mi_edit_backspace:
+tmi_edit_backspace:
   jsr int_set_context
   jsr ta_edit_backspace
   rts
 
-mi_shift_clear:
+tmi_shift_clear:
   jsr int_set_context
   jsr ta_shift_clear
   rts
 
-mi_edit_line_insert:
+tmi_edit_line_insert:
   jsr int_set_context
   jsr ta_edit_line_insert
   rts
 
-mi_edit_char_insert:
+tmi_edit_char_insert:
   jsr int_set_context
   jsr ta_edit_char_insert
   rts
 
-mi_edit_line_delete:
+tmi_edit_line_delete:
   jsr int_set_context
   jsr ta_edit_line_delete
   rts
 
-mi_edit_char_delete:
+tmi_edit_char_delete:
   jsr int_set_context
   jsr ta_edit_char_delete
   rts
 
-mi_metadata:              .tag TextArea
-mi_data:                  .res SIZE
+tmi_metadata:              .tag TextArea
+tmi_data:                  .res SIZE

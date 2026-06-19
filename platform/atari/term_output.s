@@ -2,45 +2,45 @@
 .include "config.inc"
 .include "globals.inc"
 .include "macros.inc"
-.include "main_output.inc"
-.include "terminal.inc"
-.include "textarea.inc"
+.include "term_output.inc"
+.include "term.inc"
+.include "text_area.inc"
 
 .segment "CODE"
-MO_MARGIN_LEFT = 1
-MO_MAX_SIZE    = TERMINAL_WIDTH*MO_MAX_HEIGHT
+TO_MARGIN_LEFT = 1
+TO_MAX_SIZE    = TERMINAL_WIDTH*TO_MAX_HEIGHT
 
-mo_init:
+to_init:
   lda #0
-  sta mo_metadata+TextArea::cursorx
-  sta mo_metadata+TextArea::cursory
-  sta mo_metadata+TextArea::cursor_line_scr_ptr
-  sta mo_metadata+TextArea::cursor_line_scr_ptr+1
+  sta to_metadata+TextArea::cursorx
+  sta to_metadata+TextArea::cursory
+  sta to_metadata+TextArea::cursor_line_scr_ptr
+  sta to_metadata+TextArea::cursor_line_scr_ptr+1
 
   lda #TA_TYPE_OUTPUT
-  sta mo_metadata+TextArea::type
+  sta to_metadata+TextArea::type
 
   MARGIN_TOP .set 1
-  lda #<(MARGIN_TOP*SCREEN_WIDTH+MO_MARGIN_LEFT)
+  lda #<(MARGIN_TOP*SCREEN_WIDTH+TO_MARGIN_LEFT)
   clc
   adc SCR_PTR_LO
-  sta mo_metadata+TextArea::first_line_scr_ptr
-  lda #>(MARGIN_TOP*SCREEN_WIDTH+MO_MARGIN_LEFT)
+  sta to_metadata+TextArea::first_line_scr_ptr
+  lda #>(MARGIN_TOP*SCREEN_WIDTH+TO_MARGIN_LEFT)
   adc SCR_PTR_HI
-  sta mo_metadata+TextArea::first_line_scr_ptr+1
+  sta to_metadata+TextArea::first_line_scr_ptr+1
 
   lda #TERMINAL_WIDTH
-  sta mo_metadata+TextArea::width
+  sta to_metadata+TextArea::width
   lda #(TERMINAL_WIDTH-1)
-  sta mo_metadata+TextArea::cursor_maxx
+  sta to_metadata+TextArea::cursor_maxx
 
-  lda #<mo_data
-  sta mo_metadata+TextArea::first_line_data_ptr
-  lda #>mo_data
-  sta mo_metadata+TextArea::first_line_data_ptr+1
+  lda #<to_data
+  sta to_metadata+TextArea::first_line_data_ptr
+  lda #>to_data
+  sta to_metadata+TextArea::first_line_data_ptr+1
 
-  lda #MO_LINE_HEIGHT
-  jsr mo_resize
+  lda #TO_LINE_HEIGHT
+  jsr to_resize
 
   rts
 
@@ -49,9 +49,9 @@ int_set_context:
   pha
   lda CMDDATA1
   pha
-  lda #<mo_metadata
+  lda #<to_metadata
   sta CMDDATA0
-  lda #>mo_metadata
+  lda #>to_metadata
   sta CMDDATA1
   jsr ta_set_context
   pla
@@ -60,7 +60,7 @@ int_set_context:
   sta CMDDATA0
   rts
 
-mo_repaint:
+to_repaint:
   jsr int_set_context
   jsr ta_repaint
   rts
@@ -68,7 +68,7 @@ mo_repaint:
 ; resizes the output area to a new height
 ; inputs:
 ;   a - the new height in rows
-mo_resize:
+to_resize:
   pha
   jsr int_set_context
   pla
@@ -98,7 +98,7 @@ mo_resize:
 
 ; see ta_out_println for what this does. Not super
 ; efficient, but fine for short strings like "welcome"
-mo_println:
+to_println:
   jsr int_set_context
   jsr ta_out_println
   rts
@@ -107,7 +107,7 @@ mo_println:
 ; if needed.
 ; inputs:
 ;   CMDDATA0 - the char
-mo_append_char:
+to_append_char:
   jsr int_set_context
   jsr ta_out_append_char
   rts
@@ -118,13 +118,13 @@ mo_append_char:
 ;   CMDDATA0/1 - pointer to the data to append
 ;   CMDDATA2   - number of lines to append
 ;   CMDDATA3   - number of trailing blank lines (0 for none)
-mo_append_lines:
+to_append_lines:
   jsr int_set_context
   jsr ta_out_append_lines
   rts
 
-mo_metadata: .tag TextArea
-mo_data:     .res MO_MAX_SIZE
+to_metadata: .tag TextArea
+to_data:     .res TO_MAX_SIZE
 
 new_line: .repeat SCREEN_WIDTH, I
              .byte ' '
