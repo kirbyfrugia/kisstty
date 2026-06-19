@@ -61,9 +61,6 @@ li_repaint:
   bpl @loop
   rts
 
-li_reset:
-  rts
-
 li_hide_cursor:
   ldy li_metadata+LineInput::scr_cursor
   lda (scr_ptr_lo),y
@@ -139,7 +136,7 @@ int_update_char:
 ; modifies:
 ;   a,y
 int_clear:
-  lda li_metadata+LineInput::data_len
+  ldy li_metadata+LineInput::data_len
   dey
   lda #' '
 @loop:

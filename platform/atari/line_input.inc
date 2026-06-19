@@ -14,7 +14,6 @@ LINE_INPUT_INC = 1
 .global   li_init_context
 .global   li_set_context
 .global   li_repaint
-.global   li_reset
 .global   li_hide_cursor
 .global   li_show_cursor
 .global   li_move_cursor_left
