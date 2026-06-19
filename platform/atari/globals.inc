@@ -17,6 +17,10 @@ COMMON_INC = 1
 .globalzp CMDDATA7
 .globalzp SCR_PTR_LO
 .globalzp SCR_PTR_HI
+.globalzp g_temp_line_scr_ptr_lo
+.globalzp g_temp_line_scr_ptr_hi
+.globalzp g_temp_line_data_ptr_lo
+.globalzp g_temp_line_data_ptr_hi
 
 .global   g_copy_buffer40 
 .global   g_copy_buffer40_size

@@ -25,10 +25,6 @@
 TEXT_AREA_INC = 1
 
 .globalzp ta_metadata
-.globalzp temp_line_scr_ptr_lo
-.globalzp temp_line_scr_ptr_hi
-.globalzp temp_line_data_ptr_lo
-.globalzp temp_line_data_ptr_hi
 .global   ta_init_context
 .global   ta_set_context
 .global   ta_push_context
