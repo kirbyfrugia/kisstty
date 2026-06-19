@@ -53,9 +53,32 @@ set_context_done:
   rts
 
 li_repaint:
+  ldy li_metadata+LineInput::scr_width
+  dey
+  lda #$00
+@loop:
+  sta (scr_ptr_lo),y
+  dey
+  bpl @loop
   rts
 
 li_reset:
+  rts
+
+li_hide_cursor:
+  ldy li_metadata+LineInput::scr_cursor
+  lda (scr_ptr_lo),y
+  and #%01111111
+  sta (scr_ptr_lo),y
+@done:
+  rts
+
+li_show_cursor:
+  ldy li_metadata+LineInput::scr_cursor
+  lda (scr_ptr_lo),y
+  ora #%10000000
+  sta (scr_ptr_lo),y
+@done:
   rts
 
 li_move_cursor_left:
@@ -98,32 +121,39 @@ li_move_cursor_right:
 @done:
   rts
 
+li_char_delete:
+  rts
+
+li_char_insert:
+  rts
+
 li_type_char:
   rts
 
 li_backspace:
   rts
 
-li_insert:
+li_shift_clear:
+  jsr li_hide_cursor
+  jsr int_cursor_home
+  jsr int_clear
+  jsr li_repaint
+  jsr li_show_cursor
+
   rts
 
-li_clear:
-  rts
-
-li_hide_cursor:
-  ldy li_metadata+LineInput::scr_cursor
-  lda (scr_ptr_lo),y
-  and #%01111111
-  sta (scr_ptr_lo),y
-@done:
-  rts
-
-li_show_cursor:
-  ldy li_metadata+LineInput::scr_cursor
-  lda (scr_ptr_hi),y
-  ora #%10000000
-  sta (scr_ptr_hi),y
-@done:
+; clears the data
+; modifies:
+;   a,y
+int_clear:
+  lda li_metadata+LineInput::data_len
+  dey
+  lda #' '
+@loop:
+  sta (data_ptr_lo),y
+  dey
+  bne @loop
+  sta (data_ptr_lo),y
   rts
 
 int_cursor_home:

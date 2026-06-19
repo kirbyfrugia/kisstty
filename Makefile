@@ -35,6 +35,7 @@ ATARI_SRCS      = main.s \
 		  memmove.s \
 		  pctl_kiss.s \
 		  term.s \
+		  term_line_input.s \
 		  term_multi_input.s \
 		  term_output.s \
 		  text_area.s \

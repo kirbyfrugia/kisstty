@@ -6,9 +6,10 @@ TERM_INC = 1
 .global trm_tick
 
 .enum TERM_MODE
-  CHAR = %10000000
-  LINE = %01000000
-  NONE = %00000000
+  NONE  = %00000000
+  CHAR  = %10000000
+  LINE  = %01000000
+  MULTI = %00100000
 .endenum
 
 .enum TERM_PROTOCOL

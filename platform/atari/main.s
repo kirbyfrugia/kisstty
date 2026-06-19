@@ -48,8 +48,9 @@ term_tick:
 
 config_tick:
   jsr cfg_tick 
-  lda cfg_config_done
-  beq @done
+  lda #CONFIG_FLAG_EDITING
+  bit cfg_config_flag
+  bpl @done
   lda #STATE_TERMINAL
   sta switch_state
 @done:
@@ -301,9 +302,9 @@ cls:
   lda SCR_PTR_LO+1
   sta ZPB1
 
-  ldx #23
+  ldx #(SCREEN_HEIGHT-1)
 @row_loop:
-  ldy #39
+  ldy #(SCREEN_WIDTH-1)
   lda #' '
   jsr ut_atascii_to_icode
 @col_loop:
@@ -314,7 +315,7 @@ cls:
   bmi @done
   lda ZPB0
   clc
-  adc #40
+  adc #(SCREEN_WIDTH)
   sta ZPB0
   bcc @nowrap
   inc ZPB1

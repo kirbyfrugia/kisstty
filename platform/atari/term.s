@@ -6,9 +6,10 @@
 .include "globals.inc"
 .include "macros.inc"
 .include "main.inc"
+.include "term_line_input.inc"
 .include "term_multi_input.inc"
 .include "term_output.inc"
-.include "pctl_kiss.inc"
+.include "protocol_kiss.inc"
 .include "rs232.inc"
 .include "term.inc"
 .include "text_area.inc"
@@ -29,6 +30,7 @@ trm_init:
 
   jsr to_init
   jsr tmi_init
+  jsr tli_init
 @done:
   rts
 
@@ -51,17 +53,17 @@ trm_init:
 
 
 ; draws the line mode specific part of the ui
-int_draw_ui_line_mode:
+int_draw_ui_multi_line_input:
   jsr int_draw_ui_base
   draw_divider (SCREEN_WIDTH*19)
   rts
 
 ; draws the char mode specific part of the ui
-int_draw_ui_char_mode:
+int_draw_ui_single_line_input:
   jsr int_draw_ui_base
   draw_divider (SCREEN_WIDTH*22)
 
-  CURSOR_POS .set (SCREEN_WIDTH*23)+1
+  CURSOR_POS .set (SCREEN_WIDTH*23)
   lda SCR_PTR_LO
   clc
   adc #<CURSOR_POS
@@ -70,9 +72,10 @@ int_draw_ui_char_mode:
   adc #>CURSOR_POS
   sta ZPB1
   ldy #0
-  lda (ZPB0),y
-  ora #%10000000
+  lda #'>'
+  jsr ut_atascii_to_icode
   sta (ZPB0),y
+
   rts
 
 int_draw_ui_base:
@@ -111,28 +114,59 @@ int_draw_ui_base:
 @done:
   rts
 
-int_repaint_line_mode:
-  jsr to_repaint
-  jsr tmi_repaint
-  jsr int_draw_ui_line_mode
-  rts
-
-int_reset_line_mode:
-  lda #TO_LINE_HEIGHT
-  jsr to_resize
-  jsr tmi_reset
-  jsr int_draw_ui_line_mode
-  rts
-
 int_repaint_char_mode:
   jsr to_repaint
-  jsr int_draw_ui_char_mode
+  jsr int_draw_ui_single_line_input
+
+  CURSOR_POS .set (SCREEN_WIDTH*23)+1
+  lda SCR_PTR_LO
+  clc
+  adc #<CURSOR_POS
+  sta ZPB0
+  lda SCR_PTR_HI
+  adc #>CURSOR_POS
+  sta ZPB1
+  ldy #0
+  lda (ZPB0),y
+  ora #%10000000
+  sta (ZPB0),y
+
   rts
 
 int_reset_char_mode:
-  lda #TO_CHAR_HEIGHT
+  lda #TO_HEIGHT_SINGLE_LINE_INPUT
   jsr to_resize
-  jsr int_draw_ui_char_mode
+  jsr int_draw_ui_single_line_input
+  rts
+
+int_repaint_line_mode:
+  jsr to_repaint
+  jsr tli_hide_cursor
+  jsr tli_repaint
+  jsr tli_show_cursor
+  jsr int_draw_ui_single_line_input
+  rts
+
+int_reset_line_mode:
+  lda #TO_HEIGHT_SINGLE_LINE_INPUT
+  jsr to_resize
+  jsr tli_reset
+  jsr int_draw_ui_single_line_input
+  rts
+
+int_repaint_multi_mode:
+  jsr to_repaint
+  jsr tmi_hide_cursor
+  jsr tmi_repaint
+  jsr tmi_show_cursor
+  jsr int_draw_ui_multi_line_input
+  rts
+
+int_reset_multi_mode:
+  lda #TO_HEIGHT_MULTI_LINE_INPUT
+  jsr to_resize
+  jsr tmi_reset
+  jsr int_draw_ui_multi_line_input
   rts
 
 int_reset_protocol:
@@ -154,23 +188,33 @@ int_repaint:
   lda cfg_saved_config+Config::mode
   cmp #TERM_MODE::CHAR
   beq @char_mode
+  cmp #TERM_MODE::MULTI
+  beq @multi_mode
   jsr int_repaint_line_mode
   jmp @done
 @char_mode:
   jsr int_repaint_char_mode
+  jmp @done
+@multi_mode:
+  jsr int_repaint_multi_mode
 @done:
   rts
 
+
 int_reset:
-  jsr cls
   jsr int_reset_protocol
   lda cfg_saved_config+Config::mode
   cmp #TERM_MODE::CHAR
   beq @char_mode
+  cmp #TERM_MODE::MULTI
+  beq @multi_mode
   jsr int_reset_line_mode
   jmp @welcome
 @char_mode:
   jsr int_reset_char_mode
+  jmp @welcome
+@multi_mode:
+  jsr int_reset_multi_mode
 @welcome:
   print_str str_welcome
 @done:
@@ -179,17 +223,16 @@ int_reset:
 trm_activate:
   lda #PORT_STATUS_OK
   sta port_status
-  lda cfg_saved_config+Config::mode
-  cmp current_mode
-  sta current_mode
-  beq @no_mode_change
+  lda #CONFIG_FLAG_CANCELED
+  bit cfg_config_flag
+  bvc @just_repaint ; canceled
   jsr int_reset
-  jmp @boot850
-@no_mode_change:
   jsr int_repaint
-@boot850:
   jsr int_cmd_boot850
   jsr int_cmd_open_rs232
+  jmp @done
+@just_repaint:
+  jsr int_repaint
 @done:
   rts
 
@@ -197,10 +240,15 @@ trm_tick:
   lda cfg_saved_config+Config::mode
   cmp #TERM_MODE::CHAR
   beq @char_mode
+  cmp #TERM_MODE::MULTI
+  beq @multi_mode
   jsr int_handle_kbd_line_mode
   jmp @rs232
 @char_mode:
   jsr int_handle_kbd_char_mode
+  jmp @rs232
+@multi_mode:
+  jsr int_handle_kbd_multi_mode
 @rs232:
   lda port_status
   cmp #PORT_STATUS_OK
@@ -209,28 +257,72 @@ trm_tick:
 @done:
   rts
 
+int_cmd_line_mode_move_cursor_left:
+  jsr tli_move_cursor_left
+  rts
 
-int_cmd_line_mode_move_cursor_up:
+int_cmd_line_mode_move_cursor_right:
+  jsr tli_move_cursor_right
+  rts
+
+int_cmd_line_mode_handle_char:
+  lda g_kbdcode_atascii
+  beq @done
+  sta CMDDATA0
+  jsr tli_type_char
+@done:
+  rts
+
+int_cmd_line_mode_backspace:
+  jsr tli_backspace
+  rts
+
+int_cmd_line_mode_shift_clear:
+  jsr tli_shift_clear
+  rts
+
+int_cmd_line_mode_char_insert:
+  jsr tli_char_insert
+  rts
+
+int_cmd_line_mode_char_delete:
+  jsr tli_char_delete
+  rts
+
+int_cmd_line_mode_return:
+  lda #<tli_data
+  sta CMDDATA0
+  lda #>tli_data
+  sta CMDDATA1
+  lda #1
+  sta CMDDATA2
+  lda #0
+  sta CMDDATA3
+  jsr to_append_lines
+  jsr tli_shift_clear
+  rts
+
+int_cmd_multi_mode_move_cursor_up:
   jsr tmi_edit_move_cursor_up
   rts
 
-int_cmd_line_mode_move_cursor_down:
+int_cmd_multi_mode_move_cursor_down:
   jsr tmi_edit_move_cursor_down
   rts
 
-int_cmd_line_mode_move_cursor_left:
+int_cmd_multi_mode_move_cursor_left:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
   jsr tmi_edit_move_cursor_left
   rts
 
-int_cmd_line_mode_move_cursor_right:
+int_cmd_multi_mode_move_cursor_right:
   lda #CURSOR_BEHAVIOR_WRAP_SAME_LINE
   sta CMDDATA0
   jsr tmi_edit_move_cursor_right
   rts
 
-int_cmd_line_mode_handle_char:
+int_cmd_multi_mode_handle_char:
   lda g_kbdcode_atascii
   beq @done
   sta CMDDATA0
@@ -238,31 +330,31 @@ int_cmd_line_mode_handle_char:
 @done:
   rts
 
-int_cmd_line_mode_backspace:
+int_cmd_multi_mode_backspace:
   jsr tmi_edit_backspace
   rts
 
-int_cmd_line_mode_shift_clear:
+int_cmd_multi_mode_shift_clear:
   jsr tmi_shift_clear
   rts
 
-int_cmd_line_mode_line_insert:
+int_cmd_multi_mode_line_insert:
   jsr tmi_edit_line_insert
   rts
 
-int_cmd_line_mode_char_insert:
+int_cmd_multi_mode_char_insert:
   jsr tmi_edit_char_insert
   rts
 
-int_cmd_line_mode_line_delete:
+int_cmd_multi_mode_line_delete:
   jsr tmi_edit_line_delete
   rts
 
-int_cmd_line_mode_char_delete:
+int_cmd_multi_mode_char_delete:
   jsr tmi_edit_char_delete
   rts
 
-int_cmd_line_mode_return:
+int_cmd_multi_mode_return:
   lda #<tmi_data
   sta CMDDATA0
   lda #>tmi_data
@@ -287,8 +379,56 @@ int_handle_kbd_char_mode:
 ;  jsr to_append_char
 @done:
   rts
-  
+
 int_handle_kbd_line_mode:
+  lda g_kbd_key_pressed
+  beq @done
+  lda g_kbdcode_raw 
+  cmp #$86
+  beq @left_arrow
+  cmp #$87
+  beq @right_arrow
+  cmp #$0c
+  beq @return
+  cmp #$34
+  beq @backspace
+  cmp #$76 ; shift+clear ($b4 on atari 800 emulator)
+  beq @shift_clear
+  cmp #$b6 ; ctrl+clear
+  beq @shift_clear
+  cmp #$74 ; shift+delete bs
+  beq @shift_clear
+  cmp #$b7 ; ctrl+insert
+  beq @char_insert
+  cmp #$b4 ; ctrl+delete bs
+  beq @char_delete
+@output:
+  jsr int_cmd_line_mode_handle_char
+  jmp @done
+@left_arrow:
+  jmp int_cmd_line_mode_move_cursor_left
+  jmp @done
+@right_arrow:
+  jmp int_cmd_line_mode_move_cursor_right
+  jmp @done
+@backspace:
+  jsr int_cmd_line_mode_backspace
+  jmp @done
+@shift_clear:
+  jsr int_cmd_line_mode_shift_clear
+  jmp @done
+@char_insert:
+  jsr int_cmd_line_mode_char_insert
+  jmp @done
+@char_delete:
+  jsr int_cmd_line_mode_char_delete
+  jmp @done
+@return:
+  jsr int_cmd_line_mode_return
+@done:
+  rts
+  
+int_handle_kbd_multi_mode:
   lda g_kbd_key_pressed
   beq @done
   lda g_kbdcode_raw 
@@ -317,40 +457,40 @@ int_handle_kbd_line_mode:
   cmp #$b4 ; ctrl+delete bs
   beq @char_delete
 @output:
-  jsr int_cmd_line_mode_handle_char
+  jsr int_cmd_multi_mode_handle_char
   jmp @done
 @up_arrow:
-  jmp int_cmd_line_mode_move_cursor_up
+  jmp int_cmd_multi_mode_move_cursor_up
   jmp @done
 @down_arrow:
-  jmp int_cmd_line_mode_move_cursor_down
+  jmp int_cmd_multi_mode_move_cursor_down
   jmp @done
 @left_arrow:
-  jmp int_cmd_line_mode_move_cursor_left
+  jmp int_cmd_multi_mode_move_cursor_left
   jmp @done
 @right_arrow:
-  jmp int_cmd_line_mode_move_cursor_right
+  jmp int_cmd_multi_mode_move_cursor_right
   jmp @done
 @backspace:
-  jsr int_cmd_line_mode_backspace
+  jsr int_cmd_multi_mode_backspace
   jmp @done
 @shift_clear:
-  jsr int_cmd_line_mode_shift_clear
+  jsr int_cmd_multi_mode_shift_clear
   jmp @done
 @line_insert:
-  jsr int_cmd_line_mode_line_insert
+  jsr int_cmd_multi_mode_line_insert
   jmp @done
 @char_insert:
-  jsr int_cmd_line_mode_char_insert
+  jsr int_cmd_multi_mode_char_insert
   jmp @done
 @line_delete:
-  jsr int_cmd_line_mode_line_delete
+  jsr int_cmd_multi_mode_line_delete
   jmp @done
 @char_delete:
-  jsr int_cmd_line_mode_char_delete
+  jsr int_cmd_multi_mode_char_delete
   jmp @done
 @return:
-  jsr int_cmd_line_mode_return
+  jsr int_cmd_multi_mode_return
 @done:
   rts
 

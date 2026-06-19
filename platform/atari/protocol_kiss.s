@@ -2,7 +2,7 @@
 .include "atari.inc"
 .include "globals.inc"
 .include "macros.inc"
-.include "pctl_kiss.inc"
+.include "protocol_kiss.inc"
 .include "utils.inc"
 
 .segment "ZEROPAGE"

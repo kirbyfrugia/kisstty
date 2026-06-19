@@ -53,8 +53,6 @@ tmi_init:
   rts
 
 int_set_context:
-  ; preserve CMDDATA0/1 so callers can stage command inputs there
-  ; before setting the context (matches int_set_mo_active)
   lda CMDDATA0
   pha
   lda CMDDATA1

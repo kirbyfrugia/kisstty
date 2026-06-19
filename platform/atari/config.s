@@ -17,8 +17,8 @@ cfg_ptr_hi:                  .res 1
 .define MENU_MARGIN_TOP 1
 
 cfg_init:
-  lda #0
-  sta cfg_config_done
+  lda #CONFIG_FLAG_EDITING
+  sta cfg_config_flag
 
   OFFSET       .set (MENU_MARGIN_TOP+18) * SCREEN_WIDTH + 13
   make_config preset_fastchar_config, \
@@ -68,7 +68,7 @@ cfg_init:
   OFFSET       .set (MENU_MARGIN_TOP+19) * SCREEN_WIDTH + 25
   make_config preset_APRS_config, \
                   TERM_PROTOCOL::APRS, \
-                  TERM_MODE::CHAR, \
+                  TERM_MODE::LINE, \
                   RS232_BAUD::B9600, \
                   RS232_WORDSIZE::N8, \
                   RS232_STOPBITS::N1, \
@@ -148,7 +148,7 @@ cfg_init:
             NUM_ITEMS, BORDER_WIDTH, OFFSET
 
   OFFSET        .set (MENU_MARGIN_TOP+6) * SCREEN_WIDTH + 26
-  NUM_ITEMS     .set 2
+  NUM_ITEMS     .set 3
   BORDER_WIDTH  .set 11
   make_menu mode_menu, mode_menu_header, \
             mode_menu_item_values, mode_menu_item_labels, \
@@ -345,14 +345,14 @@ int_draw_preset:
   rts
 
 ; draws the banners and the "Preset" label
-int_draw_banners:
+; and any other ui elements
+int_draw_other_ui:
   lda SCR_PTR_LO
   sta g_temp_scr_ptr_lo
   lda SCR_PTR_HI
   sta g_temp_scr_ptr_hi
 
   ldy #(SCREEN_WIDTH-1)
-  ;lda #' '|$80
   lda #' '
   eor #$80
   jsr ut_atascii_to_icode
@@ -379,6 +379,24 @@ int_draw_banners:
   iny
   jmp @top_banner_loop
 @top_banner_done:
+
+  lda SCR_PTR_LO
+  clc
+  adc #<((SCREEN_HEIGHT-2)*SCREEN_WIDTH+1)
+  sta g_temp_scr_ptr_lo
+  lda SCR_PTR_HI
+  adc #>((SCREEN_HEIGHT-2)*SCREEN_WIDTH+1)
+  sta g_temp_scr_ptr_hi
+ 
+  ldy #0
+@mode_protocol_loop:
+  lda mode_protocol_str,y
+  beq @mode_protocol_done
+  jsr ut_atascii_to_icode
+  sta (g_temp_scr_ptr_lo),y
+  iny
+  jmp @mode_protocol_loop
+@mode_protocol_done:
 
   OFFSET .set (MENU_MARGIN_TOP+17) * SCREEN_WIDTH + 13
   lda SCR_PTR_LO
@@ -431,8 +449,8 @@ int_draw_menu_borders:
   rts
 
 cfg_activate:
-  lda #0
-  sta cfg_config_done
+  lda #CONFIG_FLAG_EDITING
+  sta cfg_config_flag
 
   ut_copy_struct_abs_to_abs cfg_saved_config, cfg_draft_config, Config
 
@@ -444,7 +462,7 @@ cfg_activate:
   draw_preset preset_fastline
   draw_preset preset_APRS
 
-  jsr int_draw_banners
+  jsr int_draw_other_ui
 
   rts
 
@@ -576,8 +594,8 @@ int_select_next_menu_item:
   rts
 
 int_cmd_cancel:
-  lda #1
-  sta cfg_config_done
+  lda #CONFIG_FLAG_CANCELED
+  sta cfg_config_flag
   rts
 
 int_cmd_preset_fastchar:
@@ -671,8 +689,16 @@ int_cmd_protocol:
   rts
 
 int_cmd_accept:
-  lda #1
-  sta cfg_config_done
+  lda #CONFIG_FLAG_ACCEPTED
+  sta cfg_config_flag
+
+  ; if APRS mode, override the user setting
+  lda cfg_draft_config+Config::protocol
+  cmp #TERM_PROTOCOL::APRS
+  bne @no_override
+  lda #TERM_MODE::LINE
+  sta cfg_draft_config+Config::mode
+@no_override:
   ut_copy_struct_abs_to_abs cfg_draft_config, cfg_saved_config, Config
   rts
 
@@ -870,14 +896,16 @@ parity_menu_item_label1:       .byte "Even",$00
 parity_menu_item_label2:       .byte "Odd",$00
 
 mode_menu:                     .tag Menu
-mode_menu_header:              .byte 'M'|$80,"ode",$00
+mode_menu_header:              .byte "Term ",'M'|$80,"ode*",$00
 mode_menu_item_values:
-  .byte TERM_MODE::CHAR
   .byte TERM_MODE::LINE
+  .byte TERM_MODE::CHAR
+  .byte TERM_MODE::MULTI
 mode_menu_item_values_end:
 mode_menu_item_labels:
-mode_menu_item_label_char:     .byte "Char",$00
 mode_menu_item_label_line:     .byte "Line",$00
+mode_menu_item_label_char:     .byte "Char",$00
+mode_menu_item_label_multi:    .byte "Multi",$00
 
 protocol_menu:                 .tag Menu
 protocol_menu_header:          .byte '0'|$80,"Protocol",$00
@@ -910,6 +938,7 @@ top_banner:             .byte 'S'|$80,'E'|$80,'L'|$80,"theme "
                         .byte 'E'|$80,'S'|$80,'C'|$80,"revert "
                         .byte 'R'|$80,'E'|$80,'T'|$80,"terminal"
                         .byte $00
+mode_protocol_str:      .byte "* may be ignored for some protocols",$00
 draw_menu_tempy:        .byte 0
 draw_menu_border_width: .byte 0
 draw_menu_end_column:   .byte 0
@@ -925,6 +954,5 @@ highlight_border_width: .byte 0
 
 cfg_draft_config:       .tag Config
 cfg_saved_config:       .tag Config
-cfg_config_done:        .byte 0
-
+cfg_config_flag:        .byte 0
 

@@ -39,7 +39,7 @@ to_init:
   lda #>to_data
   sta to_metadata+TextArea::first_line_data_ptr+1
 
-  lda #TO_LINE_HEIGHT
+  lda #TO_HEIGHT_SINGLE_LINE_INPUT
   jsr to_resize
 
   rts

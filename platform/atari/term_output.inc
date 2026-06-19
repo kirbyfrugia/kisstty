@@ -32,9 +32,9 @@ TERM_OUTPUT_INC = 1
 
 ; output area heights per terminal mode. char mode reclaims
 ; the rows that line mode reserves for its multi-line input.
-TO_LINE_HEIGHT = 18
-TO_CHAR_HEIGHT = 21
-TO_MAX_HEIGHT  = TO_CHAR_HEIGHT
+TO_HEIGHT_SINGLE_LINE_INPUT = 21
+TO_HEIGHT_MULTI_LINE_INPUT  = 18
+TO_MAX_HEIGHT               = TO_HEIGHT_SINGLE_LINE_INPUT
 
 .global to_init
 .global to_append_char

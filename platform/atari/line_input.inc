@@ -19,15 +19,18 @@ LINE_INPUT_INC = 1
 .global   li_show_cursor
 .global   li_move_cursor_left
 .global   li_move_cursor_right
+.global   li_char_delete
+.global   li_char_insert
 .global   li_type_char
 .global   li_backspace
-.global   li_insert
-.global   li_clear
+.global   li_shift_clear
 
-scr_ptr_lo  = li_metadata+LineInput::scr_ptr
-scr_ptr_hi  = li_metadata+LineInput::scr_ptr+1
-data_ptr_lo = li_metadata+LineInput::data_ptr
-data_ptr_hi = li_metadata+LineInput::data_ptr+1
+scr_ptr_lo      = li_metadata+LineInput::scr_ptr
+scr_ptr_hi      = li_metadata+LineInput::scr_ptr+1
+data_ptr_lo     = li_metadata+LineInput::data_ptr
+data_ptr_hi     = li_metadata+LineInput::data_ptr+1
+
+LI_MAX_LINE_LEN = 255
 
 
 .endif
