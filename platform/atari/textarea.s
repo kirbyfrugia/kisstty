@@ -58,57 +58,57 @@ set_context_done:
 ; subtracts one line from the scr_line and data_line
 ; ptrs
 int_prev_line:
-  lda g_temp_line_data_ptr_lo
+  lda g_temp_data_ptr_lo
   sec
   sbc ta_metadata+TextArea::width
-  sta g_temp_line_data_ptr_lo
-  lda g_temp_line_data_ptr_hi
+  sta g_temp_data_ptr_lo
+  lda g_temp_data_ptr_hi
   sbc #0
-  sta g_temp_line_data_ptr_hi
+  sta g_temp_data_ptr_hi
 
-  lda g_temp_line_scr_ptr_lo
+  lda g_temp_scr_ptr_lo
   sec
   sbc #SCREEN_WIDTH
-  sta g_temp_line_scr_ptr_lo
-  lda g_temp_line_scr_ptr_hi
+  sta g_temp_scr_ptr_lo
+  lda g_temp_scr_ptr_hi
   sbc #0
-  sta g_temp_line_scr_ptr_hi
+  sta g_temp_scr_ptr_hi
   rts
 
-; sets g_temp_line_data_ptr_lo/hi and g_temp_line_scr_ptr_lo/hi
+; sets g_temp_data_ptr_lo/hi and g_temp_scr_ptr_lo/hi
 ; to the start of the last line
 ta_find_last_line:
   ; note: use cursory because it'll always be faster
   ;       given it's >= first_line. And last line always
   ;       has to be >= cursor_line
   lda cursor_line_data_ptr_lo
-  sta g_temp_line_data_ptr_lo
+  sta g_temp_data_ptr_lo
   lda cursor_line_data_ptr_hi
-  sta g_temp_line_data_ptr_hi
+  sta g_temp_data_ptr_hi
 
   lda cursor_line_scr_ptr_lo
-  sta g_temp_line_scr_ptr_lo
+  sta g_temp_scr_ptr_lo
   lda cursor_line_scr_ptr_hi
-  sta g_temp_line_scr_ptr_hi
+  sta g_temp_scr_ptr_hi
 
   ldy ta_metadata+TextArea::cursory
 @loop:
   cpy ta_metadata+TextArea::cursor_maxy
   beq @done
   
-  lda g_temp_line_data_ptr_lo
+  lda g_temp_data_ptr_lo
   clc
   adc ta_metadata+TextArea::width
-  sta g_temp_line_data_ptr_lo
+  sta g_temp_data_ptr_lo
   bcc @nowrap_data
-  inc g_temp_line_data_ptr_hi
+  inc g_temp_data_ptr_hi
 @nowrap_data:
-  lda g_temp_line_scr_ptr_lo
+  lda g_temp_scr_ptr_lo
   clc
   adc #SCREEN_WIDTH
-  sta g_temp_line_scr_ptr_lo
+  sta g_temp_scr_ptr_lo
   bcc @nowrap_scr
-  inc g_temp_line_scr_ptr_hi
+  inc g_temp_scr_ptr_hi
 @nowrap_scr:
   iny
   bne @loop
@@ -212,14 +212,14 @@ int_cursor_home:
 
 ta_clear_and_repaint:
   lda first_line_scr_ptr_lo
-  sta g_temp_line_scr_ptr_lo
+  sta g_temp_scr_ptr_lo
   lda first_line_scr_ptr_hi
-  sta g_temp_line_scr_ptr_hi
+  sta g_temp_scr_ptr_hi
 
   lda first_line_data_ptr_lo
-  sta g_temp_line_data_ptr_lo
+  sta g_temp_data_ptr_lo
   lda first_line_data_ptr_hi
-  sta g_temp_line_data_ptr_hi
+  sta g_temp_data_ptr_hi
 
   ldx ta_metadata+TextArea::height
 @line_loop:
@@ -227,27 +227,27 @@ ta_clear_and_repaint:
   dey
 @col_loop:
   lda #' '
-  sta (g_temp_line_data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   lda #$00 ; space icode
-  sta (g_temp_line_scr_ptr_lo),y
+  sta (g_temp_scr_ptr_lo),y
   dey
   bpl @col_loop
   dex
   beq @done
 
-  lda g_temp_line_scr_ptr_lo
+  lda g_temp_scr_ptr_lo
   clc
   adc #SCREEN_WIDTH
-  sta g_temp_line_scr_ptr_lo
+  sta g_temp_scr_ptr_lo
   bcc @scr_nowrap
-  inc g_temp_line_scr_ptr_hi
+  inc g_temp_scr_ptr_hi
 @scr_nowrap: 
-  lda g_temp_line_data_ptr_lo
+  lda g_temp_data_ptr_lo
   clc
   adc ta_metadata+TextArea::width
-  sta g_temp_line_data_ptr_lo
+  sta g_temp_data_ptr_lo
   bcc @data_nowrap
-  inc g_temp_line_data_ptr_hi
+  inc g_temp_data_ptr_hi
 @data_nowrap:
   jmp @line_loop
 @done:
@@ -257,41 +257,41 @@ ta_clear_and_repaint:
 ; Not so efficient, but I'll worry about that later.
 ta_repaint:
   lda first_line_scr_ptr_lo
-  sta g_temp_line_scr_ptr_lo
+  sta g_temp_scr_ptr_lo
   lda first_line_scr_ptr_hi
-  sta g_temp_line_scr_ptr_hi
+  sta g_temp_scr_ptr_hi
 
   lda first_line_data_ptr_lo
-  sta g_temp_line_data_ptr_lo
+  sta g_temp_data_ptr_lo
   lda first_line_data_ptr_hi
-  sta g_temp_line_data_ptr_hi
+  sta g_temp_data_ptr_hi
 
   ldx ta_metadata+TextArea::height
 @line_loop:
   ldy ta_metadata+TextArea::width
   dey
 @col_loop:
-  lda (g_temp_line_data_ptr_lo),y
+  lda (g_temp_data_ptr_lo),y
   jsr ut_atascii_to_icode
-  sta (g_temp_line_scr_ptr_lo),y
+  sta (g_temp_scr_ptr_lo),y
   dey
   bpl @col_loop
   dex
   beq @done
 
-  lda g_temp_line_scr_ptr_lo
+  lda g_temp_scr_ptr_lo
   clc
   adc #SCREEN_WIDTH
-  sta g_temp_line_scr_ptr_lo
+  sta g_temp_scr_ptr_lo
   bcc @scr_nowrap
-  inc g_temp_line_scr_ptr_hi
+  inc g_temp_scr_ptr_hi
 @scr_nowrap: 
-  lda g_temp_line_data_ptr_lo
+  lda g_temp_data_ptr_lo
   clc
   adc ta_metadata+TextArea::width
-  sta g_temp_line_data_ptr_lo
+  sta g_temp_data_ptr_lo
   bcc @data_nowrap
-  inc g_temp_line_data_ptr_hi
+  inc g_temp_data_ptr_hi
 @data_nowrap:
   jmp @line_loop
 @done:
@@ -319,11 +319,11 @@ int_shift_lines_down:
   adc #0
   sta MM_TO+1
 
-  lda g_temp_line_data_ptr_lo
+  lda g_temp_data_ptr_lo
   sec
   sbc cursor_line_data_ptr_lo
   sta MM_SIZEL
-  lda g_temp_line_data_ptr_hi
+  lda g_temp_data_ptr_hi
   sbc cursor_line_data_ptr_hi
   sta MM_SIZEH
 
@@ -632,9 +632,9 @@ int_clear_last_char:
   ldy ta_metadata+TextArea::width
   dey
   lda #' '
-  sta (g_temp_line_data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   jsr ut_atascii_to_icode
-  sta (g_temp_line_scr_ptr_lo),y
+  sta (g_temp_scr_ptr_lo),y
   rts
 
 int_clear_last_line:
@@ -643,15 +643,15 @@ int_clear_last_line:
   rts
 
 ; inputs:
-;   g_temp_line_data_ptr_lo/hi
+;   g_temp_data_ptr_lo/hi
 int_clear_line:
   ldy ta_metadata+TextArea::width
   dey
 @loop:
   lda #' '
-  sta (g_temp_line_data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   jsr ut_atascii_to_icode
-  sta (g_temp_line_scr_ptr_lo),y
+  sta (g_temp_scr_ptr_lo),y
   dey
   bpl @loop
   rts
@@ -724,11 +724,11 @@ int_shift_lines_up_from_cursor:
   sta MM_FROM+1
 
   jsr ta_find_last_line
-  lda g_temp_line_data_ptr_lo
+  lda g_temp_data_ptr_lo
   sec
   sbc MM_TO
   sta MM_SIZEL
-  lda g_temp_line_data_ptr_hi
+  lda g_temp_data_ptr_hi
   sbc MM_TO+1
   sta MM_SIZEH
 
@@ -1008,13 +1008,13 @@ ta_out_append_lines:
   ldx extra
   beq @done
   lda cursor_line_data_ptr_lo
-  sta g_temp_line_data_ptr_lo
+  sta g_temp_data_ptr_lo
   lda cursor_line_data_ptr_hi
-  sta g_temp_line_data_ptr_hi
+  sta g_temp_data_ptr_hi
   lda cursor_line_scr_ptr_lo
-  sta g_temp_line_scr_ptr_lo
+  sta g_temp_scr_ptr_lo
   lda cursor_line_scr_ptr_hi
-  sta g_temp_line_scr_ptr_hi
+  sta g_temp_scr_ptr_hi
 @clear_blank:
   jsr int_clear_line
   jsr int_prev_line

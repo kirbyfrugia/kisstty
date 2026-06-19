@@ -3,27 +3,27 @@
 .include "globals.inc"
 
 .segment "ZEROPAGE"
-ZPB0:                    .res 1
-ZPB1:                    .res 1
-ZPB2:                    .res 1
-ZPB3:                    .res 1
-ZPB4:                    .res 1
-ZPB5:                    .res 1
-CMDDATA0:                .res 1
-CMDDATA1:                .res 1
-CMDDATA2:                .res 1
-CMDDATA3:                .res 1
-CMDDATA4:                .res 1
-CMDDATA5:                .res 1
-CMDDATA6:                .res 1
-CMDDATA7:                .res 1
-SCR_PTR_LO:              .res 1
-SCR_PTR_HI:              .res 1
+ZPB0:               .res 1
+ZPB1:               .res 1
+ZPB2:               .res 1
+ZPB3:               .res 1
+ZPB4:               .res 1
+ZPB5:               .res 1
+CMDDATA0:           .res 1
+CMDDATA1:           .res 1
+CMDDATA2:           .res 1
+CMDDATA3:           .res 1
+CMDDATA4:           .res 1
+CMDDATA5:           .res 1
+CMDDATA6:           .res 1
+CMDDATA7:           .res 1
+SCR_PTR_LO:         .res 1
+SCR_PTR_HI:         .res 1
 
-g_temp_line_scr_ptr_lo:  .res 1
-g_temp_line_scr_ptr_hi:  .res 1
-g_temp_line_data_ptr_lo: .res 1
-g_temp_line_data_ptr_hi: .res 1
+g_temp_scr_ptr_lo:  .res 1
+g_temp_scr_ptr_hi:  .res 1
+g_temp_data_ptr_lo: .res 1
+g_temp_data_ptr_hi: .res 1
 
 g_rx_buf_num_chars:      .res 1
 

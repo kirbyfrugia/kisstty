@@ -6,10 +6,8 @@
 .include "utils.inc"
 
 .segment "ZEROPAGE"
-buf_counter:     .res 1
-addr_counter:    .res 1
-data_ptr_lo: .res 1
-data_ptr_hi: .res 1
+buf_counter:  .res 1
+addr_counter: .res 1
 
 .segment "CODE"
 
@@ -178,9 +176,9 @@ int_process_byte:
 
 pk_process_frame:
   lda #<g_disp_buf
-  sta data_ptr_lo
+  sta g_temp_data_ptr_lo
   lda #>g_disp_buf
-  sta data_ptr_hi
+  sta g_temp_data_ptr_hi
 
   ;jsr int_process_addresses
 
@@ -219,9 +217,9 @@ int_process_message:
   bcc @done ; not a valid message
 
   lda #<g_disp_buf
-  sta data_ptr_lo
+  sta g_temp_data_ptr_lo
   lda #>g_disp_buf
-  sta data_ptr_hi
+  sta g_temp_data_ptr_hi
 
   ldy #0
   ldx #KissFrameHeader::source
@@ -255,9 +253,9 @@ int_process_message:
 
 int_process_status:
   lda #<g_disp_buf
-  sta data_ptr_lo
+  sta g_temp_data_ptr_lo
   lda #>g_disp_buf
-  sta data_ptr_hi
+  sta g_temp_data_ptr_hi
 
   ldy #0
   lda #'['
@@ -366,12 +364,12 @@ int_finalize_disp:
   bcc @mod_loop_done ; needed to borrow, on last line
   ; not on last line yet
   sta y_index_var ; remaining
-  lda data_ptr_lo
+  lda g_temp_data_ptr_lo
   clc
   adc #TERMINAL_WIDTH
-  sta data_ptr_lo
+  sta g_temp_data_ptr_lo
   bcc @nowrap
-  inc data_ptr_hi
+  inc g_temp_data_ptr_hi
 @nowrap:
   jmp @mod_loop
 @mod_loop_done:
@@ -380,7 +378,7 @@ int_finalize_disp:
 @fill_loop:
   cpy #TERMINAL_WIDTH
   beq @done
-  sta (data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   iny
   jmp @fill_loop
 @done:
@@ -417,11 +415,11 @@ int_all_digits:
 ; assumes x_index_var_end - x_index_var > 1
 ;
 ; inputs:
-;   terminator         - char to search for or $00 until
-;   data_ptr_lo/hi     - pointer to where to store output
-;   x_index_var        - start index to check
-;   x_index_var_end    - end index to check (one past)
-;   y                  - start index to write to
+;   terminator            - char to search for or $00 until
+;   g_temp_data_ptr_lo/hi - pointer to where to store output
+;   x_index_var           - start index to check
+;   x_index_var_end       - end index to check (one past)
+;   y                     - start index to write to
 ; outputs:
 ;   x - index of last read char + 1
 ;   y - index of last written char + 1
@@ -431,7 +429,7 @@ int_read_until_terminator:
   lda g_rx_buf,x
   cmp terminator
   beq @done
-  sta (data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   iny
   inx
   cpx x_index_var_end
@@ -444,10 +442,10 @@ int_read_until_terminator:
 ; assumes x_index_var_end - x_index_var > 1
 ;
 ; inputs:
-;   data_ptr_lo/hi     - pointer to where to store output
-;   x_index_var        - start index to check
-;   x_index_var_end    - end index to check (one past)
-;   y                  - start index to write to
+;   g_temp_data_ptr_lo/hi - pointer to where to store output
+;   x_index_var           - start index to check
+;   x_index_var_end       - end index to check (one past)
+;   y                     - start index to write to
 ; outputs:
 ;   x - index of last read char + 1
 ;   y - index of last written char + 1
@@ -455,7 +453,7 @@ int_read_until_end:
   ldx x_index_var
 @loop:
   lda g_rx_buf,x
-  sta (data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   iny
   inx
   cpx x_index_var_end
@@ -471,9 +469,9 @@ int_ack_message:
 int_process_addresses:
   ldx #0
   lda g_disp_buf_line_ptrs_lo,x
-  sta data_ptr_lo
+  sta g_temp_data_ptr_lo
   lda g_disp_buf_line_ptrs_hi,x
-  sta data_ptr_hi
+  sta g_temp_data_ptr_hi
 
   ldy #0
   ldx #KissFrameHeader::source
@@ -481,7 +479,7 @@ int_process_addresses:
   jsr int_addr_to_buf
 
   lda #'>'
-  sta (data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
 
   iny
   ldx #KissFrameHeader::dest
@@ -495,11 +493,11 @@ int_process_addresses:
   bne ipa_digi
 
   lda #'x'
-  ut_fill_to_end_ptr data_ptr_lo, #TERMINAL_WIDTH
+  ut_fill_to_end_ptr g_temp_data_ptr_lo, #TERMINAL_WIDTH
   jmp ipa_done
 ipa_digi:
   lda #'v'
-  sta (data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   ldx #KissFrameHeader::digipeater
   stx x_index_var
   ldx #0 
@@ -514,7 +512,7 @@ ipa_loop:
   beq ipa_done
   lda #','
   iny
-  sta (data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   jmp ipa_loop
   
   ; TODO
@@ -522,7 +520,7 @@ ipa_done:
   rts
 
 ; inputs:
-;   data_ptr_lo/hi - address of line
+;   g_temp_data_ptr_lo/hi - address of line
 ;   x_index_var        - offset in KissFrameHeader to start of address
 ;   y                  - offset in disp buffer to store address
 ; modifies:
@@ -538,7 +536,7 @@ int_addr_to_buf:
   lda pk_frame_header,x
   cmp #$20
   beq @loop_done
-  sta (data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   iny
   inx
   cpx x_index_var
@@ -550,7 +548,7 @@ int_addr_to_buf:
   jsr ut_bin_to_bcd
 
   lda #'-'
-  sta (data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
   lda ut_result
   lsr
   lsr
@@ -560,14 +558,14 @@ int_addr_to_buf:
   tax
   lda ut_hex_table_atascii,x
   iny
-  sta (data_ptr_lo),y 
+  sta (g_temp_data_ptr_lo),y 
 @no_tens:
   iny
   lda ut_result
   and #%00001111
   tax
   lda ut_hex_table_atascii,x
-  sta (data_ptr_lo),y
+  sta (g_temp_data_ptr_lo),y
 @done:
   ; update our x to one past end of this address
   inc x_index_var
