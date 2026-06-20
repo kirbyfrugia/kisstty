@@ -2,13 +2,13 @@
 LINE_INPUT_INC = 1
 
 .struct LineInput
-  scr_ptr         .res 2
-  data_ptr        .res 2
-  scr_cursor_maxx .res 1
-  data_len        .res 1
-  scr_cursor      .res 1
-  data_cursor     .res 1
-  first_visible   .res 1
+  scr_ptr         .res 2 ; ptr to the mem location of leftmost char
+  data_ptr        .res 2 ; ptr to the start of the data
+  num_visible     .res 1 ; max number of chars visible on screen
+  data_len        .res 1 ; length of the data
+  scr_cursor      .res 1 ; idx to cursor in screen
+  data_cursor     .res 1 ; idx to cursor in data array
+  first_visible   .res 1 ; first char idx visible on screen
 .endstruct
 
 .globalzp li_metadata

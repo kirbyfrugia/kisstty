@@ -72,7 +72,7 @@ li_repaint:
   sta (scr_ptr_lo),y
   inx
   iny
-  cpy li_metadata+LineInput::scr_cursor_maxx
+  cpy li_metadata+LineInput::num_visible
   bne @loop
   rts
 
@@ -262,17 +262,18 @@ int_move_cursor_left:
   lda li_metadata+LineInput::data_cursor
   beq @done
 
-  jsr li_hide_cursor
-
   lda li_metadata+LineInput::scr_cursor
-  beq @scroll
-
+  beq @at_scr_beg; cursor at far left
   dec li_metadata+LineInput::scr_cursor
   dec li_metadata+LineInput::data_cursor
-  jmp @show_cursor
-@scroll:
-@show_cursor:
-  jsr li_show_cursor
+  jmp @done
+@at_scr_beg:
+  ; can scroll if first_visible > 0
+  lda li_metadata+LineInput::first_visible
+  beq @done; at beginning of data
+  dec li_metadata+LineInput::data_cursor
+  dec li_metadata+LineInput::first_visible
+  jsr li_repaint
 @done:
   rts
 
@@ -283,19 +284,25 @@ int_move_cursor_right:
   bcc @move_allowed
   bcs @done
 @move_allowed:
-  jsr li_hide_cursor
-
   ldy li_metadata+LineInput::scr_cursor
   iny
-  cpy li_metadata+LineInput::scr_cursor_maxx
-  beq @scroll
+  cpy li_metadata+LineInput::num_visible
+  beq @at_scr_end; at end on right
 
   inc li_metadata+LineInput::scr_cursor
   inc li_metadata+LineInput::data_cursor
-  jmp @show_cursor
-@scroll:
-@show_cursor:
-  jsr li_show_cursor
+  jmp @done
+@at_scr_end:
+  ; can scroll if:
+  ;   first_visible + num_visible < data_len
+  lda li_metadata+LineInput::first_visible
+  clc
+  adc li_metadata+LineInput::num_visible
+  cmp li_metadata+LineInput::data_len
+  bcs @done; can't scroll
+  inc li_metadata+LineInput::first_visible
+  inc li_metadata+LineInput::data_cursor
+  jsr li_repaint
 @done:
   rts
 
@@ -303,6 +310,7 @@ int_cursor_home:
   lda #0
   sta li_metadata+LineInput::scr_cursor
   sta li_metadata+LineInput::data_cursor
+  sta li_metadata+LineInput::first_visible
   rts
 
 tempy: .res 1
