@@ -377,11 +377,26 @@ int_cmd_multi_mode_return:
   sta CMDDATA0
   lda #>tmi_data
   sta CMDDATA1
-  lda tmi_metadata+TextArea::height
+  lda tmi_metadata+TextArea::size
   sta CMDDATA2
-  lda #0
-  sta CMDDATA3
-  jsr to_append_lines
+  jsr ut_str_trim_end_find
+
+  lda ut_result
+  beq @done; was an empty string
+  sta CMDDATA2
+  jsr rs232_putchrs
+  bcc @done
+  print_str_with_code str_error_rs232_putchr, g_copy_buffer40, pk_error
+;  lda #<tmi_data
+;  sta CMDDATA0
+;  lda #>tmi_data
+;  sta CMDDATA1
+;  lda tmi_metadata+TextArea::height
+;  sta CMDDATA2
+;  lda #0
+;  sta CMDDATA3
+;  jsr to_append_lines
+@done:
   jsr tmi_shift_clear
   rts
 

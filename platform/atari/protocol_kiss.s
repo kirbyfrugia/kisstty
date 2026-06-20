@@ -114,16 +114,14 @@ pk_send_message:
   jsr rs232_putchr
   bcs @error
 
-  ldy #0
-@send_loop:
-  sty tempy
-  lda (data_ptr_lo),y
-  jsr rs232_putchr
+  lda CMDDATA2
+  pha
+  lda ut_result
+  sta CMDDATA2
+  jsr rs232_putchrs
+  pla
+  sta CMDDATA2
   bcs @error
-  ldy tempy
-  iny
-  cpy ut_result
-  bne @send_loop
 
   lda #KISS_FEND
   jsr rs232_putchr
@@ -132,6 +130,7 @@ pk_send_message:
   clc
   rts
 @error:
+  ldy rs232_last_status
   sty pk_error
   sec
   rts

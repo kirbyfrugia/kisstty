@@ -1,6 +1,7 @@
 .setcpu "6502"
 .include "atari.inc"
 .include "config.inc"
+.include "globals.inc"
 .include "rs232.inc"
 .include "utils.inc"
 
@@ -163,6 +164,30 @@ rs232_putchr:
   sec
   rts
 
+; sends a buf over rs232
+; inputs:
+;   CMDDATA0/1 - ptr to data
+;   CMDDATA2   - size of buf
+rs232_putchrs:
+  data_ptr_lo = CMDDATA0
+  buf_size    = CMDDATA2
+  ldy #0
+@send_loop:
+  sty tempy
+  lda (data_ptr_lo),y
+  jsr rs232_putchr
+  ldy tempy
+  bcs @error
+  iny
+  cpy buf_size
+  bne @send_loop
+  clc
+  rts
+@error:
+  ldy tempy
+  sec
+  rts
+
 rs232_close:
   ldx iocb
   lda #CLOSE
@@ -180,6 +205,7 @@ write_buf:                .res WRITE_BUF_LEN
 dev_name:                 .byte "R1",$9b
 iocb:                     .byte 48
 output_char:              .byte 0,$9b
+tempy:                    .res 1
 
 rs232_last_status:        .byte 0
 rs232_input_buffer_size:  .byte 0, 0
