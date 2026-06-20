@@ -2,6 +2,7 @@
 .include "line_input.inc"
 .include "globals.inc"
 .include "macros.inc"
+.include "memmove.inc"
 .include "utils.inc"
 
 .segment "ZEROPAGE"
@@ -53,12 +54,26 @@ set_context_done:
   rts
 
 li_repaint:
-  ldy li_metadata+LineInput::scr_cursor_maxx
-  lda #$00
+  ldx li_metadata+LineInput::first_visible
+  ldy #0
 @loop:
+  cpx li_metadata+LineInput::data_len
+  bcs @fill_char ; past end of data 
+  sty tempy
+  txa
+  tay
+  lda (data_ptr_lo),y
+  jmp @draw_char
+@fill_char:
+  lda #'x'
+@draw_char:
+  jsr ut_atascii_to_icode
+  ldy tempy
   sta (scr_ptr_lo),y
-  dey
-  bpl @loop
+  inx
+  iny
+  cpy li_metadata+LineInput::scr_cursor_maxx
+  bne @loop
   rts
 
 li_hide_cursor:
@@ -89,7 +104,52 @@ li_move_cursor_right:
   jsr li_show_cursor
   rts
 
+; erases the char under the cursor by moving all
+; the chars to the right one space left
 li_char_delete:
+  ; MM_FROM = data_cursor + 1 + data_ptr
+  ; check if at far right and ignore if so
+  lda li_metadata+LineInput::data_cursor
+  clc
+  adc #1
+  bcs @done ; data cursor wrapped
+  cmp li_metadata+LineInput::data_len
+  bcs @done ; at end of data
+
+  adc data_ptr_lo
+  sta MM_FROM
+  lda data_ptr_hi
+  adc #0
+  sta MM_FROM+1
+
+  ; MM_TO = MM_FROM - 1
+  lda MM_FROM
+  sec 
+  sbc #1
+  sta MM_TO
+  lda MM_FROM+1
+  sbc #0
+  sta MM_TO+1
+
+  ; MM_SIZE = data_len - data_cursor - 1
+  lda li_metadata+LineInput::data_len
+  sec
+  sbc li_metadata+LineInput::data_cursor
+  sta MM_SIZEL
+  dec MM_SIZEL
+  lda #0
+  sta MM_SIZEH
+
+  jsr li_hide_cursor
+  jsr MM_MOVEDOWN
+  ; fill last char with a blank
+  ldy li_metadata+LineInput::data_len
+  dey
+  lda #' '
+  sta (data_ptr_lo),y
+  jsr li_repaint
+  jsr li_show_cursor
+@done:
   rts
 
 li_char_insert:
@@ -108,7 +168,14 @@ li_type_char:
   jsr li_show_cursor
   rts
 
+; moves cursor left, erases character under cursor
+; atari style doesn't shift data left.
 li_backspace:
+  jsr li_hide_cursor
+  jsr int_move_cursor_left
+  lda #' '
+  jsr int_update_char
+  jsr li_show_cursor
   rts
 
 li_shift_clear:
@@ -165,15 +232,17 @@ int_move_cursor_left:
   rts
 
 int_move_cursor_right:
-  lda li_metadata+LineInput::data_cursor
-  cmp li_metadata+LineInput::data_len
+  ldy li_metadata+LineInput::data_cursor
+  iny
+  cpy li_metadata+LineInput::data_len
   bcc @move_allowed
   bcs @done
 @move_allowed:
   jsr li_hide_cursor
 
-  lda li_metadata+LineInput::scr_cursor
-  cmp li_metadata+LineInput::scr_cursor_maxx
+  ldy li_metadata+LineInput::scr_cursor
+  iny
+  cpy li_metadata+LineInput::scr_cursor_maxx
   beq @scroll
 
   inc li_metadata+LineInput::scr_cursor
@@ -191,3 +260,4 @@ int_cursor_home:
   sta li_metadata+LineInput::data_cursor
   rts
 
+tempy: .res 1

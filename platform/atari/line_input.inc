@@ -8,6 +8,7 @@ LINE_INPUT_INC = 1
   data_len        .res 1
   scr_cursor      .res 1
   data_cursor     .res 1
+  first_visible   .res 1
 .endstruct
 
 .globalzp li_metadata

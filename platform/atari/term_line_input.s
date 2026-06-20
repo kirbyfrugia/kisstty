@@ -6,8 +6,9 @@
 
 .segment "CODE"
 
-MARGIN_LEFT = 1
-MARGIN_TOP  = 23
+MARGIN_LEFT  = 1
+MARGIN_TOP   = 23
+MAX_LINE_LEN = 128
 
 ; initializes the line input area
 ;
@@ -17,6 +18,7 @@ tli_init:
   lda #0
   sta tli_metadata+LineInput::scr_cursor
   sta tli_metadata+LineInput::data_cursor
+  sta tli_metadata+LineInput::first_visible
 
   lda #<(MARGIN_TOP*SCREEN_WIDTH+MARGIN_LEFT)
   clc
@@ -30,9 +32,9 @@ tli_init:
   sta tli_metadata+LineInput::data_ptr
   lda #>tli_data
   sta tli_metadata+LineInput::data_ptr+1
-  lda #(TERMINAL_WIDTH-1) ; relative to MARGIN_LEFT
+  lda #TERMINAL_WIDTH
   sta tli_metadata+LineInput::scr_cursor_maxx
-  lda #LI_MAX_LINE_LEN
+  lda #MAX_LINE_LEN
   sta tli_metadata+LineInput::data_len
 
   jsr int_set_context
@@ -114,4 +116,4 @@ tli_shift_clear:
   rts
 
 tli_metadata: .tag LineInput
-tli_data:     .res LI_MAX_LINE_LEN
+tli_data:     .res MAX_LINE_LEN

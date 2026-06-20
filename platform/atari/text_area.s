@@ -545,7 +545,7 @@ ta_edit_type_char:
   jsr ta_show_cursor
   rts
 
-; erases character under cursor, moves cursor left.
+; moves cursor left, erases character under cursor
 ; atari style doesn't shift data left.
 ta_edit_backspace:
   jsr ta_hide_cursor
@@ -596,7 +596,7 @@ ta_edit_line_delete:
   rts
 
 ; erases the char under the cursor by moving all
-; the characters to the right one space left.
+; the chars to the right one space left
 ta_edit_char_delete:
   ldy ta_metadata+TextArea::cursory
   cpy ta_metadata+TextArea::cursor_maxy
