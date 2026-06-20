@@ -6,6 +6,7 @@
 .include "globals.inc"
 .include "macros.inc"
 .include "main.inc"
+.include "line_input.inc"
 .include "term_line_input.inc"
 .include "term_multi_input.inc"
 .include "term_output.inc"
@@ -290,15 +291,32 @@ int_cmd_line_mode_char_delete:
   rts
 
 int_cmd_line_mode_return:
+;  lda #<tli_data
+;  sta CMDDATA0
+;  lda #>tli_data
+;  sta CMDDATA1
+;  lda #1
+;  sta CMDDATA2
+;  lda #0
+;  sta CMDDATA3
+;  jsr to_append_lines
+
   lda #<tli_data
   sta CMDDATA0
   lda #>tli_data
   sta CMDDATA1
-  lda #1
+  lda #<pk_broadcast_addressee
   sta CMDDATA2
-  lda #0
+  lda #>pk_broadcast_addressee
   sta CMDDATA3
-  jsr to_append_lines
+  lda tli_metadata+LineInput::data_len
+  sta CMDDATA4
+  lda #KISS_SEND_FLAG_TRIM_END
+  sta CMDDATA5
+  jsr pk_send_message
+  bcc iclmr_success
+  print_str_with_code str_error_rs232_putchr, g_copy_buffer40, pk_error
+iclmr_success:
   jsr tli_shift_clear
   rts
 

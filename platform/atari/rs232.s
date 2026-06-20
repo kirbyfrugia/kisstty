@@ -14,7 +14,7 @@ CMD_CONFIGURE_BAUD        = $24
 ; inputs:
 ;   x - channel
 rs232_open:
-  stx rs232_iocb
+  stx iocb
   lda #1         ; Device 1
   sta ICDNO,x
   lda #<dev_name ; R1
@@ -27,7 +27,7 @@ rs232_open:
   jsr CIOV
 
   ; set control lines
-  ldx rs232_iocb
+  ldx iocb
   lda #CMD_CONTROL
   sta ICCOM,x
   lda cfg_saved_config+Config::dtr
@@ -41,7 +41,7 @@ rs232_open:
   jmp @error
 @open_port:
   ; open port
-  ldx rs232_iocb
+  ldx iocb
   lda #OPEN
   sta ICCOM,x
   lda #$0d ; input, output, concurrent
@@ -52,7 +52,7 @@ rs232_open:
   bpl @configure_baud
   jmp @error
 @configure_baud:
-  ldx rs232_iocb
+  ldx iocb
   lda #CMD_CONFIGURE_BAUD
   sta ICCOM,x
   lda #0
@@ -67,7 +67,7 @@ rs232_open:
   bpl @configure_translation
   jmp @error
 @configure_translation:
-  ldx rs232_iocb
+  ldx iocb
   lda #CMD_CONFIGURE_TRANSLATION
   sta ICCOM,x
   lda cfg_saved_config+Config::translation
@@ -81,7 +81,7 @@ rs232_open:
   jmp @error
 @start_concurrent:
   ; start concurrent mode
-  ldx rs232_iocb
+  ldx iocb
   lda #CMD_CONCURRENCY_MODE 
   sta ICCOM,x
   lda #<write_buf
@@ -106,7 +106,7 @@ rs232_open:
   rts
 
 rs232_status:
-  ldx rs232_iocb
+  ldx iocb
   lda #STATIS ; CIO status
   sta ICCOM,x
   jsr CIOV
@@ -130,7 +130,7 @@ rs232_status:
   rts
 
 rs232_getchr:
-  ldx rs232_iocb
+  ldx iocb
   lda #GETCHR
   sta ICCOM,x
   lda #0
@@ -146,15 +146,15 @@ rs232_getchr:
   rts
 
 rs232_putchr:
-  sta rs232_output_char
-  ldx rs232_iocb
+  sta output_char
+  ldx iocb
   lda #PUTCHR
   sta ICCOM,x
   lda #0
   sta ICBLL,x
   lda #0
   sta ICBLH,x
-  lda rs232_output_char
+  lda output_char
   jsr CIOV
   bmi @error
   clc
@@ -164,7 +164,7 @@ rs232_putchr:
   rts
 
 rs232_close:
-  ldx rs232_iocb
+  ldx iocb
   lda #CLOSE
   sta ICCOM,x
   jsr CIOV
@@ -178,9 +178,9 @@ rs232_close:
 
 write_buf:                .res WRITE_BUF_LEN
 dev_name:                 .byte "R1",$9b
-rs232_iocb:               .byte 48
+iocb:                     .byte 48
+output_char:              .byte 0,$9b
 
-rs232_output_char:        .byte 0,$9b
 rs232_last_status:        .byte 0
 rs232_input_buffer_size:  .byte 0, 0
 rs232_output_buffer_size: .byte 0

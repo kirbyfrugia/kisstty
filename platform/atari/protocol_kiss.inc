@@ -35,6 +35,9 @@ PCTL_KISS_INC = 1
 .global pk_process_frame
 .global pk_state
 .global pk_frame_header
+.global pk_send_message
+.global pk_error
+.global pk_broadcast_addressee
 
 KISS_STATE_NEW           = %10000000 ; waiting for first FEND
 KISS_STATE_FESC          = %01000000 ; in an FESC waiting for next byte
@@ -58,6 +61,8 @@ KISS_TYPE_STATUS_TIMESTAMP_ZULU_IDX = 7
 KISS_TYPE_MSG_START_COLON_IDX  = 0
 KISS_TYPE_MSG_ADDRESSEE_IDX    = 1
 KISS_TYPE_MSG_END_COLON_IDX    = 10
+
+KISS_SEND_FLAG_TRIM_END = %10000000
 
 
 ; commands 

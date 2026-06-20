@@ -1,8 +1,9 @@
 .setcpu "6502"
+.include "protocol_kiss.inc"
 .include "atari.inc"
 .include "globals.inc"
 .include "macros.inc"
-.include "protocol_kiss.inc"
+.include "rs232.inc"
 .include "utils.inc"
 
 .segment "ZEROPAGE"
@@ -15,6 +16,124 @@ pk_reset:
   lda #KISS_STATE_NEW
   sta pk_state
   jsr pk_next_frame
+  rts
+
+; writes N chars from the given buffer over rs232 as
+; a kiss message type with the option of trimming the end
+; off the data. i.e. sending until last non-space char.
+;
+; inputs:
+;   CMDDATA0/1 - ptr to the data
+;   CMDDATA2/3 - ptr to the addressee
+;   CMDDATA4   - size of buf
+;   CMDDATA5   - trim flag, set RS232_PUTBUF_TRIM to trim
+pk_send_message:
+  data_ptr_lo = CMDDATA0
+  addressee_ptr_lo = CMDDATA2
+  buf_size = CMDDATA4
+  trim = CMDDATA5
+
+  lda trim
+  bit KISS_SEND_FLAG_TRIM_END
+  bmi @trim
+  lda buf_size
+  beq @data_empty; was empty string
+  sta ut_result
+  bne @ready
+@data_empty:
+  jmp @done
+@trim:
+  lda CMDDATA2
+  pha
+  lda buf_size
+  sta CMDDATA2 
+  jsr ut_str_trim_end_find
+  pla
+  sta CMDDATA2
+  lda ut_result
+  beq @all_spaces; was an empty string
+  bne @ready
+@all_spaces:
+  jmp @done
+@ready:
+  lda #KISS_FEND
+  jsr rs232_putchr
+  bcs @error
+
+  lda #KISS_CMD::DATA_FRAME
+  jsr rs232_putchr
+  bcs @error
+
+  ; TODO: don't hard-code the header
+  ldy #0
+@dest:
+  sty tempy
+  lda hardcoded_dest,y
+  jsr rs232_putchr
+  bcs @error
+  ldy tempy
+  iny
+  cpy #7
+  bne @dest 
+
+  ldy #0
+@src:
+  sty tempy
+  lda hardcoded_src,y
+  jsr rs232_putchr
+  bcs @error
+  ldy tempy
+  iny
+  cpy #7
+  bne @src
+
+  lda #$03 ; ui frame
+  jsr rs232_putchr
+  bcs @error
+
+  lda #$f0 ; PID, no layer 3
+  jsr rs232_putchr
+  bcs @error
+
+  lda #':'
+  jsr rs232_putchr
+  bcs @error
+
+  ldy #0
+@addressee:
+  sty tempy
+  lda pk_broadcast_addressee,y
+  jsr rs232_putchr
+  bcs @error
+  ldy tempy
+  iny
+  cpy #9
+  bne @addressee
+ 
+  lda #':'
+  jsr rs232_putchr
+  bcs @error
+
+  ldy #0
+@send_loop:
+  sty tempy
+  lda (data_ptr_lo),y
+  jsr rs232_putchr
+  bcs @error
+  ldy tempy
+  iny
+  cpy ut_result
+  bne @send_loop
+
+  lda #KISS_FEND
+  jsr rs232_putchr
+  bcs @error
+@done:
+  clc
+  rts
+@error:
+  sty pk_error
+  sec
   rts
 
 pk_next_frame:
@@ -578,5 +697,16 @@ x_index_var:     .res 1
 x_index_var_end: .res 1
 y_index_var:     .res 1
 btwn_counter:    .res 1
+tempy:           .res 1
+
+; TODO: remove this instead of hardcoding
+hardcoded_dest: ; APZ001 
+  .byte $82,$A0,$B4,$60,$60,$62,$E0
+hardcoded_src:  ; NOCALL
+  .byte $9C,$9E,$86,$82,$98,$98,$61
+
 pk_state:        .res 1
 pk_frame_header: .tag KissFrameHeader
+pk_error:        .res 1
+pk_broadcast_addressee: .byte "BROADCAST"
+

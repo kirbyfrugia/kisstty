@@ -254,6 +254,42 @@ ut_str_with_code_to_buf:
 
   rts
 
+; finds the last non-space character in the
+; given data buf, returning zero if all spaces.
+; also returns zero if the buffer size is zero.
+;
+; inputs:
+;   CMDDATA0/1  - ptr to the data
+;   CMDDATA2    - size of the buffer
+; outputs:
+;   ut_result+0 - index of one past last non-space, zero if all spaces
+; modifies:
+;   a/y
+ut_str_trim_end_find:
+  data_ptr_lo = CMDDATA0
+  buf_size = CMDDATA2
+  ; find the last non space char in the buf
+  ; put_data_size will be one after that
+  ldy buf_size
+  beq @result ; empty buf, result is zero
+  dey
+@trim_loop:
+  lda (data_ptr_lo),y
+  cmp #' '
+  bne @found
+  dey
+  cpy #$ff
+  bne @trim_loop
+  ; if here, rolled over without finding a non-space
+  ; so result should be zero, which will be set by the iny
+  ; in @found
+@found:
+  iny
+@result:
+  sty ut_result
+@done:
+  rts
+
 ; outputs:
 ;   bcd_result+0 = low nibble is ones, high nibble is 10s
 ;   bcd_result+1 = hundreds digit

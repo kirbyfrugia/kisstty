@@ -33,7 +33,7 @@ ATARI_SRCS      = main.s \
 		  kbd.s \
 		  line_input.s \
 		  memmove.s \
-		  pctl_kiss.s \
+		  protocol_kiss.s \
 		  term.s \
 		  term_line_input.s \
 		  term_multi_input.s \
