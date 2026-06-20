@@ -57,15 +57,15 @@ li_repaint:
   ldx li_metadata+LineInput::first_visible
   ldy #0
 @loop:
+  sty tempy
   cpx li_metadata+LineInput::data_len
   bcs @fill_char ; past end of data 
-  sty tempy
   txa
   tay
   lda (data_ptr_lo),y
   jmp @draw_char
 @fill_char:
-  lda #'x'
+  lda #' '
 @draw_char:
   jsr ut_atascii_to_icode
   ldy tempy
