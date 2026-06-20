@@ -364,9 +364,9 @@ current_state:         .byte 0
 switch_state:          .byte 0
 
 themes_bg:
-  .byte $02, $c2, $22, $be
+  .byte $be,$02,$c2,$22
 themes_bg_end:
 themes_fg:
-  .byte $0e, $ce, $2e, $b2
+  .byte $b2,$0e,$ce,$2e
 themes_fg_end:
 

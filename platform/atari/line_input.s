@@ -152,7 +152,52 @@ li_char_delete:
 @done:
   rts
 
+; makes space for a new character by moving the char
+; under the cursor to the right along with all following chars
 li_char_insert:
+  ; check if at far right. In that case just blank last char
+  ldy li_metadata+LineInput::data_cursor
+  iny
+  cpy li_metadata+LineInput::data_len
+  beq @blank; already at end
+
+  ; MM_FROM = data_ptr + cursor
+  lda data_ptr_lo
+  clc
+  adc li_metadata+LineInput::data_cursor
+  sta MM_FROM
+  lda data_ptr_hi
+  adc #0
+  sta MM_FROM+1
+
+  ; MM_TO = MM_FROM+1
+  lda MM_FROM
+  clc
+  adc #1
+  sta MM_TO
+  lda MM_FROM+1
+  adc #0
+  sta MM_TO+1
+
+  ; MM_SIZE = data_len - data_cursor +1
+  lda li_metadata+LineInput::data_len
+  sec
+  sbc li_metadata+LineInput::data_cursor
+  clc
+  adc #1
+  sta MM_SIZEL
+  lda #0
+  sta MM_SIZEH
+
+  jsr li_hide_cursor
+  jsr MM_MOVEUP_SS
+@blank:
+  ; fill last cursor char with a blank
+  lda #' '
+  ldy li_metadata+LineInput::data_cursor
+  sta (data_ptr_lo),y
+  jsr li_repaint
+  jsr li_show_cursor
   rts
 
 ; sets the character at the current cursor location to the
