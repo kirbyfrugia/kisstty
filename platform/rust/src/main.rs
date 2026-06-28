@@ -1,9 +1,9 @@
-pub mod app;
-pub mod event;
-pub mod logging;
-pub mod single_instance;
-pub mod ui;
-pub mod tui;
+mod app;
+mod event;
+mod logging;
+mod single_instance;
+mod ui;
+mod tui;
 
 use app::App;
 use color_eyre::Result;
