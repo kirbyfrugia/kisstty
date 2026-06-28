@@ -40,7 +40,7 @@ Special thanks to:
 * Andrew Jacobs for the [binary to BCD code](https://6502.org/source/integers/hex2dec-more.htm) 
 * Bruce Clark for [mem move](https://6502.org/source/general/memory_move.html)
 
-## Note on AI usage
+## Use of AI
 
 My intent with this project is to write all the code myself, and that's what I'm doing. I'm writing the code, the UI, the logic. I'm debugging it myself, painful as that is at times.
 
