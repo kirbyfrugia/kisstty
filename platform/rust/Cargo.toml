@@ -2,3 +2,10 @@
 name = "kisstty"
 version = "0.1.0"
 edition = "2024"
+authors = ["Kirby Frugia <kirby.frugia@gmail.com>"]
+license = "MIT"
+
+[dependencies]
+color-eyre = "0.6.3"
+crossterm = "0.29.0"
+ratatui = "0.30.2"

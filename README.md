@@ -40,7 +40,6 @@ Special thanks to:
 * Andrew Jacobs for the [binary to BCD code](https://6502.org/source/integers/hex2dec-more.htm) 
 * Bruce Clark for [mem move](https://6502.org/source/general/memory_move.html)
 
-
 **Note on AI usage:**
 
 My intent with this project is to write all the code myself, and that's what I'm doing. I'm writing the code, the UI, the logic. I'm debugging it myself, painful as that is at times.
@@ -52,3 +51,10 @@ But I am using UI for some of the stuff I don't care to do myself:
 * I copied and pasted the keycode to ATASCII lookup table from the Atari OS User's manual and had Claude turn that into a lookup file for me.
 * I used it to tweak some of the instructions in my readme files, though I mostly wrote them. It's just a pain in the butt and I don't care if AI does it.
 * I had it write some of the helper scripts like run-atari.sh since I hate writing shell scripts and I wanted to focus on the actual program code.
+
+# License
+
+kisstty is licensed under the MIT License — see [LICENSE](LICENSE).
+
+Third-party code incorporated into this project is credited in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
