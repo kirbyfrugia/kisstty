@@ -1,4 +1,3 @@
-
 use std::{io, panic};
 
 use color_eyre::Result;
@@ -9,16 +8,25 @@ use ratatui::crossterm::{
 
 pub type CrosstermTerminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stderr>>;
 
-use crate::{app::App, event::EventHandler, ui};
+use crate::{
+    app::App,
+    event::EventHandler,
+    ui::MainUi,
+};
 
 pub struct Tui {
+    main_ui: MainUi,
     pub terminal: CrosstermTerminal,
     pub events: EventHandler,
 }
 
 impl Tui {
     pub fn new(terminal: CrosstermTerminal, events: EventHandler) -> Self {
-        Self { terminal, events }
+        Self { 
+            main_ui: MainUi::new(),
+            terminal,
+            events,
+        }
     }
 
     pub fn enter(&mut self) -> Result<()> {
@@ -38,7 +46,7 @@ impl Tui {
 
 
     pub fn draw(&mut self, app: &mut App) -> Result<()> {
-        self.terminal.draw(|frame| ui::render(app, frame))?;
+        self.terminal.draw(|frame| self.main_ui.render(app, frame))?;
         Ok(())
     }
 
