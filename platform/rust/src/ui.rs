@@ -1,41 +1,59 @@
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Spacing},
     style::{Color, Style},
-    widgets::{Block, BorderType, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Wrap},
     symbols::merge::MergeStrategy,
     Frame,
 };
 
 use crate::app::App;
 
-pub fn render(app: &mut App, frame: &mut Frame) {
-    let main_outer_layout = Layout::default()
+const TERMINAL_WIDTH: u16 = 80;
+const SIDEBAR_WIDTH:  u16 = 26;
+const MIN_APP_WIDTH:  u16 = (TERMINAL_WIDTH + 2) + (SIDEBAR_WIDTH + 2);
+
+fn render_too_small(_app: &mut App, frame: &mut Frame) {
+    let warning = Paragraph::new("Make the window wider")
+        .block(
+            Block::default()
+                .title("kisstty")
+                .title_alignment(Alignment::Center)
+                .borders(Borders::ALL)
+        )
+        .style(Style::default().fg(Color::Yellow))
+        .alignment(Alignment::Center)
+        .wrap(Wrap { trim: true });
+
+    frame.render_widget(warning, frame.area());
+}
+
+fn render_full_ui(app: &mut App, frame: &mut Frame) {
+    let window_layout = Layout::default()
         .direction(Direction::Horizontal)
         .spacing(Spacing::Overlap(1))
         .constraints(vec![
             Constraint::Fill(1),
-            Constraint::Length(123),
+            Constraint::Length(MIN_APP_WIDTH),
             Constraint::Fill(1),
         ])
         .split(frame.area());
 
-    let outer_layout = Layout::default()
+    let app_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .spacing(Spacing::Overlap(1))
         .constraints(vec![
-            Constraint::Length(82), // left side
-            Constraint::Length(41), // right side
+            Constraint::Length(TERMINAL_WIDTH+2), // left side
+            Constraint::Length(SIDEBAR_WIDTH+2),  // right side
         ])
-        .split(main_outer_layout[1]);
+        .split(window_layout[1]);
 
-    let output_input_layout = Layout::default()
+    let terminal_layout = Layout::default()
         .direction(Direction::Vertical)
         .spacing(Spacing::Overlap(1))
         .constraints(vec![
             Constraint::Fill(1),   // output
-            Constraint::Length(3), // input
+            Constraint::Length(3), // input plus top/bottom border
         ])
-        .split(outer_layout[0]);
+        .split(app_layout[0]);
 
     let output = Paragraph::new(format!("{}", app.counter))
         .block(
@@ -48,16 +66,15 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         .style(Style::default().fg(Color::Yellow))
         .alignment(Alignment::Left);
 
-
-    frame.render_widget(output, output_input_layout[0]);
+    frame.render_widget(output, terminal_layout[0]);
 
     let input = Block::bordered()
         .style(Style::default().fg(Color::Yellow))
         .merge_borders(MergeStrategy::Exact);
 
-    frame.render_widget(input, output_input_layout[1]);
+    frame.render_widget(input, terminal_layout[1]);
 
-    let temp = Paragraph::new("01234567890123456789012345678901234567890123456789012345678901234567890123456789")
+    let temp = Paragraph::new("Callsign: ")
         .block(
             Block::default()
                 .title("blah")
@@ -68,6 +85,15 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         .style(Style::default().fg(Color::Yellow))
         .alignment(Alignment::Left);
 
-    frame.render_widget(temp, outer_layout[1]);
+    frame.render_widget(temp, app_layout[1]);
 
+}
+
+pub fn render(app: &mut App, frame: &mut Frame) {
+//    tracing::info!(min_width, frame_width=frame.area().width, "width");
+    if frame.area().width < MIN_APP_WIDTH {
+        render_too_small(app, frame);
+    } else {
+        render_full_ui(app, frame);
+    }
 }

@@ -8,4 +8,8 @@ license = "MIT"
 [dependencies]
 color-eyre = "0.6.3"
 crossterm = "0.29.0"
+fs2 = "0.4.3"
 ratatui = "0.30.2"
+tracing = "0.1.44"
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }

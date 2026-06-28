@@ -1,5 +1,7 @@
 pub mod app;
 pub mod event;
+pub mod logging;
+pub mod single_instance;
 pub mod ui;
 pub mod tui;
 
@@ -10,6 +12,18 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use tui::Tui;
 
 fn main() -> Result<()> {
+    // ensure only one instance runs on the machine
+    let _instance = match single_instance::acquire()? {
+        Some(guard) => guard,
+        None => {
+            eprintln!("kisstty is already running, exiting");
+            std::process::exit(1);
+        }
+    };
+
+    let _log_path = logging::init()?;
+    tracing::info!("starting up kisstty");
+
     let mut app = App::new();
 
     let backend = CrosstermBackend::new(std::io::stderr());
@@ -24,11 +38,12 @@ fn main() -> Result<()> {
             Event::Tick => {}
             Event::Key(key_event) => app.handle_key(key_event),
             Event::Mouse(_) => {}
-            Event::Resize(_, _) => {}
+            Event::Resize(_,_) => {}
             Event::SendCommand(command) => app.handle_send_command(command),
         };
     }
 
     tui.exit()?;
+    tracing::info!("shut down kisstty");
     Ok(())
 }
