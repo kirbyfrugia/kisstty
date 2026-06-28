@@ -4,17 +4,20 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::app::Command;
+use crate::command::Command;
 
 use color_eyre::Result;
-use ratatui::crossterm::event::{self, Event as CrosstermEvent, KeyEvent, MouseEvent};
+use ratatui::crossterm::event::{
+    self,
+    Event as CrosstermEvent,
+    KeyEvent,
+};
 
 #[derive(Debug)]
 pub enum Event {
     Tick,
     Key(KeyEvent),
-    Mouse(MouseEvent),
-    Resize(u16, u16),
+    #[allow(dead_code)]
     SendCommand(Command),
 }
 
@@ -49,8 +52,6 @@ impl EventHandler {
                                     Ok(()) // ignore KeyEventKind::Release on windows
                                 }
                             }
-                            CrosstermEvent::Mouse(e) => sender.send(Event::Mouse(e)),
-                            CrosstermEvent::Resize(w, h) => sender.send(Event::Resize(w, h)),
                             _ => Ok(()),
                         }
                         .expect("failed to send terminal event")

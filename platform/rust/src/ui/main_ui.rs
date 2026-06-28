@@ -6,27 +6,20 @@ use ratatui::{
     Frame,
 };
 
-use crate:: {
-    app::App,
-    ui::LineInput,
-};
+use crate::ui::LineInput;
 
 const TERMINAL_WIDTH: u16 = 80;
 const SIDEBAR_WIDTH:  u16 = 26;
 const MIN_APP_WIDTH:  u16 = (TERMINAL_WIDTH + 2) + (SIDEBAR_WIDTH + 2);
 
+#[derive(Debug, Default)]
 pub struct MainUi {
     line_input: LineInput,
 }
 
 impl MainUi {
-    pub fn new() -> Self {
-        Self {
-            line_input: LineInput::new(),
-        }
-    }
-    fn render_too_small(&mut self, _app: &mut App, frame: &mut Frame) {
-        let warning = Paragraph::new("Make the window wider")
+    fn render_too_small(&mut self, frame: &mut Frame) {
+        let warning = Paragraph::new("Terminal window too small. Make it wider.")
             .block(
                 Block::default()
                     .title("kisstty")
@@ -40,7 +33,7 @@ impl MainUi {
         frame.render_widget(warning, frame.area());
     }
 
-    fn render_full_ui(&mut self, app: &mut App, frame: &mut Frame) {
+    fn render_full_ui(&mut self, frame: &mut Frame) {
         let window_layout = Layout::default()
             .direction(Direction::Horizontal)
             .spacing(Spacing::Overlap(1))
@@ -68,7 +61,7 @@ impl MainUi {
             ])
             .split(app_layout[0]);
 
-        let output = Paragraph::new(format!("{}", app.counter))
+        let output = Paragraph::new(format!("NOCALL>NOCALL:some message"))
             .block(
                 Block::default()
                     .title("kisstty")
@@ -90,10 +83,6 @@ impl MainUi {
         frame.render_widget(input_block, terminal_layout[1]);
         frame.render_widget(&self.line_input, input_inner_area);
 
-
-        //line_input.render(input.area(), 
-
-
         let temp = Paragraph::new("Callsign: ")
             .block(
                 Block::default()
@@ -109,12 +98,11 @@ impl MainUi {
 
     }
 
-    pub fn render(&mut self, app: &mut App, frame: &mut Frame) {
-    //    tracing::info!(min_width, frame_width=frame.area().width, "width");
+    pub fn render(&mut self, frame: &mut Frame) {
         if frame.area().width < MIN_APP_WIDTH {
-            self.render_too_small(app, frame);
+            self.render_too_small(frame);
         } else {
-            self.render_full_ui(app, frame);
+            self.render_full_ui(frame);
         }
     }
 }

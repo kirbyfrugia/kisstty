@@ -1,29 +1,26 @@
 use std::{io, panic};
 
 use color_eyre::Result;
-use ratatui::crossterm::{
-    execute,
-    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
+use ratatui::{
+    crossterm::{
+        execute,
+        terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
+    },
+    Frame,
 };
 
 pub type CrosstermTerminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stderr>>;
 
-use crate::{
-    app::App,
-    event::EventHandler,
-    ui::MainUi,
-};
+use crate::event::EventHandler;
 
 pub struct Tui {
-    main_ui: MainUi,
     pub terminal: CrosstermTerminal,
     pub events: EventHandler,
 }
 
 impl Tui {
     pub fn new(terminal: CrosstermTerminal, events: EventHandler) -> Self {
-        Self { 
-            main_ui: MainUi::new(),
+        Self {
             terminal,
             events,
         }
@@ -45,8 +42,8 @@ impl Tui {
     }
 
 
-    pub fn draw(&mut self, app: &mut App) -> Result<()> {
-        self.terminal.draw(|frame| self.main_ui.render(app, frame))?;
+    pub fn draw(&mut self, render: impl FnOnce(&mut Frame)) -> Result<()> {
+        self.terminal.draw(render)?;
         Ok(())
     }
 

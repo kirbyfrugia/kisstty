@@ -5,8 +5,15 @@ use ratatui::{
     widgets::Widget,
 };
 
+#[derive(Debug)]
 pub struct LineInput {
     visible_content: String,
+}
+
+impl Default for LineInput {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Widget for &LineInput {

@@ -52,6 +52,8 @@ But I am using UI for some of the stuff I don't care to do myself:
 * I used it to tweak some of the instructions in my readme files, though I mostly wrote them. It's just a pain in the butt and I don't care if AI does it.
 * I had it write some of the helper scripts like run-atari.sh since I hate writing shell scripts and I wanted to focus on the actual program code.
 
+Also, I'm new to rust, so I'm trying to learn it from scratch by reading books and docs. But I'm also asking claude clarifying questions when I get stuck and don't understand something.
+
 # License
 
 kisstty is licensed under the MIT License — see [LICENSE](LICENSE).
