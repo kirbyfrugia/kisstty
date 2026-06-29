@@ -39,10 +39,8 @@ impl App {
         match key_event.code {
             KeyCode::Char('c') | KeyCode::Char('C') if key_event.modifiers == KeyModifiers::CONTROL => {
                 self.quit()
-            }
-            //KeyCode::Right | KeyCode::Char('j') => self.increment_counter(),
-            //KeyCode::Left | KeyCode::Char('k') => self.decrement_counter(),
-            _ => {}
+            },
+            _ => self.main_ui.handle_key(key_event),
         };
     }
 

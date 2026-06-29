@@ -1,5 +1,6 @@
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Spacing},
+    crossterm::event::{KeyCode, KeyEvent},
+    layout::{Alignment, Constraint, Direction, Layout, Position, Spacing},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph, Wrap},
     symbols::merge::MergeStrategy,
@@ -12,9 +13,17 @@ const TERMINAL_WIDTH: u16 = 80;
 const SIDEBAR_WIDTH:  u16 = 26;
 const MIN_APP_WIDTH:  u16 = (TERMINAL_WIDTH + 2) + (SIDEBAR_WIDTH + 2);
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct MainUi {
     line_input: LineInput,
+}
+
+impl Default for MainUi {
+    fn default() -> Self {
+        Self {
+            line_input: LineInput::new(TERMINAL_WIDTH),
+        }
+    }
 }
 
 impl MainUi {
@@ -96,6 +105,13 @@ impl MainUi {
 
         frame.render_widget(temp, app_layout[1]);
 
+        let cursor_pos = Position{
+            x: input_inner_area.x + &self.line_input.cursor_pos.x,
+            y: input_inner_area.y + &self.line_input.cursor_pos.y,
+        };
+
+        frame.set_cursor_position(cursor_pos);
+
     }
 
     pub fn render(&mut self, frame: &mut Frame) {
@@ -105,4 +121,13 @@ impl MainUi {
             self.render_full_ui(frame);
         }
     }
+
+    pub fn handle_key(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Left => self.line_input.move_cursor_left(),
+            KeyCode::Right => self.line_input.move_cursor_right(),
+            _ => {},
+        };
+    }
+
 }
