@@ -1,3 +1,5 @@
+use std::cmp;
+
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::{
@@ -6,17 +8,23 @@ use ratatui::{
         Direction,
         Layout,
         Position,
-        Spacing
+        Rect,
+        Spacing,
     },
-    style::Style,
+    style::{
+        Color,
+        Modifier,
+        Style,
+    },
     widgets::{
         Block,
         Borders,
+        Clear,
         List,
         ListDirection,
         ListState,
         Paragraph,
-        Wrap
+        Wrap,
     },
     symbols::merge::MergeStrategy,
     Frame,
@@ -61,6 +69,48 @@ impl MainUi {
             .wrap(Wrap { trim: true });
     
         frame.render_widget(warning, frame.area());
+    }
+
+    fn render_slash_popup(&mut self, frame: &mut Frame, inputx: u16, inputy: u16) {
+        let matching: Vec<_> = SLASH_COMMANDS_COMMON
+            .into_iter()
+            .filter(|cmd_str| cmd_str.starts_with(&self.line_input.data))
+            .collect();
+
+        let num_matching: u16 = matching.len().try_into().unwrap();
+
+        if num_matching == 0 { return }
+
+        let mut max_len: u16 = matching
+            .iter()
+            .map(|cmd_str| cmd_str.len())
+            .max()
+            .unwrap_or(3).try_into().unwrap();
+
+        max_len += 3; // + prompt and a space
+
+        let popup_height: u16 = cmp::min(num_matching, 2);
+        tracing::info!(popup_height, "popup height");
+
+        let popup_block = Block::new().title("Matching commands");
+
+        let area = Rect {
+            x: inputx,
+            y: inputy - (popup_height+1),
+            width: max_len,
+            height: popup_height,
+        };
+        frame.render_widget(Clear, area);
+
+        let mut list_state = ListState::default().with_selected(Some(0));
+
+        let list = List::new(matching)
+            .style(Color::White)
+            .highlight_style(Modifier::REVERSED)
+            .highlight_symbol("> ");
+
+        frame.render_stateful_widget(list, area, &mut list_state);
+
     }
 
     fn render_full_ui(&mut self, frame: &mut Frame) {
@@ -154,6 +204,13 @@ impl MainUi {
         let is_slash = self.line_input.is_typing_slash_command();
         tracing::info!(is_slash, "is slash");
 
+        if is_slash {
+            self.render_slash_popup(
+                frame, 
+                terminal_input_block_inner_area.x,
+                terminal_input_block_inner_area.y,
+            );
+        }
 
     }
 

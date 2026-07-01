@@ -10,7 +10,7 @@ use ratatui::{
 #[derive(Debug)]
 pub struct LineInput {
     pub screen_cursor:  usize,
-    data:               String,
+    pub data:           String,
     data_cursor:        usize,
     max_data_len:       usize,
     max_screen_len:     usize,
