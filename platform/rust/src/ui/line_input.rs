@@ -1,54 +1,121 @@
+use std::cmp;
+
 use ratatui::{
     buffer::Buffer,
-    layout::{Position, Rect},
+    layout::Rect,
     style::Style,
     widgets::Widget,
 };
 
 #[derive(Debug)]
 pub struct LineInput {
-    pub cursor_pos:  Position,
-    visible_content: String,
-    data_cursor:     u16,
-    first_visible:   u16,
-    pub max_len:     u16,
+    data:               String,
+    data_cursor:        usize,
+    max_data_len:       usize,
+    pub screen_cursor:  usize,
+    max_screen_len:     usize,
+    data_first_visible: usize,
+    data_last_visible:  usize,
 }
 
 impl Default for LineInput {
     fn default() -> Self {
         Self {
-            visible_content: String::default(),
-            cursor_pos: Position::default(),
+            data: String::default(),
             data_cursor: 0,
-            first_visible: 0,
-            max_len: 0,
+            max_data_len: 0,
+            screen_cursor: 0,
+            max_screen_len: 0,
+            data_first_visible: 0,
+            data_last_visible: 0,
         }
     }
 }
 
 impl Widget for &LineInput {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        buf.set_string(area.left(), area.top(), &self.visible_content, Style::default());
+        tracing::info!(self.data_first_visible, self.data_last_visible, "range");
+        buf.set_string(
+            area.left(),
+            area.top(),
+            &self.data[self.data_first_visible..self.data_last_visible],
+            Style::default()
+        );
     }
 }
 
 impl LineInput {
-    pub fn new(max_len: u16) -> Self {
+    pub fn new(max_data_len: usize, max_screen_len: usize) -> Self {
         Self {
-            max_len,
+            max_data_len,
+            max_screen_len,
             ..Self::default()
         }
     }
 
+    pub fn set_max_len(&mut self, max_data_len: usize, max_screen_len: usize) {
+        self.max_data_len = max_data_len;
+        self.max_screen_len = max_screen_len;
+    }
+
+    fn update_screen_vars(&mut self) {
+        // if the data cursor is off the screen to the left,
+        // bring it back on screen.
+        if self.data_first_visible > self.data_cursor {
+            self.data_first_visible = self.data_cursor;
+        }
+
+        // if the data cursor is off the screen to the right,
+        // bring it back on screen
+        if self.data_cursor - self.data_first_visible >= self.max_screen_len {
+            self.data_first_visible = self.data_cursor - self.max_screen_len;
+        }
+
+        // now let's set the screen cursor to the position of the data cursor
+        self.screen_cursor = self.data_cursor - self.data_first_visible;
+
+        self.data_last_visible = cmp::min(
+            self.max_screen_len,
+            self.data.len() - self.data_first_visible
+        ) + self.data_first_visible;
+
+    }
+
     pub fn move_cursor_left(&mut self) {
-        if self.cursor_pos.x == 0 { return }
-        self.cursor_pos.x = self.cursor_pos.x - 1;
+        if self.data_cursor == 0 { return }
+
+        self.data_cursor -= 1;
+        self.update_screen_vars();
+
     }
 
     pub fn move_cursor_right(&mut self) {
-        tracing::info!(self.cursor_pos.x, self.max_len, "cursor pos");
-        if self.cursor_pos.x + 1 >= self.max_len { return }
-        self.cursor_pos.x = self.cursor_pos.x + 1;
+        if self.data_cursor == self.data.len() { return }
+
+        self.data_cursor += 1;
+        self.update_screen_vars();
+    }
+
+    pub fn insert_char(&mut self, c: char) {
+        if !(c.is_ascii_graphic() || c == ' ') { return }
+        if self.data.len() == usize::from(self.max_data_len) { return }
+
+        self.data.insert(self.data_cursor.into(), c);
+        self.move_cursor_right();
+    }
+
+    pub fn delete_char(&mut self) {
+        if self.data.len() == 0 { return }
+        if self.data_cursor >= self.data.len() { return }
+        self.data.remove(self.data_cursor.into());
+        self.update_screen_vars();
+    }
+
+    pub fn backspace(&mut self) {
+        if self.data_cursor == 0 { return }
+        self.move_cursor_left();
+        self.delete_char();
+        self.update_screen_vars();
     }
 
 }

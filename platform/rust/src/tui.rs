@@ -3,6 +3,7 @@ use std::{io, panic};
 use color_eyre::Result;
 use ratatui::{
     crossterm::{
+        cursor::SetCursorStyle,
         execute,
         terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     },
@@ -28,7 +29,7 @@ impl Tui {
 
     pub fn enter(&mut self) -> Result<()> {
         terminal::enable_raw_mode()?;
-        execute!(io::stderr(), EnterAlternateScreen)?;
+        execute!(io::stderr(), EnterAlternateScreen, SetCursorStyle::BlinkingBar)?;
 
         let panic_hook = panic::take_hook();
         panic::set_hook(Box::new(move |panic| {
@@ -49,7 +50,7 @@ impl Tui {
 
     fn reset() -> Result<()> {
         terminal::disable_raw_mode()?;
-        execute!(io::stderr(), LeaveAlternateScreen)?;
+        execute!(io::stderr(), SetCursorStyle::DefaultUserShape, LeaveAlternateScreen)?;
         Ok(())
     }
 
