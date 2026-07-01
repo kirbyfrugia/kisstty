@@ -1,8 +1,23 @@
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
-    layout::{Alignment, Constraint, Direction, Layout, Position, Spacing},
+    layout::{
+        Alignment,
+        Constraint,
+        Direction,
+        Layout,
+        Position,
+        Spacing
+    },
     style::Style,
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{
+        Block,
+        Borders,
+        List,
+        ListDirection,
+        ListState,
+        Paragraph,
+        Wrap
+    },
     symbols::merge::MergeStrategy,
     Frame,
 };
@@ -13,6 +28,11 @@ const MAX_INPUT_LEN:  usize = 80;
 const TERMINAL_WIDTH: u16   = 80;
 const SIDEBAR_WIDTH:  u16   = 26;
 const MIN_APP_WIDTH:  u16   = (TERMINAL_WIDTH + 4) + (SIDEBAR_WIDTH + 2);
+const SLASH_COMMANDS_COMMON: [&str; 3] = [
+    "/mycall",
+    "/net",
+    "/qso",
+];
 
 #[derive(Debug)]
 pub struct MainUi {
@@ -131,6 +151,8 @@ impl MainUi {
 
         frame.render_widget(sidebar, app_layout[1]);
 
+        let is_slash = self.line_input.is_typing_slash_command();
+        tracing::info!(is_slash, "is slash");
 
 
     }

@@ -9,10 +9,10 @@ use ratatui::{
 
 #[derive(Debug)]
 pub struct LineInput {
+    pub screen_cursor:  usize,
     data:               String,
     data_cursor:        usize,
     max_data_len:       usize,
-    pub screen_cursor:  usize,
     max_screen_len:     usize,
     data_first_visible: usize,
     data_last_visible:  usize,
@@ -34,7 +34,6 @@ impl Default for LineInput {
 
 impl Widget for &LineInput {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        tracing::info!(self.data_first_visible, self.data_last_visible, "range");
         buf.set_string(
             area.left(),
             area.top(),
@@ -116,6 +115,23 @@ impl LineInput {
         self.move_cursor_left();
         self.delete_char();
         self.update_screen_vars();
+    }
+
+    pub fn is_typing_slash_command(&mut self) -> bool {
+        if self.data_cursor == 0 { return false }
+
+        let data_bytes = self.data.as_bytes();
+        let first_byte = data_bytes[0];
+        if first_byte != b'/' { return false }
+
+        for &this_char in data_bytes {
+            match this_char {
+                b' ' => return false,
+                _ => {}
+            }
+        }
+        return true
+
     }
 
 }
