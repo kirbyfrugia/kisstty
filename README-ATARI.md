@@ -19,6 +19,13 @@ git clone https://github.com/cc65/cc65
 cd cc65 && make && sudo make install PREFIX=/usr
 ```
 
+You also need `dir2atr` on your PATH to package the xex into a bootable atr:
+
+```
+git clone https://github.com/HiassofT/AtariSIO
+cd AtariSIO/tools && make dir2atr && sudo cp dir2atr /usr/local/bin/
+```
+
 ## Running kisstty
 
 You can run kisstty on a real Atari or in Altirra.
