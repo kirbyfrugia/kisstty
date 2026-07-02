@@ -1,10 +1,19 @@
 use color_eyre::Result;
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::{
+    crossterm::event::{
+        self,
+        KeyCode,
+        KeyEvent,
+        KeyModifiers
+    },
+    Frame,
+};
+
+
 
 use crate::{
+    event::{Event, EventHandler},
     command::{Command, CommandKind},
-    event::Event,
-    tui::Tui,
     ui::MainUi,
 };
 
@@ -19,15 +28,21 @@ impl App {
         Self::default()
     }
 
-    pub fn run(&mut self, tui: &mut Tui) -> Result<()> {
-        while !self.should_quit {
-            tui.draw(|frame| self.main_ui.render(frame))?;
-            match tui.events.next()? {
-                Event::Tick => {}
-                Event::Key(key_event) => self.handle_key(key_event),
-                Event::SendCommand(command) => self.handle_send_command(command),
-            };
-        }
+    pub fn run(&mut self) -> color_eyre::Result<()> {
+        let events = EventHandler::new(250);
+        ratatui::run(|terminal| -> color_eyre::Result<()> {
+            while !self.should_quit {
+                terminal.draw(|frame| self.main_ui.render(frame))?;
+
+                match events.next()? {
+                    Event::Tick => {}
+                    Event::Key(key_event) => self.handle_key(key_event),
+                    Event::SendCommand(command) => self.handle_send_command(command),
+                };
+            }
+            Ok(())
+        })?;
+
         Ok(())
     }
 

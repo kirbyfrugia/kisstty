@@ -21,7 +21,6 @@ use ratatui::{
         Borders,
         Clear,
         List,
-        ListDirection,
         ListState,
         Paragraph,
         Wrap,
@@ -92,8 +91,6 @@ impl MainUi {
         let popup_height: u16 = cmp::min(num_matching, 2);
         tracing::info!(popup_height, "popup height");
 
-        let popup_block = Block::new().title("Matching commands");
-
         let area = Rect {
             x: inputx,
             y: inputy - (popup_height+1),
@@ -148,7 +145,7 @@ impl MainUi {
         let terminal_output = Paragraph::new(format!("NOCALL>NOCALL:message"))
             .block(
                 Block::default()
-                    .title("kisstty")
+                    .title("kisstty (net)")
                     .title_alignment(Alignment::Left)
                     .borders(Borders::ALL)
                     .merge_borders(MergeStrategy::Exact),
@@ -188,7 +185,7 @@ impl MainUi {
         };
         frame.set_cursor_position(cursor_pos);
 
-        let sidebar = Paragraph::new("Callsign: ")
+        let sidebar = Paragraph::new("Callsign:\n\nActive QSOs:\nABC123\nXYZ456")
             .block(
                 Block::default()
                     .title("blah")
