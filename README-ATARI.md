@@ -11,6 +11,14 @@ make atari-debug
 ```
 This will create an xex file and an atr file in `build/atari/<dist>`.
 
+Requires a current cc65. Old distro packages (e.g. Ubuntu's cc65 2.18) fail with
+`No such scope: 'TextArea'`, so build from source and install with `PREFIX=/usr`:
+
+```
+git clone https://github.com/cc65/cc65
+cd cc65 && make && sudo make install PREFIX=/usr
+```
+
 ## Running kisstty
 
 You can run kisstty on a real Atari or in Altirra.
