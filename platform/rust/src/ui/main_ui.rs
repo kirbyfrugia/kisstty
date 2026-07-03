@@ -14,13 +14,16 @@ use crate::{ ui::{LineInput,MultiLineOutput}, event::Event };
 const MAX_INPUT_LEN: usize             = 80;
 const TERMINAL_WIDTH: u16              = 80;
 const SIDEBAR_WIDTH: u16               = 26;
-const MIN_APP_WIDTH: u16               = (TERMINAL_WIDTH + 4) + (SIDEBAR_WIDTH + 2);
+const OUTPUT_AREA_WIDTH: u16           = (TERMINAL_WIDTH + 4);
+const SIDEBAR_AREA_WIDTH: u16          = SIDEBAR_WIDTH + 2;
+const MIN_APP_WIDTH: u16               = OUTPUT_AREA_WIDTH + SIDEBAR_AREA_WIDTH;
 const MAX_SLASH_POPUP_HEIGHT: u16      = 8;
-const SLASH_COMMANDS_COMMON: [&str; 7] = [
+const SLASH_COMMANDS_COMMON: [&str; 8] = [
     "/help",
     "/mycall",
     "/net",
     "/qso",
+    "/clear",  // clear all the output
     "/exit",
     "/quit",
     "/header", // get header details for a specific msg
@@ -48,11 +51,6 @@ impl MainUi {
         let mut terminal_output = MultiLineOutput::new(
             mlo_event_sender,
         );
-
-        for i in 0..79 {
-            let line = format!("Sample line {}", i);
-            terminal_output.add_line(&line);
-        }
 
         Self {
             terminal_input,
@@ -95,7 +93,7 @@ impl MainUi {
             .max()
             .unwrap_or(3).try_into().unwrap();
 
-        max_len += 3; // + prompt and a space
+        max_len += 10; // + prompt and a space
 
         let popup_height: u16 = cmp::min(num_matching, MAX_SLASH_POPUP_HEIGHT);
         let mut popupy = inputy - (popup_height + 1);
@@ -123,7 +121,7 @@ impl MainUi {
         let area = Rect {
             x: inputx,
             y: popupy,
-            width: popup_width,
+            width: OUTPUT_AREA_WIDTH - 3, // minus border and scroll
             height: popup_height,
         };
         frame.render_widget(Clear, area);
@@ -153,7 +151,7 @@ impl MainUi {
         let app_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(vec![
-                Constraint::Length(TERMINAL_WIDTH+2+2), // left side with room
+                Constraint::Length(OUTPUT_AREA_WIDTH), // left side with room
                                                         // for borders, caret,
                                                         // space, etc.
                 Constraint::Length(SIDEBAR_WIDTH+2),    // right sidebar
@@ -266,7 +264,6 @@ impl MainUi {
         let new_line = format!("message #{}", self.counter);
         self.terminal_output.add_line(&new_line);
         self.counter += 1;
-
     }
 
     pub fn handle_key(&mut self, key_event: KeyEvent) {
@@ -314,6 +311,10 @@ impl MainUi {
             },
             _ => {}
         }
+    }
+
+    fn print_help(&mut self) {
+
     }
 
 }

@@ -11,7 +11,7 @@ use ratatui::{
 
 use crate::{ event::Event };
 
-const MAX_OUTPUT_LINES: usize = 100;
+const MAX_OUTPUT_LINES: usize = 10000;
 
 #[derive(Debug)]
 enum ViewMode {
@@ -47,14 +47,16 @@ impl Widget for &MultiLineOutput {
             buf.set_line(text_area.x, y, &Line::from(line.as_str()), text_area.width);
         }
 
-        let scrollbar = Scrollbar::default()
-            .orientation(ScrollbarOrientation::VerticalRight);
+        if total_lines > max_lines {
+            let scrollbar = Scrollbar::default()
+                .orientation(ScrollbarOrientation::VerticalRight);
 
-        let mut scrollbar_state = ScrollbarState::new(max_scroll + 1)
-            .viewport_content_length(max_lines)
-            .position(top);
+            let mut scrollbar_state = ScrollbarState::new(max_scroll + 1)
+                .viewport_content_length(max_lines)
+                .position(top);
 
-        scrollbar.render(area, buf, &mut scrollbar_state);
+            scrollbar.render(area, buf, &mut scrollbar_state);
+        }
     }
 }
 
