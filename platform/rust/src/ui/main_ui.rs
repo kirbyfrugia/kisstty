@@ -249,19 +249,21 @@ impl MainUi {
         };
     }
 
+    fn tab_complete(&mut self) {
+        let matched: Vec<_> = SLASH_COMMANDS_COMMON
+            .into_iter()
+            .filter(|cmd_str| cmd_str.starts_with(&self.line_input.data))
+            .collect();
+
+        if matched.len() == 0 { return }
+
+        self.line_input.replace_data(matched.first().expect("wtf"));
+
+    }
+
     fn handle_tab(&mut self) {
         let in_slash = self.line_input.is_typing_slash_command();
-        if in_slash {
-            let matched: Vec<_> = SLASH_COMMANDS_COMMON
-                .into_iter()
-                .filter(|cmd_str| cmd_str.starts_with(&self.line_input.data))
-                .collect();
-
-            if matched.len() == 0 { return }
-
-            self.line_input.replace_data(matched.first().expect("wtf"));
-        }
-
+        if in_slash { self.tab_complete(); }
     }
 
     fn handle_enter(&mut self) {
