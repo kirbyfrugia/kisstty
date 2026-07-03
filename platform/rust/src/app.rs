@@ -36,7 +36,7 @@ impl App {
                 terminal.draw(|frame| self.main_ui.render(frame))?;
 
                 match self.events.next()? {
-                    Event::Tick => {}
+                    Event::Tick =>  self.main_ui.tick(),
                     Event::Key(key_event) => self.handle_key(key_event),
 //                    Event::SendCommand(command) => self.handle_send_command(command),
                     Event::Quit => self.quit()
