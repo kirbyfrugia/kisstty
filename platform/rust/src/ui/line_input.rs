@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{ cmp, sync::mpsc };
 
 use ratatui::{
     buffer::Buffer,
@@ -7,8 +7,11 @@ use ratatui::{
     widgets::Widget,
 };
 
+use crate::{ event::Event };
+
 #[derive(Debug)]
 pub struct LineInput {
+    _event_sender:       mpsc::Sender<Event>,
     pub screen_cursor:  usize,
     pub data:           String,
     data_cursor:        usize,
@@ -16,20 +19,6 @@ pub struct LineInput {
     max_screen_len:     usize,
     data_first_visible: usize,
     data_last_visible:  usize,
-}
-
-impl Default for LineInput {
-    fn default() -> Self {
-        Self {
-            data: String::default(),
-            data_cursor: 0,
-            max_data_len: 0,
-            screen_cursor: 0,
-            max_screen_len: 0,
-            data_first_visible: 0,
-            data_last_visible: 0,
-        }
-    }
 }
 
 impl Widget for &LineInput {
@@ -44,11 +33,16 @@ impl Widget for &LineInput {
 }
 
 impl LineInput {
-    pub fn new(max_data_len: usize, max_screen_len: usize) -> Self {
+    pub fn new(max_data_len: usize, max_screen_len: usize, event_sender: mpsc::Sender<Event>) -> Self {
         Self {
             max_data_len,
             max_screen_len,
-            ..Self::default()
+            _event_sender: event_sender,
+            data_cursor: 0,
+            screen_cursor: 0,
+            data_first_visible: 0,
+            data_last_visible: 0,
+            data: String::new(),
         }
     }
 
@@ -114,6 +108,17 @@ impl LineInput {
         if self.data_cursor == 0 { return }
         self.move_cursor_left();
         self.delete_char();
+        self.update_screen_vars();
+    }
+
+    pub fn replace_data(&mut self, data: &str) {
+        if data.len() > self.max_data_len {
+            self.data = data[0..self.max_data_len].to_string();
+        } else {
+            self.data = data.to_string();
+        }
+
+        self.data_cursor = self.data.len();
         self.update_screen_vars();
     }
 

@@ -4,8 +4,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::command::Command;
-
 use color_eyre::Result;
 use ratatui::crossterm::event::{
     self,
@@ -17,8 +15,8 @@ use ratatui::crossterm::event::{
 pub enum Event {
     Tick,
     Key(KeyEvent),
-    #[allow(dead_code)]
-    SendCommand(Command),
+    //SendCommand(Command),
+    Quit,
 }
 
 #[derive(Debug)]
@@ -69,6 +67,10 @@ impl EventHandler {
             receiver,
             handler,
         }
+    }
+
+    pub fn sender(&self) -> mpsc::Sender<Event> {
+        self.sender.clone()
     }
 
     pub fn next(&self) -> Result<Event> {
