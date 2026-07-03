@@ -1,8 +1,14 @@
+use std::io;
+
 use ratatui::{
-    crossterm::event::{
-        KeyCode,
-        KeyEvent,
-        KeyModifiers
+    crossterm::{
+        cursor::SetCursorStyle,
+        event::{
+            KeyCode,
+            KeyEvent,
+            KeyModifiers
+        },
+        execute,
     },
 };
 
@@ -32,6 +38,8 @@ impl App {
 
     pub fn run(&mut self) -> color_eyre::Result<()> {
         ratatui::run(|terminal| -> color_eyre::Result<()> {
+            execute!(io::stdout(), SetCursorStyle::BlinkingBar)?;
+
             while !self.should_quit {
                 terminal.draw(|frame| self.main_ui.render(frame))?;
 
@@ -44,6 +52,8 @@ impl App {
             }
             Ok(())
         })?;
+
+        execute!(io::stdout(), SetCursorStyle::DefaultUserShape)?;
 
         Ok(())
     }
