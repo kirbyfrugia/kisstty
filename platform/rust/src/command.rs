@@ -1,14 +1,12 @@
-#[derive(Debug)]
-pub enum CommandKind {
-    APRSSendMessage,
-    APRSSendStatus,
-}
+use ratatui::crossterm::event::KeyEvent;
 
 #[derive(Debug)]
-pub struct Command {
-    pub command: &'static CommandKind,
-    pub friendly: &'static str,
-    pub data: String,
+pub enum Command {
+    AprsSendMessage(String),
+    AprsSendStatus(String),
+    Clear,
+    Exit,
+    Quit,
+    UserKey(KeyEvent),
 }
-
 

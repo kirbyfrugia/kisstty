@@ -9,7 +9,7 @@ use ratatui::{
     },
 };
 
-use crate::{ event::Event };
+use crate::{ event::Event, command::Command };
 
 const MAX_OUTPUT_LINES: usize = 10000;
 
@@ -119,5 +119,20 @@ impl MultiLineOutput {
 
     pub fn scroll_to_bottom(&mut self) {
         self.view_mode = ViewMode::Follow;
+    }
+
+    pub fn clear(&mut self) {
+        self.lines.clear();
+        self.view_mode = ViewMode::Follow;
+    }
+
+    pub fn try_handle(&mut self, command: &Command) -> bool {
+        match command {
+            Command::Clear => {
+                self.clear();
+                true
+            },
+            _ => false,
+        }
     }
 }

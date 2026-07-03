@@ -3,6 +3,7 @@ mod command;
 mod event;
 mod logging;
 mod single_instance;
+mod slash;
 mod ui;
 
 use app::App;

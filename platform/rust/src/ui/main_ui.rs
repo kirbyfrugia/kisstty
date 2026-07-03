@@ -4,12 +4,12 @@ use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::{ Alignment, Constraint, Direction, Layout, Position, Rect, Spacing, },
     style::{ Color, Modifier, Style, },
-    widgets::{ Block, Borders, Clear, List, ListState, Paragraph, Wrap, },
+    widgets::{ Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap, },
     symbols::merge::MergeStrategy,
     Frame,
 };
 
-use crate::{ ui::{LineInput,MultiLineOutput}, event::Event };
+use crate::{ ui::{LineInput,MultiLineOutput}, event::Event, slash::SlashCommand, command::Command };
 
 const MAX_INPUT_LEN: usize             = 80;
 const TERMINAL_WIDTH: u16              = 80;
@@ -18,16 +18,6 @@ const OUTPUT_AREA_WIDTH: u16           = (TERMINAL_WIDTH + 4);
 const SIDEBAR_AREA_WIDTH: u16          = SIDEBAR_WIDTH + 2;
 const MIN_APP_WIDTH: u16               = OUTPUT_AREA_WIDTH + SIDEBAR_AREA_WIDTH;
 const MAX_SLASH_POPUP_HEIGHT: u16      = 8;
-const SLASH_COMMANDS_COMMON: [&str; 8] = [
-    "/help",
-    "/mycall",
-    "/net",
-    "/qso",
-    "/clear",  // clear all the output
-    "/exit",
-    "/quit",
-    "/header", // get header details for a specific msg
-];
 
 #[derive(Debug)]
 pub struct MainUi {
@@ -78,39 +68,25 @@ impl MainUi {
     }
 
     fn render_slash_popup(&mut self, frame: &mut Frame, inputx: u16, inputy: u16) {
-        let matching: Vec<_> = SLASH_COMMANDS_COMMON
-            .into_iter()
-            .filter(|cmd_str| cmd_str.starts_with(&self.terminal_input.data))
-            .collect();
+        let matching = SlashCommand::matching(&self.terminal_input.data);
 
         let num_matching: u16 = matching.len().try_into().unwrap();
 
         if num_matching == 0 { return }
 
-        let mut max_len: u16 = matching
-            .iter()
-            .map(|cmd_str| cmd_str.len())
-            .max()
-            .unwrap_or(3).try_into().unwrap();
-
-        max_len += 10; // + prompt and a space
-
         let popup_height: u16 = cmp::min(num_matching, MAX_SLASH_POPUP_HEIGHT);
         let mut popupy = inputy - (popup_height + 1);
-        let mut popup_width: u16 = max_len;
 
         // if we have too many items in the popup, render a ...
         if popup_height < num_matching {
             let num_hidden = num_matching - popup_height;
             let ellipsis_str = format!("  ...{} more", num_hidden);
 
-            popup_width = cmp::max(max_len, (ellipsis_str.len()+1).try_into().unwrap());
-
             popupy -= 1;
             let area = Rect {
                 x: inputx,
                 y: inputy - 2,
-                width: popup_width,
+                width: OUTPUT_AREA_WIDTH - 3,
                 height: 1
             };
 
@@ -126,7 +102,14 @@ impl MainUi {
         };
         frame.render_widget(Clear, area);
 
-        let list = List::new(matching)
+        let slash_width = SlashCommand::max_slash_width();
+
+        let items: Vec<ListItem> = matching
+            .iter()
+            .map(|cmd| ListItem::new(format!("{:<slash_width$} {}", cmd.slash, cmd.friendly)))
+            .collect();
+
+        let list = List::new(items)
             .style(Color::White)
             .highlight_style(Modifier::REVERSED)
             .highlight_symbol("> ");
@@ -266,6 +249,11 @@ impl MainUi {
         self.counter += 1;
     }
 
+    pub fn try_handle(&mut self, command: &Command) -> bool {
+        self.terminal_input.try_handle(command)
+            || self.terminal_output.try_handle(command)
+    }
+
     pub fn handle_key(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Up => self.terminal_output.scroll_up(),
@@ -288,14 +276,11 @@ impl MainUi {
     }
 
     fn tab_complete(&mut self) {
-        let matched: Vec<_> = SLASH_COMMANDS_COMMON
-            .into_iter()
-            .filter(|cmd_str| cmd_str.starts_with(&self.terminal_input.data))
-            .collect();
+        let matched = SlashCommand::matching(&self.terminal_input.data);
 
         if matched.len() == 0 { return }
 
-        self.terminal_input.replace_data(matched.first().expect("wtf"));
+        self.terminal_input.replace_data(matched.first().expect("wtf").slash);
 
     }
 
@@ -305,11 +290,14 @@ impl MainUi {
     }
 
     fn handle_enter(&mut self) {
-        match self.terminal_input.data.as_str() {
-            "/exit"|"/quit" => {
-                let _ = self.event_sender.send(Event::Quit);
-            },
-            _ => {}
+        let input = self.terminal_input.data.clone();
+        let (name, args) = input.split_once(' ').unwrap_or((input.as_str(), ""));
+
+        if let Some(slash) = SlashCommand::find(name) {
+            if let Some(command) = (slash.parse)(args) {
+                let _ = self.event_sender.send(Event::SendCommand(command));
+                self.terminal_input.replace_data("");
+            }
         }
     }
 

@@ -13,6 +13,7 @@ use ratatui::{
 };
 
 use crate::{
+    command::Command,
     event::{Event, EventHandler},
     ui::MainUi,
 };
@@ -46,7 +47,7 @@ impl App {
                 match self.events.next()? {
                     Event::Tick =>  self.main_ui.tick(),
                     Event::Key(key_event) => self.handle_key(key_event),
-//                    Event::SendCommand(command) => self.handle_send_command(command),
+                    Event::SendCommand(command) => self.handle_command(command),
                     Event::Quit => self.quit()
                 };
             }
@@ -71,12 +72,22 @@ impl App {
         };
     }
 
-//    pub fn handle_send_command(&mut self, command: Command) {
-//        match command.kind {
-//            CommandKind::APRSSendMessage => {}
-//            CommandKind::APRSSendStatus => {}
-//        };
-//    }
+    fn handle_command(&mut self, command: Command) {
+        if self.try_handle(&command) { return }
+        if self.main_ui.try_handle(&command) { return }
+
+        tracing::warn!("unhandled command: {:?}", command);
+    }
+
+    fn try_handle(&mut self, command: &Command) -> bool {
+        match command {
+            Command::Exit | Command::Quit => {
+                self.quit();
+                true
+            },
+            _ => false,
+        }
+    }
 
 }
 

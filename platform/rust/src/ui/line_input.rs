@@ -7,7 +7,7 @@ use ratatui::{
     widgets::Widget,
 };
 
-use crate::{ event::Event };
+use crate::{ event::Event, command::Command };
 
 #[derive(Debug)]
 pub struct LineInput {
@@ -137,6 +137,10 @@ impl LineInput {
         }
         return true
 
+    }
+
+    pub fn try_handle(&mut self, _command: &Command) -> bool {
+        false
     }
 
 }

@@ -1,3 +1,5 @@
+use crate::{command::Command};
+
 use std::{
     sync::mpsc,
     thread,
@@ -15,7 +17,7 @@ use ratatui::crossterm::event::{
 pub enum Event {
     Tick,
     Key(KeyEvent),
-    //SendCommand(Command),
+    SendCommand(Command),
     Quit,
 }
 
