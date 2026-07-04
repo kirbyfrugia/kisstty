@@ -1,7 +1,11 @@
+mod config_ui;
 mod line_input;
-mod multi_line_output;
 mod main_ui;
+mod multi_line_output;
+mod too_small_ui;
 
+pub use config_ui::ConfigUi;
 pub use line_input::LineInput;
-pub use multi_line_output::MultiLineOutput;
 pub use main_ui::MainUi;
+pub use multi_line_output::MultiLineOutput;
+pub use too_small_ui::TooSmallUi;

@@ -15,15 +15,6 @@ pub const SLASH_COMMANDS: &[SlashCommand] = &[
         to_command: |_| Some(Command::Help),
     },
     SlashCommand {
-        slash:      "/mycall",
-        args:       "<callsign>",
-        friendly:   "Set your callsign",
-        to_command: |a| match a {
-            [c] => Some(Command::Mycall(c.to_string())),
-            _   => None,
-        },
-    },
-    SlashCommand {
         slash:      "/net",
         args:       "",
         friendly:   "Switch to net mode",
@@ -43,6 +34,12 @@ pub const SLASH_COMMANDS: &[SlashCommand] = &[
         args:       "",
         friendly:   "Clear all the output",
         to_command: |_| Some(Command::Clear),
+    },
+    SlashCommand {
+        slash:      "/config",
+        args:       "",
+        friendly:   "Open configuration",
+        to_command: |_| Some(Command::Config),
     },
     SlashCommand {
         slash:      "/exit",

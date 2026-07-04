@@ -2,9 +2,9 @@ use std::{ cmp, sync::mpsc };
 
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
-    layout::{ Alignment, Constraint, Direction, Layout, Position, Rect, Spacing, },
+    layout::{ Alignment, Constraint, Direction, Layout, Position, Rect, Size, Spacing, },
     style::{ Color, Modifier, Style, },
-    widgets::{ Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap, },
+    widgets::{ Block, Borders, Clear, List, ListItem, ListState, Paragraph, },
     symbols::merge::MergeStrategy,
     Frame,
 };
@@ -21,8 +21,8 @@ const TERMINAL_WIDTH: u16              = 80;
 const SIDEBAR_WIDTH: u16               = 26;
 const OUTPUT_AREA_WIDTH: u16           = TERMINAL_WIDTH + 4;
 const SIDEBAR_AREA_WIDTH: u16          = SIDEBAR_WIDTH + 2;
-const MIN_APP_WIDTH: u16               = OUTPUT_AREA_WIDTH + SIDEBAR_AREA_WIDTH;
 const MAX_SLASH_POPUP_HEIGHT: u16      = 8;
+const INPUT_HEIGHT: u16                = 3;
 
 #[derive(Debug)]
 pub struct MainUi {
@@ -33,6 +33,11 @@ pub struct MainUi {
 }
 
 impl MainUi {
+    pub const MIN_SIZE: Size = Size {
+        width: OUTPUT_AREA_WIDTH + SIDEBAR_AREA_WIDTH,
+        height: INPUT_HEIGHT + MAX_SLASH_POPUP_HEIGHT + 3,
+    };
+
     pub fn new(event_sender: mpsc::Sender<Event>) -> Self {
         let li_event_sender = event_sender.clone();
         let terminal_input = LineInput::new(
@@ -53,21 +58,6 @@ impl MainUi {
             slash_popup_list_state: ListState::default()
                 .with_selected(Some(0)),
         }
-    }
-
-    fn render_too_small(&mut self, frame: &mut Frame) {
-        let warning = Paragraph::new("Terminal window too small. Make it wider.")
-            .block(
-                Block::default()
-                    .title("kisstty")
-                    .title_alignment(Alignment::Center)
-                    .borders(Borders::ALL)
-            )
-            .style(Style::default())
-            .alignment(Alignment::Center)
-            .wrap(Wrap { trim: true });
-    
-        frame.render_widget(warning, frame.area());
     }
 
     fn render_slash_popup(&mut self, frame: &mut Frame, inputx: u16, inputy: u16) {
@@ -121,13 +111,13 @@ impl MainUi {
 
     }
 
-    fn render_full_ui(&mut self, frame: &mut Frame) {
+    pub fn render(&mut self, frame: &mut Frame) {
         let window_layout = Layout::default()
             .direction(Direction::Horizontal)
             .spacing(Spacing::Overlap(1))
             .constraints(vec![
                 Constraint::Fill(1),
-                Constraint::Length(MIN_APP_WIDTH),
+                Constraint::Length(Self::MIN_SIZE.width),
                 Constraint::Fill(1),
             ])
             .split(frame.area());
@@ -238,14 +228,6 @@ impl MainUi {
 
     }
 
-    pub fn render(&mut self, frame: &mut Frame) {
-        if frame.area().width < MIN_APP_WIDTH {
-            self.render_too_small(frame);
-        } else {
-            self.render_full_ui(frame);
-        }
-    }
-
     pub fn tick(&mut self) {
 //        let new_line = format!("message #{}", self.counter);
 //        self.terminal_output.add_line(&new_line);
@@ -311,6 +293,7 @@ impl MainUi {
 
     fn handle_enter(&mut self) {
         let input = self.terminal_input.data.clone();
+        if input.len() == 0 { return }
         let mut parts = input.split_whitespace();
         let name = parts.next().unwrap_or("");
         let args: Vec<&str> = parts.collect();
@@ -323,6 +306,9 @@ impl MainUi {
                 }
                 None => self.terminal_output.add_line(&format!("usage: {}", slash.usage())),
             }
+        }
+        else {
+            self.terminal_output.add_line("sending message...");
         }
     }
 
