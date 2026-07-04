@@ -1,20 +1,70 @@
 use crate::command::Command;
 
 pub struct SlashCommand {
-    pub slash:    &'static str,
-    pub friendly: &'static str,
-    pub parse:    fn(&str) -> Option<Command>,
+    pub slash:      &'static str,
+    pub args:       &'static str,
+    pub friendly:   &'static str,
+    pub to_command: fn(&[&str]) -> Option<Command>,
 }
 
 pub const SLASH_COMMANDS: &[SlashCommand] = &[
-    SlashCommand { slash: "/help",   friendly: "Show help",                        parse: |_| Some(Command::Help) },
-    SlashCommand { slash: "/mycall", friendly: "Set your callsign",                parse: |_| None },
-    SlashCommand { slash: "/net",    friendly: "Join or leave a net",              parse: |_| None },
-    SlashCommand { slash: "/qso",    friendly: "Start a QSO",                      parse: |_| None },
-    SlashCommand { slash: "/clear",  friendly: "Clear all the output",             parse: |_| Some(Command::Clear) },
-    SlashCommand { slash: "/exit",   friendly: "Exit kisstty",                     parse: |_| Some(Command::Exit) },
-    SlashCommand { slash: "/quit",   friendly: "Exit kisstty",                     parse: |_| Some(Command::Quit) },
-    SlashCommand { slash: "/header", friendly: "Get header details for a message", parse: |_| None },
+    SlashCommand {
+        slash:      "/help",
+        args:       "",
+        friendly:   "Show help",
+        to_command: |_| Some(Command::Help),
+    },
+    SlashCommand {
+        slash:      "/mycall",
+        args:       "<callsign>",
+        friendly:   "Set your callsign",
+        to_command: |a| match a {
+            [c] => Some(Command::Mycall(c.to_string())),
+            _   => None,
+        },
+    },
+    SlashCommand {
+        slash:      "/net",
+        args:       "",
+        friendly:   "Switch to net mode",
+        to_command: |_| Some(Command::Net),
+    },
+    SlashCommand {
+        slash:      "/qso",
+        args:       "<callsign>",
+        friendly:   "Start a QSO",
+        to_command: |a| match a {
+            [c] => Some(Command::Qso(c.to_string())),
+            _   => None,
+        },
+    },
+    SlashCommand {
+        slash:      "/clear",
+        args:       "",
+        friendly:   "Clear all the output",
+        to_command: |_| Some(Command::Clear),
+    },
+    SlashCommand {
+        slash:      "/exit",
+        args:       "",
+        friendly:   "Exit kisstty",
+        to_command: |_| Some(Command::Exit),
+    },
+    SlashCommand {
+        slash:      "/quit",
+        args:       "",
+        friendly:   "Exit kisstty",
+        to_command: |_| Some(Command::Quit),
+    },
+    SlashCommand {
+        slash:      "/header",
+        args:       "<message-id>",
+        friendly:   "Get header details for a message",
+        to_command: |a| match a {
+            [id] => Some(Command::Header(id.to_string())),
+            _    => None,
+        },
+    },
 ];
 
 impl SlashCommand {
@@ -31,10 +81,18 @@ impl SlashCommand {
             .find(|cmd| cmd.slash == name)
     }
 
-    pub fn max_slash_width() -> usize {
+    pub fn usage(&self) -> String {
+        if self.args.is_empty() {
+            self.slash.to_string()
+        } else {
+            format!("{} {}", self.slash, self.args)
+        }
+    }
+
+    pub fn max_usage_width() -> usize {
         SLASH_COMMANDS
             .iter()
-            .map(|cmd| cmd.slash.len())
+            .map(|cmd| cmd.usage().len())
             .max()
             .unwrap_or(0)
     }

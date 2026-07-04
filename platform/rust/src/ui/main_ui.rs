@@ -107,11 +107,11 @@ impl MainUi {
         };
         frame.render_widget(Clear, area);
 
-        let slash_width = SlashCommand::max_slash_width();
+        let usage_width = SlashCommand::max_usage_width();
 
         let items: Vec<ListItem> = matching
             .iter()
-            .map(|cmd| ListItem::new(format!("{:<slash_width$} {}", cmd.slash, cmd.friendly)))
+            .map(|cmd| ListItem::new(format!("{:<usage_width$}  {}", cmd.usage(), cmd.friendly)))
             .collect();
 
         let list = List::new(items)
@@ -249,9 +249,9 @@ impl MainUi {
     }
 
     pub fn tick(&mut self) {
-        let new_line = format!("message #{}", self.counter);
-        self.terminal_output.add_line(&new_line);
-        self.counter += 1;
+//        let new_line = format!("message #{}", self.counter);
+//        self.terminal_output.add_line(&new_line);
+//        self.counter += 1;
     }
 
     pub fn try_handle(&mut self, command: &Command) -> bool {
@@ -294,8 +294,13 @@ impl MainUi {
 
         if matched.len() == 0 { return }
 
-        self.terminal_input.replace_data(matched.first().expect("wtf").slash);
-
+        let cmd = matched.first().expect("wtf");
+        let completed = if cmd.args.is_empty() {
+            cmd.slash.to_string()
+        } else {
+            format!("{} ", cmd.slash)
+        };
+        self.terminal_input.replace_data(&completed);
     }
 
     fn handle_tab(&mut self) {
@@ -305,12 +310,17 @@ impl MainUi {
 
     fn handle_enter(&mut self) {
         let input = self.terminal_input.data.clone();
-        let (name, args) = input.split_once(' ').unwrap_or((input.as_str(), ""));
+        let mut parts = input.split_whitespace();
+        let name = parts.next().unwrap_or("");
+        let args: Vec<&str> = parts.collect();
 
         if let Some(slash) = SlashCommand::find(name) {
-            if let Some(command) = (slash.parse)(args) {
-                let _ = self.event_sender.send(Event::SendCommand(command));
-                self.terminal_input.replace_data("");
+            match (slash.to_command)(&args) {
+                Some(command) => {
+                    let _ = self.event_sender.send(Event::SendCommand(command));
+                    self.terminal_input.replace_data("");
+                }
+                None => self.terminal_output.add_line(&format!("usage: {}", slash.usage())),
             }
         }
     }
