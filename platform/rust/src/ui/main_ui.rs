@@ -12,7 +12,7 @@ use ratatui::{
 use crate::{
     ui::{LineInput,MultiLineOutput},
     event::Event,
-    slash::SlashCommand,
+    slash::{SlashCommand, SLASH_COMMANDS},
     command::Command,
 };
 
@@ -331,8 +331,16 @@ impl MainUi {
     }
 
     fn print_help(&mut self) {
-        let help = String::from("help!");
-        self.terminal_output.add_line(&help);
+        let usage_width = SlashCommand::max_usage_width();
+
+        self.terminal_output.add_line("Available commands:");
+        for cmd in SLASH_COMMANDS {
+            self.terminal_output.add_line(&format!(
+                "  {:<usage_width$}  {}",
+                cmd.usage(),
+                cmd.friendly,
+            ));
+        }
     }
 
 }
