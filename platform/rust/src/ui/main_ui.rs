@@ -9,12 +9,17 @@ use ratatui::{
     Frame,
 };
 
-use crate::{ ui::{LineInput,MultiLineOutput}, event::Event, slash::SlashCommand, command::Command };
+use crate::{
+    ui::{LineInput,MultiLineOutput},
+    event::Event,
+    slash::SlashCommand,
+    command::Command,
+};
 
 const MAX_INPUT_LEN: usize             = 80;
 const TERMINAL_WIDTH: u16              = 80;
 const SIDEBAR_WIDTH: u16               = 26;
-const OUTPUT_AREA_WIDTH: u16           = (TERMINAL_WIDTH + 4);
+const OUTPUT_AREA_WIDTH: u16           = TERMINAL_WIDTH + 4;
 const SIDEBAR_AREA_WIDTH: u16          = SIDEBAR_WIDTH + 2;
 const MIN_APP_WIDTH: u16               = OUTPUT_AREA_WIDTH + SIDEBAR_AREA_WIDTH;
 const MAX_SLASH_POPUP_HEIGHT: u16      = 8;
@@ -38,7 +43,7 @@ impl MainUi {
         );
 
         let mlo_event_sender = event_sender.clone();
-        let mut terminal_output = MultiLineOutput::new(
+        let terminal_output = MultiLineOutput::new(
             mlo_event_sender,
         );
 
@@ -250,11 +255,16 @@ impl MainUi {
     }
 
     pub fn try_handle(&mut self, command: &Command) -> bool {
-        self.terminal_input.try_handle(command)
-            || self.terminal_output.try_handle(command)
+        match command {
+            Command::UserKey(key_event) => self.handle_key(key_event),
+            _ => {
+                self.terminal_input.try_handle(command) ||
+                    self.terminal_output.try_handle(command)
+            }
+        }
     }
 
-    pub fn handle_key(&mut self, key_event: KeyEvent) {
+    pub fn handle_key(&mut self, key_event: &KeyEvent) -> bool {
         match key_event.code {
             KeyCode::Up => self.terminal_output.scroll_up(),
             KeyCode::Down => self.terminal_output.scroll_down(),
@@ -270,9 +280,9 @@ impl MainUi {
             KeyCode::Char(c) => {
                 self.terminal_input.insert_char(c);
             }
-            _ => { },
-
-        };
+            _ => return false,
+        }
+        true
     }
 
     fn tab_complete(&mut self) {

@@ -92,7 +92,7 @@ impl MultiLineOutput {
                 let top = self.max_scroll.get();
                 ViewMode::Paused(top)
             },
-            ViewMode::Paused(top) => ViewMode::Follow
+            ViewMode::Paused(_) => ViewMode::Follow
         }
     }
 

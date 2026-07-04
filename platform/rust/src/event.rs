@@ -10,15 +10,12 @@ use color_eyre::Result;
 use ratatui::crossterm::event::{
     self,
     Event as CrosstermEvent,
-    KeyEvent,
 };
 
 #[derive(Debug)]
 pub enum Event {
     Tick,
-    Key(KeyEvent),
     SendCommand(Command),
-    Quit,
 }
 
 #[derive(Debug)]
@@ -47,14 +44,12 @@ impl EventHandler {
                         match event::read().expect("unable to read event") {
                             CrosstermEvent::Key(e) => {
                                 if e.kind == event::KeyEventKind::Press {
-                                    sender.send(Event::Key(e))
-                                } else {
-                                    Ok(()) // ignore KeyEventKind::Release on windows
+                                    sender.send(Event::SendCommand(Command::UserKey(e)))
+                                        .expect("failed to send terminal event");
                                 }
-                            }
-                            _ => Ok(()),
+                            },
+                            _ => {}
                         }
-                        .expect("failed to send terminal event")
                     }
 
                     if last_tick.elapsed() >= tick_rate {

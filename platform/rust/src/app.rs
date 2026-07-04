@@ -46,9 +46,7 @@ impl App {
 
                 match self.events.next()? {
                     Event::Tick =>  self.main_ui.tick(),
-                    Event::Key(key_event) => self.handle_key(key_event),
                     Event::SendCommand(command) => self.handle_command(command),
-                    Event::Quit => self.quit()
                 };
             }
             Ok(())
@@ -63,13 +61,14 @@ impl App {
         self.should_quit = true;
     }
 
-    pub fn handle_key(&mut self, key_event: KeyEvent) {
+    pub fn handle_key(&mut self, key_event: &KeyEvent) -> bool {
         match key_event.code {
             KeyCode::Char('c') | KeyCode::Char('C') if key_event.modifiers == KeyModifiers::CONTROL => {
-                self.quit()
+                self.quit();
+                true
             },
-            _ => self.main_ui.handle_key(key_event),
-        };
+            _ => false,
+        }
     }
 
     fn handle_command(&mut self, command: Command) {
@@ -85,6 +84,9 @@ impl App {
                 self.quit();
                 true
             },
+            Command::UserKey(key_event) => {
+                self.handle_key(key_event)
+            }
             _ => false,
         }
     }
