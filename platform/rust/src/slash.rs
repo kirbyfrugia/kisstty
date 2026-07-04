@@ -7,7 +7,7 @@ pub struct SlashCommand {
 }
 
 pub const SLASH_COMMANDS: &[SlashCommand] = &[
-    SlashCommand { slash: "/help",   friendly: "Show help",                        parse: |_| None },
+    SlashCommand { slash: "/help",   friendly: "Show help",                        parse: |_| Some(Command::Help) },
     SlashCommand { slash: "/mycall", friendly: "Set your callsign",                parse: |_| None },
     SlashCommand { slash: "/net",    friendly: "Join or leave a net",              parse: |_| None },
     SlashCommand { slash: "/qso",    friendly: "Start a QSO",                      parse: |_| None },

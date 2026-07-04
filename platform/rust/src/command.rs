@@ -6,7 +6,9 @@ pub enum Command {
     AprsSendStatus(String),
     Clear,
     Exit,
+    Help,
     Quit,
     UserKey(KeyEvent),
+    OutputToTerminal(String),
 }
 

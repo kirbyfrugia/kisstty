@@ -257,6 +257,10 @@ impl MainUi {
     pub fn try_handle(&mut self, command: &Command) -> bool {
         match command {
             Command::UserKey(key_event) => self.handle_key(key_event),
+            Command::Help => {
+                self.print_help();
+                true
+            },
             _ => {
                 self.terminal_input.try_handle(command) ||
                     self.terminal_output.try_handle(command)
@@ -312,7 +316,8 @@ impl MainUi {
     }
 
     fn print_help(&mut self) {
-
+        let help = String::from("help!");
+        self.terminal_output.add_line(&help);
     }
 
 }

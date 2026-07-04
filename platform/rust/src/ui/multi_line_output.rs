@@ -132,6 +132,10 @@ impl MultiLineOutput {
                 self.clear();
                 true
             },
+            Command::OutputToTerminal(line) => {
+                self.add_line(line);
+                true
+            }
             _ => false,
         }
     }
