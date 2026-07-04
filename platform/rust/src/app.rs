@@ -3,11 +3,6 @@ use std::io;
 use ratatui::{
     crossterm::{
         cursor::SetCursorStyle,
-        event::{
-            KeyCode,
-            KeyEvent,
-            KeyModifiers
-        },
         execute,
     },
 };
@@ -61,16 +56,6 @@ impl App {
         self.should_quit = true;
     }
 
-    pub fn handle_key(&mut self, key_event: &KeyEvent) -> bool {
-        match key_event.code {
-            KeyCode::Char('c') | KeyCode::Char('C') if key_event.modifiers == KeyModifiers::CONTROL => {
-                self.quit();
-                true
-            },
-            _ => false,
-        }
-    }
-
     fn handle_command(&mut self, command: Command) {
         if self.try_handle(&command) { return }
         if self.main_ui.try_handle(&command) { return }
@@ -84,9 +69,6 @@ impl App {
                 self.quit();
                 true
             },
-            Command::UserKey(key_event) => {
-                self.handle_key(key_event)
-            }
             _ => false,
         }
     }

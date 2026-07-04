@@ -30,7 +30,6 @@ pub struct MainUi {
     terminal_output: MultiLineOutput,
     event_sender: mpsc::Sender<Event>,
     slash_popup_list_state: ListState,
-    counter: usize,
 }
 
 impl MainUi {
@@ -53,7 +52,6 @@ impl MainUi {
             event_sender,
             slash_popup_list_state: ListState::default()
                 .with_selected(Some(0)),
-            counter: 0,
         }
     }
 
@@ -281,6 +279,9 @@ impl MainUi {
             KeyCode::Tab => self.handle_tab(),
             KeyCode::Esc => self.terminal_output.toggle_view_mode(),
             KeyCode::Enter => self.handle_enter(),
+            KeyCode::Char('c') | KeyCode::Char('C') if key_event.modifiers == KeyModifiers::CONTROL => {
+                self.clear_output();
+            }
             KeyCode::Char(c) => {
                 self.terminal_input.insert_char(c);
             }
@@ -318,11 +319,15 @@ impl MainUi {
             match (slash.to_command)(&args) {
                 Some(command) => {
                     let _ = self.event_sender.send(Event::SendCommand(command));
-                    self.terminal_input.replace_data("");
+                    self.clear_output();
                 }
                 None => self.terminal_output.add_line(&format!("usage: {}", slash.usage())),
             }
         }
+    }
+
+    fn clear_output(&mut self) {
+        self.terminal_input.replace_data("");
     }
 
     fn print_help(&mut self) {
