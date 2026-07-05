@@ -42,11 +42,11 @@ Special thanks to:
 
 ## Use of AI (and not!)
 
-I'm old school-ish and I wanted to learn the way I used to learn and code the way I used to code: by reading a ton of books, copying code and tweaking it, getting my hands in the code. Just building until I understood things reasonably deeply.
+I'm old school-ish and I wanted to learn the way I used to learn and code the way I used to code: by reading a ton of books, copying code and tweaking it, getting my hands dirty. Just building until I understood things reasonably deeply.
 
 That's how I approached this project. However, I'm also aware of the advantages of AI, so I used it in a few ways as indicated below.
 
-Here's what I did all by myself:
+Here's what I did:
 * I wrote *all* the 6502 assembly code.
 * I wrote *most* of the rust code myself, very much as a learning exercise.
 * I did all the architecture myself.
@@ -55,7 +55,7 @@ Here's what I did all by myself:
 
 Here's where I used AI:
 * OCR. Specifically, I wrote code that dumped memory to my screen and I took a photo with my phone. I had Claude convert that to text for a file on my PC.
-* I copied and pasted the keycode to ATASCII lookup table from the Atari OS User's manual and had Claude turn that into a lookup file for me.
+* I copied and pasted the keycode to ATASCII lookup table from the Atari OS User's manual and had Claude turn that into a lookup table for me.
 * I used it to tweak some of the instructions in my readme files, though I mostly wrote them. It's just a pain in the butt and I don't care if AI does it.
 * It wrote some of the helper scripts like `run-atari.sh` since I wanted to focus on the actual program code.
 * It did some non-logic-changing refactors, like renaming things. Boring toil work vs thinking work. I directed it in exactly what to do.
