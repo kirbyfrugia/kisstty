@@ -24,14 +24,14 @@ pub struct EventHandler {
     sender: mpsc::Sender<Event>,
     receiver: mpsc::Receiver<Event>,
     #[allow(dead_code)]
-    handler: thread::JoinHandle<()>,
+    handle: thread::JoinHandle<()>,
 }
 
 impl EventHandler {
     pub fn new(tick_rate: u64) -> Self {
         let tick_rate = Duration::from_millis(tick_rate);
         let (sender, receiver) = mpsc::channel();
-        let handler = {
+        let handle = {
             let sender = sender.clone();
             thread::spawn(move || {
                 let mut last_tick = Instant::now();
@@ -62,7 +62,7 @@ impl EventHandler {
         Self {
             sender,
             receiver,
-            handler,
+            handle,
         }
     }
 

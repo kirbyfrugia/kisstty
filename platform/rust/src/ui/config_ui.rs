@@ -46,14 +46,7 @@ fn validate_field(key: FieldKey, value: &str) -> Result<(), String> {
                 return Err("callsign cannot be empty".into());
             }
         }
-        FieldKey::KissHost => {
-            if value.is_empty() {
-                return Err("host cannot be empty".into());
-            }
-            if value.contains(char::is_whitespace) {
-                return Err("host cannot contain spaces".into());
-            }
-        }
+        FieldKey::KissHost => return crate::config::validate_host(value),
         FieldKey::KissPort => match value.parse::<u16>() {
             Ok(0) | Err(_) => return Err("port must be a number from 1-65535".into()),
             Ok(_) => {}
@@ -95,7 +88,7 @@ impl ConfigUi {
     pub fn new(event_sender: mpsc::Sender<Event>) -> Self {
         let input_len: usize = 40;
         let callsign_input = LineInput::new(6, input_len, event_sender.clone());
-        let kiss_host_input = LineInput::new(40, input_len, event_sender.clone());
+        let kiss_host_input = LineInput::new(crate::config::MAX_HOST_LEN, input_len, event_sender.clone());
         let kiss_port_input = LineInput::new(5, input_len, event_sender.clone());
 
         let config_fields = vec![

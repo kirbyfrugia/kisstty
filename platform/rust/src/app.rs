@@ -13,6 +13,7 @@ use crate::{
     command::Command,
     config::Config,
     event::{Event, EventHandler},
+    kiss,
     ui::{ConfigUi, MainUi, TooSmallUi},
 };
 
@@ -32,6 +33,7 @@ pub struct App {
     main_ui: MainUi,
     config_ui: ConfigUi,
     config: Config,
+    kiss: Option<kiss::KissClient>,
 }
 
 impl App {
@@ -50,17 +52,40 @@ impl App {
             main_ui,
             config_ui,
             config: Config::default(),
+            kiss: None,
         }
+    }
+
+    fn start_kiss(&mut self) {
+        if self.kiss.is_some() {
+            return;
+        }
+        self.kiss = Some(kiss::KissClient::new(
+            self.config.kiss_host.clone(),
+            self.config.kiss_port,
+            self.events.sender(),
+        ));
+    }
+
+    fn restart_kiss(&mut self) {
+        self.kiss = None;
+        self.start_kiss();
     }
 
     pub fn run(&mut self) -> color_eyre::Result<()> {
         ratatui::run(|terminal| -> color_eyre::Result<()> {
             execute!(io::stdout(), SetCursorStyle::BlinkingBar)?;
             self.config = Config::load()?;
+
+            // on first run, make sure they enter a callsign
+            // and valid kiss host
             if self.config.callsign.trim().is_empty() {
                 self.config_ui.load_config(&self.config);
                 self.active_screen = Screen::Config;
+            } else {
+                self.start_kiss();
             }
+
             while !self.should_quit {
                 terminal.draw(|frame| self.render(frame))?;
 
@@ -134,6 +159,7 @@ impl App {
                 if let Err(e) = self.config.save() {
                     tracing::error!(?e, "failed to save config");
                 }
+                self.restart_kiss();
                 self.active_screen = Screen::Main;
                 true
             },

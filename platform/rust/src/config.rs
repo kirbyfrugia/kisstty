@@ -1,9 +1,46 @@
+use std::net::IpAddr;
 use std::path::PathBuf;
 use dirs;
 
 use serde::{Deserialize, Serialize};
 
 use color_eyre::eyre::eyre;
+
+// DNS limits from RFC 1035
+pub const MAX_HOST_LEN: usize = 253;
+const MAX_SEGMENT_LEN: usize = 63;
+
+pub fn validate_host(host: &str) -> Result<(), String> {
+    let host = host.trim();
+    if host.is_empty() {
+        return Err("host cannot be empty".into());
+    }
+
+    if host.parse::<IpAddr>().is_ok() {
+        return Ok(());
+    }
+
+    if host.len() > MAX_HOST_LEN {
+        return Err("host is too long".into());
+    }
+
+    for segment in host.split('.') {
+        if segment.is_empty() {
+            return Err("host cannot contain an empty segment".into());
+        }
+        if segment.len() > MAX_SEGMENT_LEN {
+            return Err("host segment is too long".into());
+        }
+        if segment.starts_with('-') || segment.ends_with('-') {
+            return Err("host segment cannot start or end with '-'".into());
+        }
+        if !segment.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+            return Err("host must be a valid hostname or IP address".into());
+        }
+    }
+
+    Ok(())
+}
 
 fn default_kiss_host() -> String {
     "127.0.0.1".into()
