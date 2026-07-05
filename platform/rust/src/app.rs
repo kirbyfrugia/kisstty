@@ -11,6 +11,7 @@ use ratatui::{
 
 use crate::{
     command::Command,
+    config::Config,
     event::{Event, EventHandler},
     ui::{ConfigUi, MainUi, TooSmallUi},
 };
@@ -53,7 +54,7 @@ impl App {
     pub fn run(&mut self) -> color_eyre::Result<()> {
         ratatui::run(|terminal| -> color_eyre::Result<()> {
             execute!(io::stdout(), SetCursorStyle::BlinkingBar)?;
-
+            let _config = Config::load();
             while !self.should_quit {
                 terminal.draw(|frame| self.render(frame))?;
 

@@ -1,12 +1,21 @@
 use std::path::PathBuf;
 
-use color_eyre::Result;
+use dirs;
+
+use color_eyre::eyre::{eyre, Result};
 use tracing_subscriber::{EnvFilter, fmt};
 
 // to get debug logging:
 //   RUST_LOG=debug cargo run
 pub fn init() -> Result<PathBuf> {
-    let log_path = PathBuf::from("kisstty.log");
+    let data_dir = dirs::data_dir()
+        .ok_or_else(|| eyre!("could not determine logging path"))?;
+
+    let log_dir = data_dir.join("kisstty").join("logs");
+
+    std::fs::create_dir_all(&log_dir)?;
+
+    let log_path = log_dir.join("kisstty.log");
 
     std::fs::OpenOptions::new()
         .write(true)

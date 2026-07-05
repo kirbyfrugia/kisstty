@@ -1,5 +1,6 @@
 mod app;
 mod command;
+mod config;
 mod event;
 mod logging;
 mod single_instance;
