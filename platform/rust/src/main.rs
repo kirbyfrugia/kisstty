@@ -1,9 +1,9 @@
 mod app;
-mod command;
 mod config;
 mod event;
 mod kiss;
 mod logging;
+mod message;
 mod single_instance;
 mod slash;
 mod ui;

@@ -13,15 +13,15 @@ use std::{
 
 use crate::{
     config,
-    event::Event,
+    message::Message,
 };
 
 #[derive(Debug)]
 pub struct KissClient {
     #[allow(dead_code)]
-    sender: mpsc::Sender<Event>,
+    sender: mpsc::Sender<Message>,
     #[allow(dead_code)]
-    receiver: mpsc::Receiver<Event>,
+    receiver: mpsc::Receiver<Message>,
     #[allow(dead_code)]
     handle: thread::JoinHandle<()>,
     running: Arc<AtomicBool>,
@@ -34,12 +34,12 @@ impl Drop for KissClient {
 }
 
 impl KissClient {
-    pub fn new(host: String, port: u16, event_sender: mpsc::Sender<Event>) -> Self {
+    pub fn new(host: String, port: u16, message_sender: mpsc::Sender<Message>) -> Self {
         let (sender, receiver) = mpsc::channel();
         let running = Arc::new(AtomicBool::new(true));
 
         let handle = {
-            let _event_sender = event_sender.clone();
+            let _message_sender = message_sender.clone();
             let _sender = sender.clone();
             let running = running.clone();
             let connect_timeout = Duration::from_secs(5);

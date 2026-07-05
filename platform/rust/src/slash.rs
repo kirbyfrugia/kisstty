@@ -1,10 +1,10 @@
-use crate::command::Command;
+use crate::message::Message;
 
 pub struct SlashCommand {
     pub slash:      &'static str,
     pub args:       &'static str,
     pub friendly:   &'static str,
-    pub to_command: fn(&[&str]) -> Option<Command>,
+    pub to_message: fn(&[&str]) -> Option<Message>,
 }
 
 pub const SLASH_COMMANDS: &[SlashCommand] = &[
@@ -12,20 +12,20 @@ pub const SLASH_COMMANDS: &[SlashCommand] = &[
         slash:      "/help",
         args:       "",
         friendly:   "Show help",
-        to_command: |_| Some(Command::Help),
+        to_message: |_| Some(Message::Help),
     },
     SlashCommand {
         slash:      "/net",
         args:       "",
         friendly:   "Switch to net mode",
-        to_command: |_| Some(Command::Net),
+        to_message: |_| Some(Message::Net),
     },
     SlashCommand {
         slash:      "/qso",
         args:       "<callsign>",
         friendly:   "Start a QSO",
-        to_command: |a| match a {
-            [c] => Some(Command::Qso(c.to_string())),
+        to_message: |a| match a {
+            [c] => Some(Message::Qso(c.to_string())),
             _   => None,
         },
     },
@@ -33,32 +33,32 @@ pub const SLASH_COMMANDS: &[SlashCommand] = &[
         slash:      "/clear",
         args:       "",
         friendly:   "Clear all the output",
-        to_command: |_| Some(Command::Clear),
+        to_message: |_| Some(Message::Clear),
     },
     SlashCommand {
         slash:      "/config",
         args:       "",
         friendly:   "Open configuration",
-        to_command: |_| Some(Command::Config),
+        to_message: |_| Some(Message::Config),
     },
     SlashCommand {
         slash:      "/exit",
         args:       "",
         friendly:   "Exit kisstty",
-        to_command: |_| Some(Command::Exit),
+        to_message: |_| Some(Message::Exit),
     },
     SlashCommand {
         slash:      "/quit",
         args:       "",
         friendly:   "Exit kisstty",
-        to_command: |_| Some(Command::Quit),
+        to_message: |_| Some(Message::Quit),
     },
     SlashCommand {
         slash:      "/header",
         args:       "<message-id>",
         friendly:   "Get header details for a message",
-        to_command: |a| match a {
-            [id] => Some(Command::Header(id.to_string())),
+        to_message: |a| match a {
+            [id] => Some(Message::Header(id.to_string())),
             _    => None,
         },
     },

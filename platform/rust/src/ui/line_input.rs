@@ -8,11 +8,11 @@ use ratatui::{
     widgets::Widget,
 };
 
-use crate::{ event::Event, command::Command };
+use crate::message::Message;
 
 #[derive(Debug)]
 pub struct LineInput {
-    _event_sender:       mpsc::Sender<Event>,
+    _message_sender:     mpsc::Sender<Message>,
     pub screen_cursor:  usize,
     pub data:           String,
     data_cursor:        usize,
@@ -34,11 +34,11 @@ impl Widget for &LineInput {
 }
 
 impl LineInput {
-    pub fn new(max_data_len: usize, max_screen_len: usize, event_sender: mpsc::Sender<Event>) -> Self {
+    pub fn new(max_data_len: usize, max_screen_len: usize, message_sender: mpsc::Sender<Message>) -> Self {
         Self {
             max_data_len,
             max_screen_len,
-            _event_sender: event_sender,
+            _message_sender: message_sender,
             data_cursor: 0,
             screen_cursor: 0,
             data_first_visible: 0,
@@ -152,7 +152,7 @@ impl LineInput {
         true
     }
 
-    pub fn try_handle(&mut self, _command: &Command) -> bool {
+    pub fn try_handle(&mut self, _message: &Message) -> bool {
         false
     }
 

@@ -40,19 +40,26 @@ Special thanks to:
 * Andrew Jacobs for the [binary to BCD code](https://6502.org/source/integers/hex2dec-more.htm) 
 * Bruce Clark for [mem move](https://6502.org/source/general/memory_move.html)
 
-## Use of AI
+## Use of AI (and not!)
 
-My intent with this project is to write all the code myself, and that's what I'm doing. I'm writing the code, the UI, the logic. I'm debugging it myself, painful as that is at times.
+I'm old school-ish and I wanted to learn the way I used to learn and code the way I used to code: by reading a ton of books, copying code and tweaking it, getting my hands in the code. Just building until I understood things reasonably deeply.
 
-I also designed it and built all the hardware I used for it (serial cables, TNC cables).
+That's how I approached this project. However, I'm also aware of the advantages of AI, so I used it in a few ways as indicated below.
 
-But I am using UI for some of the stuff I don't care to do myself:
-* I used AI to do some OCR of images. Specifically, I wrote code that dumped memory to my screen and I took a photo with my phone. I had Claude convert that to text for a file on my PC.
+Here's what I did all by myself:
+* I wrote *all* the 6502 assembly code.
+* I wrote *most* of the rust code myself, very much as a learning exercise.
+* I did all the architecture myself.
+* I designed the user experience and UIs myself.
+* I bought and read several books, read tons of online content, etc.
+
+Here's where I used AI:
+* OCR. Specifically, I wrote code that dumped memory to my screen and I took a photo with my phone. I had Claude convert that to text for a file on my PC.
 * I copied and pasted the keycode to ATASCII lookup table from the Atari OS User's manual and had Claude turn that into a lookup file for me.
 * I used it to tweak some of the instructions in my readme files, though I mostly wrote them. It's just a pain in the butt and I don't care if AI does it.
-* I had it write some of the helper scripts like run-atari.sh since I hate writing shell scripts and I wanted to focus on the actual program code.
-
-Also, I'm new to rust, so I'm trying to learn it from scratch by reading books and docs. But I'm also asking claude clarifying questions when I get stuck and don't understand something.
+* It wrote some of the helper scripts like `run-atari.sh` since I wanted to focus on the actual program code.
+* It did some non-logic-changing refactors, like renaming things. Boring toil work vs thinking work. I directed it in exactly what to do.
+* I asked it questions sometimes whent I banged my head on the wall a dozen times first.
 
 ## License
 

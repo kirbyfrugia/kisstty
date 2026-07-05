@@ -1,4 +1,4 @@
-use crate::{command::Command};
+use crate::message::Message;
 
 use std::{
     sync::mpsc,
@@ -13,16 +13,10 @@ use ratatui::crossterm::event::{
 };
 
 #[derive(Debug)]
-pub enum Event {
-    Tick,
-    SendCommand(Command),
-}
-
-#[derive(Debug)]
 pub struct EventHandler {
     #[allow(dead_code)]
-    sender: mpsc::Sender<Event>,
-    receiver: mpsc::Receiver<Event>,
+    sender: mpsc::Sender<Message>,
+    receiver: mpsc::Receiver<Message>,
     #[allow(dead_code)]
     handle: thread::JoinHandle<()>,
 }
@@ -44,7 +38,7 @@ impl EventHandler {
                         match event::read().expect("unable to read event") {
                             CrosstermEvent::Key(e) => {
                                 if e.kind == event::KeyEventKind::Press {
-                                    sender.send(Event::SendCommand(Command::UserKey(e)))
+                                    sender.send(Message::UserKey(e))
                                         .expect("failed to send terminal event");
                                 }
                             },
@@ -53,7 +47,7 @@ impl EventHandler {
                     }
 
                     if last_tick.elapsed() >= tick_rate {
-                        sender.send(Event::Tick).expect("failed to send tick event");
+                        sender.send(Message::Tick).expect("failed to send tick event");
                         last_tick = Instant::now();
                     }
                 }
@@ -66,11 +60,11 @@ impl EventHandler {
         }
     }
 
-    pub fn sender(&self) -> mpsc::Sender<Event> {
+    pub fn sender(&self) -> mpsc::Sender<Message> {
         self.sender.clone()
     }
 
-    pub fn next(&self) -> Result<Event> {
+    pub fn next(&self) -> Result<Message> {
         Ok(self.receiver.recv()?)
     }
 }

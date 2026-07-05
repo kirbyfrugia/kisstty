@@ -11,9 +11,8 @@ use ratatui::{
 
 use crate::{
     ui::{LineInput,MultiLineOutput},
-    event::Event,
+    message::Message,
     slash::{SlashCommand, SLASH_COMMANDS},
-    command::Command,
 };
 
 const MAX_INPUT_LEN: usize             = 80;
@@ -28,7 +27,7 @@ const INPUT_HEIGHT: u16                = 3;
 pub struct MainUi {
     terminal_input: LineInput,
     terminal_output: MultiLineOutput,
-    event_sender: mpsc::Sender<Event>,
+    message_sender: mpsc::Sender<Message>,
     slash_popup_list_state: ListState,
 }
 
@@ -38,23 +37,23 @@ impl MainUi {
         height: INPUT_HEIGHT + MAX_SLASH_POPUP_HEIGHT + 3,
     };
 
-    pub fn new(event_sender: mpsc::Sender<Event>) -> Self {
-        let li_event_sender = event_sender.clone();
+    pub fn new(message_sender: mpsc::Sender<Message>) -> Self {
+        let li_message_sender = message_sender.clone();
         let terminal_input = LineInput::new(
             MAX_INPUT_LEN,
             TERMINAL_WIDTH.into(),
-            li_event_sender,
+            li_message_sender,
         );
 
-        let mlo_event_sender = event_sender.clone();
+        let mlo_message_sender = message_sender.clone();
         let terminal_output = MultiLineOutput::new(
-            mlo_event_sender,
+            mlo_message_sender,
         );
 
         Self {
             terminal_input,
             terminal_output,
-            event_sender,
+            message_sender,
             slash_popup_list_state: ListState::default()
                 .with_selected(Some(0)),
         }
@@ -234,16 +233,16 @@ impl MainUi {
 //        self.counter += 1;
     }
 
-    pub fn try_handle(&mut self, command: &Command) -> bool {
-        match command {
-            Command::UserKey(key_event) => self.handle_key(key_event),
-            Command::Help => {
+    pub fn try_handle(&mut self, message: &Message) -> bool {
+        match message {
+            Message::UserKey(key_event) => self.handle_key(key_event),
+            Message::Help => {
                 self.print_help();
                 true
             },
             _ => {
-                self.terminal_input.try_handle(command) ||
-                    self.terminal_output.try_handle(command)
+                self.terminal_input.try_handle(message) ||
+                    self.terminal_output.try_handle(message)
             }
         }
     }
@@ -292,9 +291,9 @@ impl MainUi {
         let args: Vec<&str> = parts.collect();
 
         if let Some(slash) = SlashCommand::find(name) {
-            match (slash.to_command)(&args) {
-                Some(command) => {
-                    let _ = self.event_sender.send(Event::SendCommand(command));
+            match (slash.to_message)(&args) {
+                Some(message) => {
+                    let _ = self.message_sender.send(message);
                     self.clear_output();
                 }
                 None => self.terminal_output.add_line(&format!("usage: {}", slash.usage())),

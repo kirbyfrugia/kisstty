@@ -8,19 +8,16 @@ use ratatui::{
     Frame,
 };
 
-use crate::{
-    command::Command,
-    event::Event,
-};
+use crate::message::Message;
 
 #[derive(Debug)]
 pub struct TooSmallUi {
-    event_sender: mpsc::Sender<Event>,
+    message_sender: mpsc::Sender<Message>,
 }
 
 impl TooSmallUi {
-    pub fn new(event_sender: mpsc::Sender<Event>) -> Self {
-        Self { event_sender }
+    pub fn new(message_sender: mpsc::Sender<Message>) -> Self {
+        Self { message_sender }
     }
 
     pub fn render(&mut self, frame: &mut Frame) {
@@ -38,9 +35,9 @@ impl TooSmallUi {
         frame.render_widget(warning, frame.area());
     }
 
-    pub fn try_handle(&mut self, command: &Command) -> bool {
-        match command {
-            Command::UserKey(key_event) => self.handle_key(key_event),
+    pub fn try_handle(&mut self, message: &Message) -> bool {
+        match message {
+            Message::UserKey(key_event) => self.handle_key(key_event),
             _ => false,
         }
     }
@@ -56,6 +53,6 @@ impl TooSmallUi {
     }
 
     fn quit(&mut self) {
-        let _ = self.event_sender.send(Event::SendCommand(Command::Quit));
+        let _ = self.message_sender.send(Message::Quit);
     }
 }

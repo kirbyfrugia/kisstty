@@ -9,9 +9,8 @@ use ratatui::{
 };
 
 use crate::{
-    command::Command,
     config::Config,
-    event::Event,
+    message::Message,
     ui::LineInput,
 };
 
@@ -75,7 +74,7 @@ impl ConfigField {
 
 #[derive(Debug)]
 pub struct ConfigUi {
-    event_sender: mpsc::Sender<Event>,
+    message_sender: mpsc::Sender<Message>,
     focus: Focus,
     config_fields: Vec<ConfigField>,
     fields_width: u16,
@@ -85,11 +84,11 @@ pub struct ConfigUi {
 impl ConfigUi {
     pub const MIN_SIZE: Size = Size { width: 40, height: 10 };
 
-    pub fn new(event_sender: mpsc::Sender<Event>) -> Self {
+    pub fn new(message_sender: mpsc::Sender<Message>) -> Self {
         let input_len: usize = 40;
-        let callsign_input = LineInput::new(6, input_len, event_sender.clone());
-        let kiss_host_input = LineInput::new(crate::config::MAX_HOST_LEN, input_len, event_sender.clone());
-        let kiss_port_input = LineInput::new(5, input_len, event_sender.clone());
+        let callsign_input = LineInput::new(6, input_len, message_sender.clone());
+        let kiss_host_input = LineInput::new(crate::config::MAX_HOST_LEN, input_len, message_sender.clone());
+        let kiss_port_input = LineInput::new(5, input_len, message_sender.clone());
 
         let config_fields = vec![
             ConfigField::new(FieldKey::Callsign, String::from("Callsign:"), callsign_input),
@@ -104,7 +103,7 @@ impl ConfigUi {
             .unwrap_or(1).try_into().unwrap();
 
         Self {
-            event_sender,
+            message_sender,
             config_fields,
             fields_width,
             inputs_width: input_len.try_into().unwrap(),
@@ -263,9 +262,9 @@ impl ConfigUi {
     pub fn tick(&mut self) {
     }
 
-    pub fn try_handle(&mut self, command: &Command) -> bool {
-        match command {
-            Command::UserKey(key_event) => self.handle_key(key_event),
+    pub fn try_handle(&mut self, message: &Message) -> bool {
+        match message {
+            Message::UserKey(key_event) => self.handle_key(key_event),
             _ => false,
         }
     }
@@ -348,15 +347,15 @@ impl ConfigUi {
     }
 
     fn select(&mut self, button: Button) {
-        let command = match button {
+        let message = match button {
             Button::Save => {
                 if !self.validate() {
                     return;
                 }
-                Command::ConfigSaved
+                Message::ConfigSaved
             }
-            Button::Cancel => Command::ConfigCanceled,
+            Button::Cancel => Message::ConfigCanceled,
         };
-        let _ = self.event_sender.send(Event::SendCommand(command));
+        let _ = self.message_sender.send(message);
     }
 }

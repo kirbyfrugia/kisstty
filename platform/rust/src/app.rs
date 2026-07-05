@@ -10,10 +10,10 @@ use ratatui::{
 };
 
 use crate::{
-    command::Command,
     config::Config,
-    event::{Event, EventHandler},
+    event::EventHandler,
     kiss,
+    message::Message,
     ui::{ConfigUi, MainUi, TooSmallUi},
 };
 
@@ -90,8 +90,8 @@ impl App {
                 terminal.draw(|frame| self.render(frame))?;
 
                 match self.events.next()? {
-                    Event::Tick => self.tick(),
-                    Event::SendCommand(command) => self.handle_command(command),
+                    Message::Tick => self.tick(),
+                    message => self.handle_message(message),
                 };
             }
             Ok(())
@@ -136,25 +136,25 @@ impl App {
         }
     }
 
-    fn handle_command(&mut self, command: Command) {
-        if self.try_handle(&command) { return }
-        if self.route(&command) { return }
+    fn handle_message(&mut self, message: Message) {
+        if self.try_handle(&message) { return }
+        if self.route(&message) { return }
 
-        tracing::warn!("unhandled command: {:?}", command);
+        tracing::warn!("unhandled message: {:?}", message);
     }
 
-    fn try_handle(&mut self, command: &Command) -> bool {
-        match command {
-            Command::Exit | Command::Quit => {
+    fn try_handle(&mut self, message: &Message) -> bool {
+        match message {
+            Message::Exit | Message::Quit => {
                 self.quit();
                 true
             },
-            Command::Config => {
+            Message::Config => {
                 self.config_ui.load_config(&self.config);
                 self.active_screen = Screen::Config;
                 true
             },
-            Command::ConfigSaved => {
+            Message::ConfigSaved => {
                 self.config_ui.apply_to(&mut self.config);
                 if let Err(e) = self.config.save() {
                     tracing::error!(?e, "failed to save config");
@@ -163,7 +163,7 @@ impl App {
                 self.active_screen = Screen::Main;
                 true
             },
-            Command::ConfigCanceled => {
+            Message::ConfigCanceled => {
                 if self.config.callsign.trim().is_empty() {
                     self.quit();
                 } else {
@@ -175,14 +175,14 @@ impl App {
         }
     }
 
-    fn route(&mut self, command: &Command) -> bool {
+    fn route(&mut self, message: &Message) -> bool {
         if self.too_small {
-            return self.too_small_ui.try_handle(command);
+            return self.too_small_ui.try_handle(message);
         }
 
         match self.active_screen {
-            Screen::Main => self.main_ui.try_handle(command),
-            Screen::Config => self.config_ui.try_handle(command),
+            Screen::Main => self.main_ui.try_handle(message),
+            Screen::Config => self.config_ui.try_handle(message),
         }
     }
 

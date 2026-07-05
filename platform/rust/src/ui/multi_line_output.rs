@@ -9,7 +9,7 @@ use ratatui::{
     },
 };
 
-use crate::{ event::Event, command::Command };
+use crate::message::Message;
 
 const MAX_OUTPUT_LINES: usize = 10000;
 
@@ -21,7 +21,7 @@ enum ViewMode {
 
 #[derive(Debug)]
 pub struct MultiLineOutput {
-    _event_sender: mpsc::Sender<Event>,
+    _message_sender: mpsc::Sender<Message>,
     lines: VecDeque<String>,
     view_mode: ViewMode,
     max_scroll: Cell<usize>,
@@ -61,9 +61,9 @@ impl Widget for &MultiLineOutput {
 }
 
 impl MultiLineOutput {
-    pub fn new(event_sender: mpsc::Sender<Event>) -> Self {
+    pub fn new(message_sender: mpsc::Sender<Message>) -> Self {
         Self {
-            _event_sender: event_sender,
+            _message_sender: message_sender,
             lines: VecDeque::with_capacity(MAX_OUTPUT_LINES),
             view_mode: ViewMode::Follow,
             max_scroll: Cell::new(0),
@@ -126,13 +126,13 @@ impl MultiLineOutput {
         self.view_mode = ViewMode::Follow;
     }
 
-    pub fn try_handle(&mut self, command: &Command) -> bool {
-        match command {
-            Command::Clear => {
+    pub fn try_handle(&mut self, message: &Message) -> bool {
+        match message {
+            Message::Clear => {
                 self.clear();
                 true
             },
-            Command::OutputToTerminal(line) => {
+            Message::OutputToTerminal(line) => {
                 self.add_line(line);
                 true
             }
