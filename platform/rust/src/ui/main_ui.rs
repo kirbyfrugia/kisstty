@@ -254,20 +254,13 @@ impl MainUi {
             KeyCode::Down => self.terminal_output.scroll_down(),
             KeyCode::Home if key_event.modifiers == KeyModifiers::CONTROL => self.terminal_output.scroll_to_top(),
             KeyCode::End if key_event.modifiers == KeyModifiers::CONTROL => self.terminal_output.scroll_to_bottom(),
-            KeyCode::Left => self.terminal_input.move_cursor_left(),
-            KeyCode::Right => self.terminal_input.move_cursor_right(),
-            KeyCode::Delete => self.terminal_input.delete_char(),
-            KeyCode::Backspace => self.terminal_input.backspace(),
             KeyCode::Tab => self.handle_tab(),
             KeyCode::Esc => self.terminal_output.toggle_view_mode(),
             KeyCode::Enter => self.handle_enter(),
             KeyCode::Char('c') | KeyCode::Char('C') if key_event.modifiers == KeyModifiers::CONTROL => {
                 self.clear_output();
             }
-            KeyCode::Char(c) => {
-                self.terminal_input.insert_char(c);
-            }
-            _ => return false,
+            _ => return self.terminal_input.handle_key(key_event),
         }
         true
     }

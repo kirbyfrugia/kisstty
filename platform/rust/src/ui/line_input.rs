@@ -2,6 +2,7 @@ use std::{ cmp, sync::mpsc };
 
 use ratatui::{
     buffer::Buffer,
+    crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
     style::Style,
     widgets::Widget,
@@ -137,6 +138,18 @@ impl LineInput {
         }
         return true
 
+    }
+
+    pub fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        match key.code {
+            KeyCode::Left      => self.move_cursor_left(),
+            KeyCode::Right     => self.move_cursor_right(),
+            KeyCode::Backspace => self.backspace(),
+            KeyCode::Delete    => self.delete_char(),
+            KeyCode::Char(c)   => self.insert_char(c),
+            _ => return false,
+        }
+        true
     }
 
     pub fn try_handle(&mut self, _command: &Command) -> bool {

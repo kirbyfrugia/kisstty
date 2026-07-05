@@ -31,6 +31,7 @@ pub struct App {
     too_small_ui: TooSmallUi,
     main_ui: MainUi,
     config_ui: ConfigUi,
+    config: Config,
 }
 
 impl App {
@@ -48,13 +49,18 @@ impl App {
             too_small_ui,
             main_ui,
             config_ui,
+            config: Config::default(),
         }
     }
 
     pub fn run(&mut self) -> color_eyre::Result<()> {
         ratatui::run(|terminal| -> color_eyre::Result<()> {
             execute!(io::stdout(), SetCursorStyle::BlinkingBar)?;
-            let _config = Config::load();
+            self.config = Config::load()?;
+            if self.config.callsign.trim().is_empty() {
+                self.config_ui.load_config(&self.config);
+                self.active_screen = Screen::Config;
+            }
             while !self.should_quit {
                 terminal.draw(|frame| self.render(frame))?;
 
@@ -119,11 +125,24 @@ impl App {
                 true
             },
             Command::Config => {
+                self.config_ui.load_config(&self.config);
                 self.active_screen = Screen::Config;
                 true
             },
-            Command::ConfigSaved | Command::ConfigCanceled => {
+            Command::ConfigSaved => {
+                self.config_ui.apply_to(&mut self.config);
+                if let Err(e) = self.config.save() {
+                    tracing::error!(?e, "failed to save config");
+                }
                 self.active_screen = Screen::Main;
+                true
+            },
+            Command::ConfigCanceled => {
+                if self.config.callsign.trim().is_empty() {
+                    self.quit();
+                } else {
+                    self.active_screen = Screen::Main;
+                }
                 true
             },
             _ => false,
