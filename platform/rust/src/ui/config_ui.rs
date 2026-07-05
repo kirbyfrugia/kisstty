@@ -95,7 +95,7 @@ impl ConfigUi {
     pub fn new(event_sender: mpsc::Sender<Event>) -> Self {
         let input_len: usize = 40;
         let callsign_input = LineInput::new(6, input_len, event_sender.clone());
-        let kiss_host_input = LineInput::new(30, input_len, event_sender.clone());
+        let kiss_host_input = LineInput::new(40, input_len, event_sender.clone());
         let kiss_port_input = LineInput::new(5, input_len, event_sender.clone());
 
         let config_fields = vec![
@@ -296,7 +296,7 @@ impl ConfigUi {
                 KeyCode::Right => self.focus = Focus::Button(Button::Save),
                 KeyCode::Tab | KeyCode::Down => self.focus_next(),
                 KeyCode::BackTab | KeyCode::Up => self.focus_prev(),
-                KeyCode::Enter => self.select(button),
+                KeyCode::Enter | KeyCode::Char(' ') => self.select(button),
                 KeyCode::Esc => self.select(Button::Cancel),
                 _ => return false,
             },
