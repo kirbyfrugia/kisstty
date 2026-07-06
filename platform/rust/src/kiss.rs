@@ -16,6 +16,11 @@ use crate::{
     message::Message,
 };
 
+pub struct KissAddr {
+    addr: String,
+    last_addr: bool,
+}
+
 pub struct KissFrame {
     raw_bytes: Vec<u8>,
 }
@@ -30,6 +35,7 @@ impl Default for KissFrame {
 
 pub struct KissFrameState {
     waiting_on_first_fend: bool,
+    in_fesc: bool,
     current_frame: KissFrame,
 }
 
@@ -37,6 +43,7 @@ impl Default for KissFrameState {
     fn default() -> Self {
         Self {
             waiting_on_first_fend: true,
+            in_fesc: false,
             current_frame: KissFrame::default(),
         }
     }
@@ -64,6 +71,8 @@ impl KissClient {
     const KISS_FESC: u8 = 0xdb;
     const KISS_TFEND: u8 = 0xdc;
     const KISS_TFESC: u8 = 0xdd;
+    const KISS_CMD_TYPE_DATA: u8 = 0;
+
     pub fn new(host: String, port: u16, message_sender: mpsc::Sender<Message>) -> Self {
         let (sender, receiver) = mpsc::channel();
         let running = Arc::new(AtomicBool::new(true));
@@ -159,10 +168,45 @@ impl KissClient {
         }
     }
 
-    fn process_frame(_kiss_frame: &mut KissFrame) {
+    fn process_frame(kiss_frame: &mut KissFrame) {
+        const MIN_KISS_FRAME_SIZE: usize = 17;
+        if kiss_frame.raw_bytes.len() < MIN_KISS_FRAME_SIZE { return }
+
+        let cmd_type = kiss_frame.raw_bytes[0];
+        if cmd_type != Self::KISS_CMD_TYPE_DATA { return }
+
+        tracing::info!(raw = ?kiss_frame.raw_bytes, "raw bytes");
+
+//        match first_char {
+//            ':' => { tracing::info!("received message") },
+//            '>' => { tracing::info!("received status") },
+//            _ => { tracing::info!("received unknown msg type") },
+//        }
     }
 
-    fn process_bytes(kiss_frame_state: &mut KissFrameState, buf: &[u8]) {
+    /// returns false if byte discarded
+    fn process_byte(kiss_frame_state: &mut KissFrameState, byte: u8) {
+        // discard any bytes until our first FEND
+        if kiss_frame_state.waiting_on_first_fend && byte != Self::KISS_FEND { return; }
+
+        if kiss_frame_state.in_fesc {
+            kiss_frame_state.in_fesc = false;
+            match byte {
+                Self::KISS_TFESC => {
+                    kiss_frame_state.current_frame.raw_bytes.push(Self::KISS_FESC);
+                }
+                Self::KISS_TFEND => {
+                    kiss_frame_state.current_frame.raw_bytes.push(Self::KISS_FEND);
+                }
+                _ => { //ignore unexpected }
+                }
+            }
+        } else {
+            kiss_frame_state.current_frame.raw_bytes.push(byte);
+        }
+    }
+
+    fn process_bytes(mut kiss_frame_state: &mut KissFrameState, buf: &[u8]) {
         for &byte in buf.iter() {
             match byte {
                 Self::KISS_FEND => {
@@ -171,23 +215,17 @@ impl KissClient {
                         tracing::info!("got first fend");
                     }
 
-                    // if we've already read some bytes, process the frame
-                    if kiss_frame_state.current_frame.raw_bytes.len() > 1 {
-                        tracing::info!("finished frame");
-                        Self::process_frame(&mut kiss_frame_state.current_frame);
-                    }
+                    Self::process_frame(&mut kiss_frame_state.current_frame);
 
                     // create a new frame
                     tracing::info!("new frame");
                     kiss_frame_state.current_frame.raw_bytes.clear();
                 },
-                Self::KISS_FESC => {},
-                Self::KISS_TFEND => {},
-                Self::KISS_TFESC => {},
+                Self::KISS_FESC => {
+                    kiss_frame_state.in_fesc = true;
+                },
                 _ => {
-                    // discard any bytes until our first FEND
-                    if kiss_frame_state.waiting_on_first_fend && byte != Self::KISS_FEND { continue }
-                    kiss_frame_state.current_frame.raw_bytes.push(byte);
+                    Self::process_byte(&mut kiss_frame_state, byte);
                 }
             }
         }
