@@ -16,9 +16,50 @@ use crate::{
     message::Message,
 };
 
+#[derive(Debug)]
 pub struct KissAddr {
     addr: String,
+    ssid: u8,
     last_addr: bool,
+}
+
+impl KissAddr {
+    fn process_addr(buf: &[u8; 7]) -> String {
+        let mut addr = String::new();
+        for &byte in &buf[0..6] {
+            let shifted = byte >> 1;
+            let byte_char = shifted as char;
+            addr.push(byte_char);
+        }
+
+        return String::from(addr.trim_end());
+    }
+
+    pub fn new(buf: &[u8; 7]) -> Self {
+        let addr = Self::process_addr(buf);
+        let ssid = (buf[6] >> 1) & 0b0000_1111;
+
+        // this is the last address in the header if
+        // the lsb on byte 6 is 0.
+        let last_byte = buf[6];
+        let last_addr = last_byte & 0b0000_0001 != 0;
+
+        Self {
+            addr,
+            ssid,
+            last_addr
+        }
+    }
+}
+
+impl std::fmt::Display for KissAddr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.ssid != 0 {
+            write!(f, "{}-{}", self.addr, self.ssid)
+        } else {
+            write!(f, "{}", self.addr)
+        }
+    }
 }
 
 pub struct KissFrame {
@@ -31,6 +72,13 @@ impl Default for KissFrame {
             raw_bytes: Vec::new(),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct Ax25Frame {
+    dest: KissAddr,
+    source: KissAddr,
+    digipeaters: Vec<KissAddr>,
 }
 
 pub struct KissFrameState {
@@ -156,7 +204,6 @@ impl KissClient {
                     ErrorKind::Interrupted | 
                     ErrorKind::TimedOut |
                     ErrorKind::WouldBlock => {
-                        tracing::info!("blocking");
                         continue
                     },
                     _ => {
@@ -168,23 +215,44 @@ impl KissClient {
         }
     }
 
-    fn process_frame(kiss_frame: &mut KissFrame) {
-        const MIN_KISS_FRAME_SIZE: usize = 17;
-        if kiss_frame.raw_bytes.len() < MIN_KISS_FRAME_SIZE { return }
+    fn process_frame(kiss_frame: &KissFrame) -> Option<Ax25Frame> {
+        if kiss_frame.raw_bytes.is_empty() { return None }
+
+        const MIN_KISS_FRAME_SIZE: usize = 17; // cmd type + source + dest + ctrl + pid
+        if kiss_frame.raw_bytes.len() < MIN_KISS_FRAME_SIZE {
+            tracing::warn!(len = kiss_frame.raw_bytes.len(), "discarding invalid kiss frame - too small");
+            return None
+        }
 
         let cmd_type = kiss_frame.raw_bytes[0];
-        if cmd_type != Self::KISS_CMD_TYPE_DATA { return }
+        if cmd_type != Self::KISS_CMD_TYPE_DATA {
+            tracing::debug!(cmd_type, "ignoring non-data kiss frame");
+            return None
+        }
 
         tracing::info!(raw = ?kiss_frame.raw_bytes, "raw bytes");
 
-//        match first_char {
-//            ':' => { tracing::info!("received message") },
-//            '>' => { tracing::info!("received status") },
-//            _ => { tracing::info!("received unknown msg type") },
-//        }
+        const MAX_KISS_ADDRS: usize = 10;
+        let mut addrs: Vec<KissAddr> = Vec::new();
+        let mut offset = 1;
+        while addrs.len() < MAX_KISS_ADDRS && offset + 7 <= kiss_frame.raw_bytes.len() {
+            let addr = KissAddr::new(kiss_frame.raw_bytes[offset..offset + 7].try_into().unwrap());
+            let last_addr = addr.last_addr;
+            addrs.push(addr);
+            if last_addr { break }
+            offset += 7;
+        }
+
+        let mut addrs = addrs.into_iter();
+        let (Some(dest), Some(source)) = (addrs.next(), addrs.next()) else {
+            tracing::warn!("kiss frame missing dest or source address");
+            return None
+        };
+        let digipeaters = addrs.collect();
+
+        Some(Ax25Frame { dest, source, digipeaters })
     }
 
-    /// returns false if byte discarded
     fn process_byte(kiss_frame_state: &mut KissFrameState, byte: u8) {
         // discard any bytes until our first FEND
         if kiss_frame_state.waiting_on_first_fend && byte != Self::KISS_FEND { return; }
@@ -212,14 +280,13 @@ impl KissClient {
                 Self::KISS_FEND => {
                     if kiss_frame_state.waiting_on_first_fend {
                         kiss_frame_state.waiting_on_first_fend = false;
-                        tracing::info!("got first fend");
                     }
 
-                    Self::process_frame(&mut kiss_frame_state.current_frame);
+                    if let Some(frame) = Self::process_frame(&kiss_frame_state.current_frame) {
+                        tracing::info!(dest = %frame.dest, source = %frame.source, digipeaters = ?frame.digipeaters, "parsed frame");
+                    }
 
-                    // create a new frame
-                    tracing::info!("new frame");
-                    kiss_frame_state.current_frame.raw_bytes.clear();
+                    kiss_frame_state.current_frame = KissFrame::default();
                 },
                 Self::KISS_FESC => {
                     kiss_frame_state.in_fesc = true;
