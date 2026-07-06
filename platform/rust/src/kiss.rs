@@ -16,9 +16,31 @@ use crate::{
     message::Message,
 };
 
-//pub struct KissFrame {
-//
-//}
+pub struct KissFrame {
+    raw_bytes: Vec<u8>,
+}
+
+impl Default for KissFrame {
+    fn default() -> Self {
+        Self {
+            raw_bytes: Vec::new(),
+        }
+    }
+}
+
+pub struct KissFrameState {
+    waiting_on_first_fend: bool,
+    current_frame: KissFrame,
+}
+
+impl Default for KissFrameState {
+    fn default() -> Self {
+        Self {
+            waiting_on_first_fend: true,
+            current_frame: KissFrame::default(),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct KissClient {
@@ -38,6 +60,10 @@ impl Drop for KissClient {
 }
 
 impl KissClient {
+    const KISS_FEND: u8 = 0xc0;
+    const KISS_FESC: u8 = 0xdb;
+    const KISS_TFEND: u8 = 0xdc;
+    const KISS_TFESC: u8 = 0xdd;
     pub fn new(host: String, port: u16, message_sender: mpsc::Sender<Message>) -> Self {
         let (sender, receiver) = mpsc::channel();
         let running = Arc::new(AtomicBool::new(true));
@@ -108,16 +134,19 @@ impl KissClient {
     }
 
     fn read_loop(mut stream: TcpStream, running: &AtomicBool, _message_sender: &mpsc::Sender<Message>) {
+        let mut kiss_frame_state = KissFrameState::default();
         while running.load(Ordering::Relaxed) {
             let mut buf = [0; 128];
             match stream.read(&mut buf) {
                 Ok(0) => break,
                 Ok(num_read) => {
-                    tracing::info!(num_read, "read bytes");
+                    Self::process_bytes(&mut kiss_frame_state, &buf[..num_read]);
+                    tracing::info!(num_read, "processed bytes");
                 },
                 Err(e) => match e.kind() {
                     ErrorKind::Interrupted | 
-                    ErrorKind::TimedOut |ErrorKind::WouldBlock => {
+                    ErrorKind::TimedOut |
+                    ErrorKind::WouldBlock => {
                         tracing::info!("blocking");
                         continue
                     },
@@ -126,6 +155,40 @@ impl KissClient {
                         break
                     }
                 },
+            }
+        }
+    }
+
+    fn process_frame(_kiss_frame: &mut KissFrame) {
+    }
+
+    fn process_bytes(kiss_frame_state: &mut KissFrameState, buf: &[u8]) {
+        for &byte in buf.iter() {
+            match byte {
+                Self::KISS_FEND => {
+                    if kiss_frame_state.waiting_on_first_fend {
+                        kiss_frame_state.waiting_on_first_fend = false;
+                        tracing::info!("got first fend");
+                    }
+
+                    // if we've already read some bytes, process the frame
+                    if kiss_frame_state.current_frame.raw_bytes.len() > 1 {
+                        tracing::info!("finished frame");
+                        Self::process_frame(&mut kiss_frame_state.current_frame);
+                    }
+
+                    // create a new frame
+                    tracing::info!("new frame");
+                    kiss_frame_state.current_frame.raw_bytes.clear();
+                },
+                Self::KISS_FESC => {},
+                Self::KISS_TFEND => {},
+                Self::KISS_TFESC => {},
+                _ => {
+                    // discard any bytes until our first FEND
+                    if kiss_frame_state.waiting_on_first_fend && byte != Self::KISS_FEND { continue }
+                    kiss_frame_state.current_frame.raw_bytes.push(byte);
+                }
             }
         }
     }
