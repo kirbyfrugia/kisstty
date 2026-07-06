@@ -16,6 +16,10 @@ use crate::{
     message::Message,
 };
 
+//pub struct KissFrame {
+//
+//}
+
 #[derive(Debug)]
 pub struct KissClient {
     #[allow(dead_code)]
@@ -39,85 +43,8 @@ impl KissClient {
         let running = Arc::new(AtomicBool::new(true));
 
         let handle = {
-            let _message_sender = message_sender.clone();
-            let _sender = sender.clone();
             let running = running.clone();
-            let connect_timeout = Duration::from_secs(5);
-            let read_timeout = Duration::from_secs(5);
-            thread::spawn(move || {
-                if let Err(e) = config::validate_host(&host) {
-                    tracing::error!(host, port, "invalid kiss host: {}", e);
-                    return;
-                }
-
-                while running.load(Ordering::Relaxed) {
-                    let addrs = match (host.as_str(), port).to_socket_addrs() {
-                        Ok(addrs) => addrs,
-                        Err(e) => {
-                            tracing::warn!(kind = ?e.kind(), host, port, "error resolving kiss host");
-                            thread::sleep(connect_timeout);
-                            continue
-                        },
-                    };
-
-                    // A hostname can resolve to several addresses.
-                    // try each until one connects.
-                    let mut stream = None;
-                    for addr in addrs {
-                        match TcpStream::connect_timeout(&addr, connect_timeout) {
-                            Ok(s) => {
-                                stream = Some(s);
-                                break
-                            },
-                            Err(e) => {
-                                tracing::warn!(kind = ?e.kind(), %addr, host, port, "error connecting to kiss server");
-                            },
-                        }
-                    }
-
-                    let mut stream = match stream {
-                        Some(stream) => stream,
-                        None => {
-                            thread::sleep(connect_timeout);
-                            continue
-                        },
-                    };
-
-                    if !running.load(Ordering::Relaxed) {
-                        break
-                    }
-
-                    tracing::info!(host, port, "connected to kiss server");
-
-                    let _ = stream.set_read_timeout(Some(read_timeout));
-
-                    while running.load(Ordering::Relaxed) {
-                        let mut buf = [0; 128];
-                        let _num_read = match stream.read(&mut buf) {
-                            Ok(0) => {
-                                break
-                            }
-                            Ok(num_read) => {
-                                tracing::info!(num_read, "read bytes");
-                                num_read
-                            },
-                            Err(e) => {
-                                match e.kind() {
-                                    ErrorKind::Interrupted | ErrorKind::TimedOut | ErrorKind::WouldBlock => {
-                                        tracing::info!("blocking");
-                                        continue
-                                    },
-                                    _ => {
-                                        tracing::error!(kind = ?e.kind(), "error reading bytes from kiss server");
-                                        break
-                                    }
-                                }
-                            }
-                        };
-                    }
-
-                }
-            })
+            thread::spawn(move || Self::run(host, port, running, message_sender))
         };
 
         Self {
@@ -126,7 +53,81 @@ impl KissClient {
             handle,
             running,
         }
+    }
 
+    fn run(host: String, port: u16, running: Arc<AtomicBool>, message_sender: mpsc::Sender<Message>) {
+        if let Err(e) = config::validate_host(&host) {
+            tracing::error!(host, port, "invalid kiss host: {}", e);
+            return;
+        }
+
+        let connect_timeout = Duration::from_secs(5);
+        let read_timeout = Duration::from_secs(5);
+
+        while running.load(Ordering::Relaxed) {
+            let stream = match Self::connect(&host, port, connect_timeout) {
+                Some(stream) => stream,
+                None => {
+                    thread::sleep(connect_timeout);
+                    continue
+                },
+            };
+
+            if !running.load(Ordering::Relaxed) {
+                break
+            }
+
+            tracing::info!(host, port, "connected to kiss server");
+            let _ = stream.set_read_timeout(Some(read_timeout));
+
+            Self::read_loop(stream, &running, &message_sender);
+        }
+    }
+
+    fn connect(host: &str, port: u16, timeout: Duration) -> Option<TcpStream> {
+        let addrs = match (host, port).to_socket_addrs() {
+            Ok(addrs) => addrs,
+            Err(e) => {
+                tracing::warn!(kind = ?e.kind(), host, port, "error resolving kiss host");
+                return None
+            },
+        };
+
+        // A hostname can resolve to several addresses.
+        // try each until one connects.
+        for addr in addrs {
+            match TcpStream::connect_timeout(&addr, timeout) {
+                Ok(stream) => return Some(stream),
+                Err(e) => {
+                    tracing::warn!(kind = ?e.kind(), %addr, host, port, "error connecting to kiss server");
+                },
+            }
+        }
+
+        None
+    }
+
+    fn read_loop(mut stream: TcpStream, running: &AtomicBool, _message_sender: &mpsc::Sender<Message>) {
+        while running.load(Ordering::Relaxed) {
+            let mut buf = [0; 128];
+            match stream.read(&mut buf) {
+                Ok(0) => break,
+                Ok(num_read) => {
+                    tracing::info!(num_read, "read bytes");
+                },
+                Err(e) => match e.kind() {
+                    ErrorKind::Interrupted | 
+                    ErrorKind::TimedOut |ErrorKind::WouldBlock => {
+                        tracing::info!("blocking");
+                        continue
+                    },
+                    _ => {
+                        tracing::error!(kind = ?e.kind(), "error reading bytes from kiss server");
+                        break
+                    }
+                },
+            }
+        }
     }
 
 //    pub fn next(&self) -> Result<Event> {
