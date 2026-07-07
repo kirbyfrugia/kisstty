@@ -76,9 +76,91 @@ impl Default for KissFrame {
 
 #[derive(Debug)]
 pub struct Ax25Frame {
+    #[allow(dead_code)]
     dest: KissAddr,
     source: KissAddr,
+    #[allow(dead_code)]
     digipeaters: Vec<KissAddr>,
+    #[allow(dead_code)]
+    control: u8,
+    #[allow(dead_code)]
+    pid: u8,
+    data: AprsData,
+}
+
+#[derive(Debug)]
+pub enum AprsData {
+    #[allow(dead_code)]
+    Message(AprsMessage),
+    #[allow(dead_code)]
+    Status(AprsStatus),
+    Unknown,
+}
+
+#[derive(Debug)]
+pub struct AprsMessage {
+    #[allow(dead_code)]
+    addressee: String,
+    #[allow(dead_code)]
+    text: String,
+}
+
+#[derive(Debug)]
+pub struct AprsStatus {
+    #[allow(dead_code)]
+    text: String,
+}
+
+impl AprsData {
+    fn parse(info: &[u8]) -> Self {
+        let Some((&data_type_id, rest)) = info.split_first() else {
+            return AprsData::Unknown;
+        };
+
+        match data_type_id {
+            b':' => AprsData::Message(AprsMessage::parse(rest)),
+            b'>' => AprsData::Status(AprsStatus::parse(rest)),
+            _ => AprsData::Unknown,
+        }
+    }
+}
+
+impl AprsMessage {
+    fn parse(info: &[u8]) -> Self {
+        let addressee = info.get(0..9)
+            .map(|a| String::from_utf8_lossy(a).trim_end().to_string())
+            .unwrap_or_default();
+        let text = info.get(10..)
+            .map(|t| String::from_utf8_lossy(t).into_owned())
+            .unwrap_or_default();
+
+        Self { addressee, text }
+    }
+}
+
+impl AprsStatus {
+    fn parse(info: &[u8]) -> Self {
+        Self {
+            text: String::from_utf8_lossy(info).into_owned(),
+        }
+    }
+}
+
+impl Ax25Frame {
+    pub fn header(&self) -> String {
+        match &self.data {
+            AprsData::Message(msg) => format!("{}>{}", self.source, msg.addressee),
+            _ => self.source.to_string(),
+        }
+    }
+
+    pub fn body(&self) -> &str {
+        match &self.data {
+            AprsData::Message(msg) => &msg.text,
+            AprsData::Status(status) => &status.text,
+            AprsData::Unknown => "<unknown>",
+        }
+    }
 }
 
 pub struct KissFrameState {
@@ -190,14 +272,14 @@ impl KissClient {
         None
     }
 
-    fn read_loop(mut stream: TcpStream, running: &AtomicBool, _message_sender: &mpsc::Sender<Message>) {
+    fn read_loop(mut stream: TcpStream, running: &AtomicBool, message_sender: &mpsc::Sender<Message>) {
         let mut kiss_frame_state = KissFrameState::default();
         while running.load(Ordering::Relaxed) {
             let mut buf = [0; 128];
             match stream.read(&mut buf) {
                 Ok(0) => break,
                 Ok(num_read) => {
-                    Self::process_bytes(&mut kiss_frame_state, &buf[..num_read]);
+                    Self::process_bytes(&mut kiss_frame_state, &buf[..num_read], message_sender);
                     tracing::info!(num_read, "processed bytes");
                 },
                 Err(e) => match e.kind() {
@@ -244,13 +326,34 @@ impl KissClient {
         }
 
         let mut addrs = addrs.into_iter();
-        let (Some(dest), Some(source)) = (addrs.next(), addrs.next()) else {
-            tracing::warn!("kiss frame missing dest or source address");
+        let control_field_start = 1 + addrs.len() * 7;
+
+        let Some(dest) = addrs.next() else {
+            tracing::warn!("kiss frame missing dest field");
             return None
         };
+
+        let Some(source) = addrs.next() else {
+            tracing::warn!("kiss frame missing source field");
+            return None
+        };
+
         let digipeaters = addrs.collect();
 
-        Some(Ax25Frame { dest, source, digipeaters })
+        let Some(&control) = kiss_frame.raw_bytes.get(control_field_start) else {
+            tracing::warn!("kiss frame missing control byte");
+            return None
+        };
+        let Some(&pid) = kiss_frame.raw_bytes.get(control_field_start + 1) else {
+            tracing::warn!("kiss frame missing pid byte");
+            return None
+        };
+
+        let info_field_start = control_field_start + 2;
+        let info = kiss_frame.raw_bytes.get(info_field_start..).unwrap_or(&[]);
+        let data = AprsData::parse(info);
+
+        Some(Ax25Frame { dest, source, digipeaters, control, pid, data })
     }
 
     fn process_byte(kiss_frame_state: &mut KissFrameState, byte: u8) {
@@ -266,7 +369,8 @@ impl KissClient {
                 Self::KISS_TFEND => {
                     kiss_frame_state.current_frame.raw_bytes.push(Self::KISS_FEND);
                 }
-                _ => { //ignore unexpected }
+                _ => {
+                    tracing::debug!(byte, "ignoring unexpected byte after escape");
                 }
             }
         } else {
@@ -274,7 +378,7 @@ impl KissClient {
         }
     }
 
-    fn process_bytes(mut kiss_frame_state: &mut KissFrameState, buf: &[u8]) {
+    fn process_bytes(mut kiss_frame_state: &mut KissFrameState, buf: &[u8], message_sender: &mpsc::Sender<Message>) {
         for &byte in buf.iter() {
             match byte {
                 Self::KISS_FEND => {
@@ -283,7 +387,7 @@ impl KissClient {
                     }
 
                     if let Some(frame) = Self::process_frame(&kiss_frame_state.current_frame) {
-                        tracing::info!(dest = %frame.dest, source = %frame.source, digipeaters = ?frame.digipeaters, "parsed frame");
+                        let _ = message_sender.send(Message::Aprs(frame));
                     }
 
                     kiss_frame_state.current_frame = KissFrame::default();

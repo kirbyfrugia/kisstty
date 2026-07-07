@@ -1,5 +1,7 @@
 use ratatui::crossterm::event::KeyEvent;
 
+use crate::kiss::Ax25Frame;
+
 #[derive(Debug)]
 // A mix of commands (do X) and events (X happened)
 pub enum Message {
@@ -7,8 +9,7 @@ pub enum Message {
     UserKey(KeyEvent),
     ConfigSaved,
     ConfigCanceled,
-    AprsSendMessage(String),
-    AprsSendStatus(String),
+    Aprs(Ax25Frame),
     Clear,
     Config,
     Exit,

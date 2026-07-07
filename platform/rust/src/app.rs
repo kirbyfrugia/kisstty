@@ -138,9 +138,7 @@ impl App {
 
     fn handle_message(&mut self, message: Message) {
         if self.try_handle(&message) { return }
-        if self.route(&message) { return }
-
-        tracing::warn!("unhandled message: {:?}", message);
+        self.route(&message);
     }
 
     fn try_handle(&mut self, message: &Message) -> bool {
