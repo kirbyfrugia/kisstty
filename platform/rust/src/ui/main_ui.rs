@@ -24,11 +24,18 @@ const MAX_SLASH_POPUP_HEIGHT: u16      = 8;
 const INPUT_HEIGHT: u16                = 3;
 
 #[derive(Debug)]
+enum AppMode {
+    Net,
+    Qso(String),
+}
+
+#[derive(Debug)]
 pub struct MainUi {
     terminal_input: LineInput,
     terminal_output: MultiLineOutput,
     message_sender: mpsc::Sender<Message>,
     slash_popup_list_state: ListState,
+    app_mode: AppMode,
 }
 
 impl MainUi {
@@ -51,6 +58,7 @@ impl MainUi {
         );
 
         Self {
+            app_mode: AppMode::Net,
             terminal_input,
             terminal_output,
             message_sender,
@@ -143,20 +151,9 @@ impl MainUi {
             ])
             .split(app_layout[0]);
 
-//        let terminal_output = Paragraph::new(format!("NOCALL>NOCALL:message"))
-//            .block(
-//                Block::default()
-//                    .title("kisstty (net)")
-//                    .title_alignment(Alignment::Left)
-//                    .borders(Borders::ALL)
-//                    .merge_borders(MergeStrategy::Exact),
-//            )
-//            .style(Style::default())
-//            .alignment(Alignment::Left);
-//
         let terminal_output_block = Block::bordered()
             .style(Style::default())
-            .title("kisstty (net)")
+            .title("kisstty")
             .title_alignment(Alignment::Left)
             .borders(Borders::ALL)
             .merge_borders(MergeStrategy::Exact);
@@ -168,9 +165,14 @@ impl MainUi {
 
         frame.render_widget(&self.terminal_output, terminal_output_block_inner_area);
 
-//        frame.render_widget(terminal_output, terminal_layout[0]);
+        let app_mode_text = match &self.app_mode {
+            AppMode::Net => String::from("NET"),
+            AppMode::Qso(addressee) => format!("QSO with {}", addressee),
+        };
 
         let terminal_input_block = Block::bordered()
+            .title(app_mode_text)
+            .title_alignment(Alignment::Left)
             .style(Style::default())
             .merge_borders(MergeStrategy::Exact);
 
@@ -240,6 +242,14 @@ impl MainUi {
                 self.print_help();
                 true
             },
+            Message::Net => {
+                self.app_mode = AppMode::Net;
+                true
+            }
+            Message::Qso(addressee) => {
+                self.app_mode = AppMode::Qso(addressee.to_string());
+                true
+            }
             _ => {
                 self.terminal_input.try_handle(message) ||
                     self.terminal_output.try_handle(message)
@@ -301,6 +311,7 @@ impl MainUi {
         }
         else {
             self.terminal_output.add_line("sending message...");
+            self.clear_output();
         }
     }
 
