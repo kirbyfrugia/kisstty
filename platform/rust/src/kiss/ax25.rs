@@ -117,6 +117,14 @@ impl Ax25Frame {
         }
     }
 
+    pub fn digipeaters(&self) -> String {
+        self.digipeaters
+            .iter()
+            .map(|d| d.to_string())
+            .collect::<Vec<String>>()
+            .join(",")
+    }
+
     pub fn body(&self) -> &str {
         match &self.data {
             AprsData::Message(msg) => &msg.text,

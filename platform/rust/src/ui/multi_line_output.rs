@@ -152,6 +152,12 @@ impl MultiLineOutput {
             }
             Message::Aprs(aprs_frame) => {
                 self.add_line(&format!("{} {}", utc_timestamp(), aprs_frame.header()));
+
+                let digipeaters = aprs_frame.digipeaters();
+                if digipeaters.len() > 0 {
+                    let line = format!("via {}", &digipeaters);
+                    self.add_line(&line);
+                }
                 self.add_line(&format!(": {}", aprs_frame.body()));
                 self.add_line("");
                 true
