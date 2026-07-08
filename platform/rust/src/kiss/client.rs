@@ -188,7 +188,7 @@ impl KissClient {
     fn process_frame(kiss_frame: &KissFrame) -> Option<Ax25Frame> {
         if kiss_frame.raw_bytes.is_empty() { return None }
 
-        let cmd_type = kiss_frame.raw_bytes[0];
+        let cmd_type = kiss_frame.raw_bytes[0] & 0x0f;
         if cmd_type != KISS::CMD_TYPE_DATA {
             tracing::debug!(cmd_type, "ignoring non-data kiss frame");
             return None
