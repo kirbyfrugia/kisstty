@@ -12,6 +12,15 @@ use app::App;
 use color_eyre::Result;
 
 fn main() -> Result<()> {
+    color_eyre::install()?;
+
+    // exit the process, even in the case of thread panics
+    let default_panic_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic_hook(info);
+        std::process::exit(1);
+    }));
+
     // ensure only one instance runs on the machine
     let _instance = match single_instance::acquire()? {
         Some(guard) => guard,

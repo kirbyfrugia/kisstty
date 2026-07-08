@@ -10,6 +10,8 @@ use ratatui::{
 };
 
 use crate::{
+    config::Config,
+    kiss::{AprsData, AprsMessage, Ax25Addr, Ax25Frame},
     ui::{LineInput,MultiLineOutput},
     message::Message,
     slash::{SlashCommand, SLASH_COMMANDS},
@@ -36,6 +38,8 @@ pub struct MainUi {
     message_sender: mpsc::Sender<Message>,
     slash_popup_list_state: ListState,
     app_mode: AppMode,
+    source_addr: Option<Ax25Addr>,
+    dest_addr: Ax25Addr,
 }
 
 impl MainUi {
@@ -64,6 +68,8 @@ impl MainUi {
             message_sender,
             slash_popup_list_state: ListState::default()
                 .with_selected(Some(0)),
+            source_addr: None,
+            dest_addr: Ax25Addr::new(Ax25Addr::AX25DEST.to_string(), 0),
         }
     }
 
@@ -267,7 +273,7 @@ impl MainUi {
             KeyCode::Esc => self.terminal_output.toggle_view_mode(),
             KeyCode::Enter => self.handle_enter(),
             KeyCode::Char('c') | KeyCode::Char('C') if key_event.modifiers == KeyModifiers::CONTROL => {
-                self.clear_output();
+                self.clear_input();
             }
             _ => return self.terminal_input.handle_key(key_event),
         }
@@ -304,18 +310,19 @@ impl MainUi {
             match (slash.to_message)(&args) {
                 Some(message) => {
                     let _ = self.message_sender.send(message);
-                    self.clear_output();
+                    self.clear_input();
                 }
                 None => self.terminal_output.add_line(&format!("usage: {}", slash.usage())),
             }
         }
         else {
-            self.terminal_output.add_line("sending message...");
-            self.clear_output();
+            // no slash, assume message
+            self.send_message(input);
+            self.clear_input();
         }
     }
 
-    fn clear_output(&mut self) {
+    fn clear_input(&mut self) {
         self.terminal_input.replace_data("");
     }
 
@@ -330,6 +337,37 @@ impl MainUi {
                 cmd.friendly,
             ));
         }
+    }
+
+    pub fn update_config(&mut self, config: &mut Config) {
+        tracing::info!("update_config");
+        self.source_addr = Some(Ax25Addr::new(config.callsign.to_string(), 0));
+    }
+
+    fn send_message(&mut self, text: String) {
+        let addressee: String = match &self.app_mode {
+            AppMode::Qso(addressee) => addressee.to_string(),
+            _ => AprsMessage::BROADCAST_ADDRESSEE.to_string(),
+        };
+
+        let aprs_message = AprsMessage::new(addressee, text);
+        let aprs_data = AprsData::Message(aprs_message);
+        let digipeaters: Vec<Ax25Addr> = Vec::new();
+
+        let dest_addr = self.dest_addr.clone();
+        let source_addr = self.source_addr.clone().unwrap();
+
+        let ax25_frame: Ax25Frame = Ax25Frame::new(
+            dest_addr,
+            source_addr,
+            digipeaters,
+            aprs_data,
+        );
+
+        // echo the outgoing frame to our own output, then transmit it
+        let _ = self.message_sender.send(Message::Aprs(ax25_frame.clone()));
+        let _ = self.message_sender.send(Message::SendAprs(ax25_frame));
+
     }
 
 }

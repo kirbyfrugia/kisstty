@@ -10,6 +10,7 @@ pub enum Message {
     ConfigSaved,
     ConfigCanceled,
     Aprs(Ax25Frame),
+    SendAprs(Ax25Frame),
     Clear,
     Config,
     Exit,

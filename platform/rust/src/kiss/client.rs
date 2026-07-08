@@ -1,10 +1,10 @@
 use std::{
-    io::{ErrorKind, Read},
+    io::{ErrorKind, Read, Write},
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc, Arc,
+        mpsc, Arc, Mutex,
     },
-    net::{TcpStream, ToSocketAddrs},
+    net::{Shutdown, TcpStream, ToSocketAddrs},
     thread,
     time::Duration,
 };
@@ -15,6 +15,7 @@ use crate::{
 };
 
 use super::ax25::Ax25Frame;
+use super::KISS;
 
 pub struct KissFrame {
     raw_bytes: Vec<u8>,
@@ -46,56 +47,70 @@ impl Default for KissFrameState {
 
 #[derive(Debug)]
 pub struct KissClient {
-    #[allow(dead_code)]
-    sender: mpsc::Sender<Message>,
-    #[allow(dead_code)]
-    receiver: mpsc::Receiver<Message>,
+    frame_sender: mpsc::Sender<Ax25Frame>,
     #[allow(dead_code)]
     handle: thread::JoinHandle<()>,
+    #[allow(dead_code)]
+    writer_handle: thread::JoinHandle<()>,
     running: Arc<AtomicBool>,
+    kiss_connection: Arc<Mutex<Option<TcpStream>>>,
 }
 
 impl Drop for KissClient {
     fn drop(&mut self) {
         self.running.store(false, Ordering::Relaxed);
+
+        if let Some(connection) = self.kiss_connection.lock().expect("failed to acquire kiss connection lock").as_ref() {
+            let _ = connection.shutdown(Shutdown::Both);
+        }
     }
 }
 
 impl KissClient {
-    const KISS_FEND: u8 = 0xc0;
-    const KISS_FESC: u8 = 0xdb;
-    const KISS_TFEND: u8 = 0xdc;
-    const KISS_TFESC: u8 = 0xdd;
-    const KISS_CMD_TYPE_DATA: u8 = 0;
-
     pub fn new(host: String, port: u16, message_sender: mpsc::Sender<Message>) -> Self {
-        let (sender, receiver) = mpsc::channel();
+        let (frame_sender, frame_receiver) = mpsc::channel();
         let running = Arc::new(AtomicBool::new(true));
+        let kiss_connection: Arc<Mutex<Option<TcpStream>>> = Arc::new(Mutex::new(None));
 
         let handle = {
             let running = running.clone();
-            thread::spawn(move || Self::run(host, port, running, message_sender))
+            let kiss_connection = kiss_connection.clone();
+            thread::spawn(move || Self::run(host, port, running, message_sender, kiss_connection))
+        };
+
+        let writer_handle = {
+            let running = running.clone();
+            let kiss_connection = kiss_connection.clone();
+            thread::spawn(move || Self::write_loop(frame_receiver, kiss_connection, running))
         };
 
         Self {
-            sender,
-            receiver,
+            frame_sender,
             handle,
+            writer_handle,
             running,
+            kiss_connection,
         }
     }
 
-    fn run(host: String, port: u16, running: Arc<AtomicBool>, message_sender: mpsc::Sender<Message>) {
+    fn run(
+        host: String,
+        port: u16,
+        running: Arc<AtomicBool>,
+        message_sender: mpsc::Sender<Message>,
+        kiss_connection: Arc<Mutex<Option<TcpStream>>>,
+    ) {
         if let Err(e) = config::validate_host(&host) {
             tracing::error!(host, port, "invalid kiss host: {}", e);
             return;
         }
 
         let connect_timeout = Duration::from_secs(5);
-        let read_timeout = Duration::from_secs(5);
+        let read_timeout = Duration::from_secs(10);
+        let write_timeout = Duration::from_secs(10);
 
         while running.load(Ordering::Relaxed) {
-            let stream = match Self::connect(&host, port, connect_timeout) {
+            let read_stream = match Self::connect(&host, port, connect_timeout) {
                 Some(stream) => stream,
                 None => {
                     thread::sleep(connect_timeout);
@@ -108,9 +123,17 @@ impl KissClient {
             }
 
             tracing::info!(host, port, "connected to kiss server");
-            let _ = stream.set_read_timeout(Some(read_timeout));
+            let _ = read_stream.set_read_timeout(Some(read_timeout));
 
-            Self::read_loop(stream, &running, &message_sender);
+            let write_stream = read_stream
+                .try_clone()
+                .expect("failed to clone kiss connection for writing");
+            let _ = write_stream.set_write_timeout(Some(write_timeout));
+            *kiss_connection.lock().expect("failed to acquire kiss connection lock") = Some(write_stream);
+
+            Self::read_loop(read_stream, &running, &message_sender);
+
+            *kiss_connection.lock().expect("failed to acquire kiss connection lock") = None;
         }
     }
 
@@ -137,11 +160,11 @@ impl KissClient {
         None
     }
 
-    fn read_loop(mut stream: TcpStream, running: &AtomicBool, message_sender: &mpsc::Sender<Message>) {
+    fn read_loop(mut read_stream: TcpStream, running: &AtomicBool, message_sender: &mpsc::Sender<Message>) {
         let mut kiss_frame_state = KissFrameState::default();
         while running.load(Ordering::Relaxed) {
             let mut buf = [0; 128];
-            match stream.read(&mut buf) {
+            match read_stream.read(&mut buf) {
                 Ok(0) => break,
                 Ok(num_read) => {
                     Self::process_bytes(&mut kiss_frame_state, &buf[..num_read], message_sender);
@@ -166,28 +189,28 @@ impl KissClient {
         if kiss_frame.raw_bytes.is_empty() { return None }
 
         let cmd_type = kiss_frame.raw_bytes[0];
-        if cmd_type != Self::KISS_CMD_TYPE_DATA {
+        if cmd_type != KISS::CMD_TYPE_DATA {
             tracing::debug!(cmd_type, "ignoring non-data kiss frame");
             return None
         }
 
         tracing::debug!(raw = ?kiss_frame.raw_bytes, "raw bytes");
 
-        Ax25Frame::parse(&kiss_frame.raw_bytes[1..])
+        Ax25Frame::decode(&kiss_frame.raw_bytes[1..])
     }
 
     fn process_byte(kiss_frame_state: &mut KissFrameState, byte: u8) {
         // discard any bytes until our first FEND
-        if kiss_frame_state.waiting_on_first_fend && byte != Self::KISS_FEND { return; }
+        if kiss_frame_state.waiting_on_first_fend && byte != KISS::FEND { return; }
 
         if kiss_frame_state.in_fesc {
             kiss_frame_state.in_fesc = false;
             match byte {
-                Self::KISS_TFESC => {
-                    kiss_frame_state.current_frame.raw_bytes.push(Self::KISS_FESC);
+                KISS::TFESC => {
+                    kiss_frame_state.current_frame.raw_bytes.push(KISS::FESC);
                 }
-                Self::KISS_TFEND => {
-                    kiss_frame_state.current_frame.raw_bytes.push(Self::KISS_FEND);
+                KISS::TFEND => {
+                    kiss_frame_state.current_frame.raw_bytes.push(KISS::FEND);
                 }
                 _ => {
                     tracing::debug!(byte, "ignoring unexpected byte after escape");
@@ -201,7 +224,7 @@ impl KissClient {
     fn process_bytes(mut kiss_frame_state: &mut KissFrameState, buf: &[u8], message_sender: &mpsc::Sender<Message>) {
         for &byte in buf.iter() {
             match byte {
-                Self::KISS_FEND => {
+                KISS::FEND => {
                     if kiss_frame_state.waiting_on_first_fend {
                         kiss_frame_state.waiting_on_first_fend = false;
                     }
@@ -212,7 +235,7 @@ impl KissClient {
 
                     kiss_frame_state.current_frame = KissFrame::default();
                 },
-                Self::KISS_FESC => {
+                KISS::FESC => {
                     kiss_frame_state.in_fesc = true;
                 },
                 _ => {
@@ -220,5 +243,32 @@ impl KissClient {
                 }
             }
         }
+    }
+
+    fn write_loop(frame_receiver: mpsc::Receiver<Ax25Frame>, kiss_connection: Arc<Mutex<Option<TcpStream>>>, running: Arc<AtomicBool>) {
+        while running.load(Ordering::Relaxed) {
+            match frame_receiver.recv_timeout(Duration::from_millis(250)) {
+                Ok(frame) => {
+                    let bytes: &[u8] = &KISS::encode(&frame.encode());
+                    match kiss_connection.lock().expect("failed to acquire kiss connection lock").as_mut() {
+                        Some(connection) => {
+                            tracing::info!("writing bytes");
+                            if let Err(e) = connection.write_all(&bytes) {
+                                tracing::error!(kind = ?e.kind(), "error writing frame to kiss server");
+                            }
+                        },
+                        None => tracing::warn!("dropping outgoing frame. not connected to kiss server"),
+                    }
+                },
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            }
+        }
+    }
+
+    pub fn send(&self, frame: Ax25Frame) {
+        self.frame_sender
+            .send(frame)
+            .expect("kiss writer thread has died");
     }
 }

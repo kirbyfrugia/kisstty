@@ -72,6 +72,14 @@ impl App {
         self.start_kiss();
     }
 
+    fn set_active_screen(&mut self, screen: Screen) {
+        match screen {
+            Screen::Main => self.main_ui.update_config(&mut self.config),
+            _ => {}
+        }
+        self.active_screen = screen;
+    }
+
     pub fn run(&mut self) -> color_eyre::Result<()> {
         ratatui::run(|terminal| -> color_eyre::Result<()> {
             execute!(io::stdout(), SetCursorStyle::BlinkingBar)?;
@@ -81,8 +89,9 @@ impl App {
             // and valid kiss host
             if self.config.callsign.trim().is_empty() {
                 self.config_ui.load_config(&self.config);
-                self.active_screen = Screen::Config;
+                self.set_active_screen(Screen::Config);
             } else {
+                self.set_active_screen(Screen::Main);
                 self.start_kiss();
             }
 
@@ -137,6 +146,13 @@ impl App {
     }
 
     fn handle_message(&mut self, message: Message) {
+        if let Message::SendAprs(frame) = message {
+            match &self.kiss {
+                Some(kiss) => kiss.send(frame),
+                None => tracing::warn!("no kiss connection; dropping outgoing frame"),
+            }
+            return;
+        }
         if self.try_handle(&message) { return }
         self.route(&message);
     }
@@ -149,7 +165,7 @@ impl App {
             },
             Message::Config => {
                 self.config_ui.load_config(&self.config);
-                self.active_screen = Screen::Config;
+                self.set_active_screen(Screen::Config);
                 true
             },
             Message::ConfigSaved => {
@@ -157,15 +173,16 @@ impl App {
                 if let Err(e) = self.config.save() {
                     tracing::error!(?e, "failed to save config");
                 }
+                self.main_ui.update_config(&mut self.config);
                 self.restart_kiss();
-                self.active_screen = Screen::Main;
+                self.set_active_screen(Screen::Main);
                 true
             },
             Message::ConfigCanceled => {
                 if self.config.callsign.trim().is_empty() {
                     self.quit();
                 } else {
-                    self.active_screen = Screen::Main;
+                    self.set_active_screen(Screen::Main);
                 }
                 true
             },

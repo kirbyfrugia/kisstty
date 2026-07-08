@@ -1,13 +1,50 @@
 use super::aprs::AprsData;
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Ax25Addr {
     addr: String,
     ssid: u8,
-    pub last_addr: bool,
 }
 
 impl Ax25Addr {
+    pub const AX25DEST: &str = "APKTY1";
+
+    pub fn new(addr: String, ssid: u8) -> Self {
+        // should never get >6 chars, but just in case...
+        let addr = if addr.len() > 6 {
+            addr[..6].to_string()
+        } else {
+            addr
+        };
+
+        Self {
+            addr,
+            ssid,
+        }
+    }
+
+    pub fn encode(&self, last_addr: bool) -> [u8; 7] {
+        let mut bytes: [u8; 7] = [0; 7];
+
+        let formatted = format!("{:<6}", &self.addr);
+        let str_bytes: &[u8] = formatted.as_bytes();
+        let mut i = 0;
+        for unshifted in str_bytes.iter() {
+            let shifted = unshifted << 1;
+            bytes[i] = shifted;
+            i += 1;
+        }
+
+        let ssid_byte: u8 = (self.ssid << 1) | 0b01100000;
+        if last_addr {
+            bytes[6] = ssid_byte | 0b00000001;
+        } else {
+            bytes[6] = ssid_byte & 0b11111110;
+        };
+
+        return bytes;
+    }
+
     fn process_addr(buf: &[u8; 7]) -> String {
         let mut addr = String::new();
         for &byte in &buf[0..6] {
@@ -19,7 +56,7 @@ impl Ax25Addr {
         return String::from(addr.trim_end());
     }
 
-    pub fn new(buf: &[u8; 7]) -> Self {
+    pub fn decode(buf: &[u8; 7]) -> (Self, bool) {
         let addr = Self::process_addr(buf);
         let ssid = (buf[6] >> 1) & 0b0000_1111;
 
@@ -28,12 +65,9 @@ impl Ax25Addr {
         let last_byte = buf[6];
         let last_addr = last_byte & 0b0000_0001 != 0;
 
-        Self {
-            addr,
-            ssid,
-            last_addr
-        }
+        (Self { addr, ssid, }, last_addr)
     }
+
 }
 
 impl std::fmt::Display for Ax25Addr {
@@ -46,7 +80,7 @@ impl std::fmt::Display for Ax25Addr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Ax25Frame {
     #[allow(dead_code)]
     dest: Ax25Addr,
@@ -61,7 +95,37 @@ pub struct Ax25Frame {
 }
 
 impl Ax25Frame {
-    pub fn parse(bytes: &[u8]) -> Option<Self> {
+    pub fn new(dest: Ax25Addr, source: Ax25Addr, digipeaters: Vec<Ax25Addr>, data: AprsData) -> Self {
+        Self {
+            dest,
+            source,
+            digipeaters,
+            data,
+            control: 0x03,
+            pid: 0xf0,
+        }
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut bytes: Vec<u8> = Vec::new();
+
+        let num_digis = self.digipeaters.len();
+
+        bytes.extend(self.dest.encode(false));
+        bytes.extend(self.source.encode(num_digis == 0));
+
+        for (i, digi) in self.digipeaters.iter().enumerate() {
+            bytes.extend(digi.encode(i + 1 == num_digis));
+        }
+
+        bytes.push(self.control);
+        bytes.push(self.pid);
+        bytes.extend(self.data.encode());
+
+        bytes
+    }
+
+    pub fn decode(bytes: &[u8]) -> Option<Self> {
         const MIN_AX25_FRAME_SIZE: usize = 16; // source + dest + ctrl + pid
         if bytes.len() < MIN_AX25_FRAME_SIZE {
             tracing::warn!(len = bytes.len(), "discarding invalid ax25 frame - too small");
@@ -72,8 +136,7 @@ impl Ax25Frame {
         let mut addrs: Vec<Ax25Addr> = Vec::new();
         let mut offset = 0;
         while addrs.len() < MAX_AX25_ADDRS && offset + 7 <= bytes.len() {
-            let addr = Ax25Addr::new(bytes[offset..offset + 7].try_into().unwrap());
-            let last_addr = addr.last_addr;
+            let (addr, last_addr) = Ax25Addr::decode(bytes[offset..offset + 7].try_into().unwrap());
             addrs.push(addr);
             if last_addr { break }
             offset += 7;
@@ -105,7 +168,7 @@ impl Ax25Frame {
 
         let info_field_start = control_field_start + 2;
         let info = bytes.get(info_field_start..).unwrap_or(&[]);
-        let data = AprsData::parse(info);
+        let data = AprsData::decode(info);
 
         Some(Ax25Frame { dest, source, digipeaters, control, pid, data })
     }
