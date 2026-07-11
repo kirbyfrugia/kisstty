@@ -195,4 +195,11 @@ impl Ax25Frame {
             AprsData::Unknown => "<unknown>",
         }
     }
+
+    pub fn message_id(&self) -> Option<&str> {
+        match &self.data {
+            AprsData::Message(msg) => msg.id.as_deref(),
+            _ => None,
+        }
+    }
 }

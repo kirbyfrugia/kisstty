@@ -13,6 +13,8 @@ pub struct AprsMessage {
     pub addressee: String,
     #[allow(dead_code)]
     pub text: String,
+    #[allow(dead_code)]
+    pub id: Option<String>,
 }
 
 #[derive(Debug,Clone)]
@@ -46,26 +48,39 @@ impl AprsData {
 impl AprsMessage {
     pub const BROADCAST_ADDRESSEE: &str = "BROADCAST";
 
-    pub fn new(addressee: String, text: String) -> Self {
+    pub fn new(addressee: String, text: String, id: Option<String>) -> Self {
         Self {
             addressee,
             text,
+            id,
         }
     }
 
     fn encode(&self) -> Vec<u8> {
-        format!(":{:<9}:{}", self.addressee, self.text).into_bytes()
+        let mut encoded = format!(":{:<9}:{}", self.addressee, self.text);
+        if let Some(id) = &self.id {
+            encoded.push('{');
+            encoded.push_str(id);
+        }
+        encoded.into_bytes()
     }
 
     fn decode(info: &[u8]) -> Self {
         let addressee = info.get(0..9)
             .map(|a| String::from_utf8_lossy(a).trim_end().to_string())
             .unwrap_or_default();
-        let text = info.get(10..)
+        let body = info.get(10..)
             .map(|t| String::from_utf8_lossy(t).into_owned())
             .unwrap_or_default();
 
-        Self { addressee, text }
+        let (text, id) = match body.rsplit_once('{') {
+            Some((text, id)) if (1..=5).contains(&id.chars().count()) => {
+                (text.to_string(), Some(id.to_string()))
+            },
+            _ => (body, None),
+        };
+
+        Self { addressee, text, id }
     }
 }
 
