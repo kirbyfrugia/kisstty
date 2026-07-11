@@ -5,7 +5,8 @@ use std::{
 };
 
 use crate::{
-    kiss::{Ax25Frame},
+    config::Config,
+    kiss::{Ax25Frame, KissClient},
     message::Message,
     ui::OutputUpdate,
 };
@@ -15,6 +16,7 @@ const MAX_MESSAGES: usize = 10000;
 #[derive(Debug)]
 pub struct KissSession {
     message_sender: mpsc::Sender<Message>,
+    client: Option<KissClient>,
     messages: VecDeque<String>,
 }
 
@@ -30,11 +32,49 @@ impl KissSession {
     pub fn new(message_sender: mpsc::Sender<Message>) -> Self {
         Self {
             message_sender: message_sender,
+            client: None,
             messages: VecDeque::with_capacity(MAX_MESSAGES),
         }
     }
 
-    pub fn frame_received(&self, ax25_frame: Ax25Frame) {
+    pub fn start(&mut self, config: &Config) {
+        if self.client.is_some() {
+            return;
+        }
+        self.client = Some(KissClient::new(
+            config.kiss_host.clone(),
+            config.kiss_port,
+            self.message_sender.clone(),
+        ));
+    }
+
+    pub fn restart(&mut self, config: &Config) {
+        self.client = None;
+        self.start(config);
+    }
+
+    pub fn try_claim(&mut self, message: Message) -> Option<Message> {
+        match message {
+            Message::SendAx25Frame(frame) => {
+                self.send_frame(frame);
+                None
+            },
+            Message::Ax25FrameReceived(frame) => {
+                self.frame_received(frame);
+                None
+            },
+            other => Some(other),
+        }
+    }
+
+    fn send_frame(&self, frame: Ax25Frame) {
+        match &self.client {
+            Some(client) => client.send(frame),
+            None => tracing::warn!("no kiss connection; dropping outgoing frame"),
+        }
+    }
+
+    fn frame_received(&self, ax25_frame: Ax25Frame) {
         let mut lines: Vec<String> = Vec::new();
 
         lines.push(format!("{} {}", utc_timestamp(), ax25_frame.header()));

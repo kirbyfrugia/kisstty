@@ -12,7 +12,7 @@ use ratatui::{
 use crate::{
     config::Config,
     event::EventHandler,
-    kiss::{KissClient,KissSession},
+    kiss::KissSession,
     message::Message,
     ui::{ConfigUi, MainUi, TooSmallUi},
 };
@@ -33,7 +33,6 @@ pub struct App {
     main_ui: MainUi,
     config_ui: ConfigUi,
     config: Config,
-    kiss_client: Option<KissClient>,
     kiss_session: KissSession,
 }
 
@@ -54,25 +53,8 @@ impl App {
             main_ui,
             config_ui,
             config: Config::default(),
-            kiss_client: None,
             kiss_session,
         }
-    }
-
-    fn start_kiss(&mut self) {
-        if self.kiss_client.is_some() {
-            return;
-        }
-        self.kiss_client = Some(KissClient::new(
-            self.config.kiss_host.clone(),
-            self.config.kiss_port,
-            self.events.sender(),
-        ));
-    }
-
-    fn restart_kiss(&mut self) {
-        self.kiss_client = None;
-        self.start_kiss();
     }
 
     fn set_active_screen(&mut self, screen: Screen) {
@@ -95,7 +77,7 @@ impl App {
                 self.set_active_screen(Screen::Config);
             } else {
                 self.set_active_screen(Screen::Main);
-                self.start_kiss();
+                self.kiss_session.start(&self.config);
             }
 
             while !self.should_quit {
@@ -151,19 +133,12 @@ impl App {
     fn handle_message(&mut self, message: Message) {
         if self.try_handle(&message) { return }
 
-        // TODO: move much of this to session.rs or kiss client
-        match message {
-            Message::SendAx25Frame(frame) => {
-                match &self.kiss_client {
-                    Some(kiss_client) => kiss_client.send(frame),
-                    None => tracing::warn!("no kiss connection; dropping outgoing frame"),
-                }
-            },
-            Message::Ax25FrameReceived(ax25_frame) => {
-                self.kiss_session.frame_received(ax25_frame);
-            },
-            _ => { self.route(&message); },
-        }
+        let message = match self.kiss_session.try_claim(message) {
+            Some(message) => message,
+            None => return,
+        };
+
+        self.route(&message);
     }
 
     fn try_handle(&mut self, message: &Message) -> bool {
@@ -183,7 +158,7 @@ impl App {
                     tracing::error!(?e, "failed to save config");
                 }
                 self.main_ui.update_config(&mut self.config);
-                self.restart_kiss();
+                self.kiss_session.restart(&self.config);
                 self.set_active_screen(Screen::Main);
                 true
             },

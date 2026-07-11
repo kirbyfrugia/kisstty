@@ -343,6 +343,7 @@ impl MainUi {
                 cmd.friendly,
             ));
         }
+        lines.push(String::from(""));
         let output_update = OutputUpdate::new(lines);
         let _ = self.message_sender.send(Message::Output(output_update));
     }
