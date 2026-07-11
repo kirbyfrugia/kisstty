@@ -12,7 +12,7 @@ use ratatui::{
 use crate::{
     config::Config,
     event::EventHandler,
-    kiss,
+    kiss::{KissClient,KissSession},
     message::Message,
     ui::{ConfigUi, MainUi, TooSmallUi},
 };
@@ -33,7 +33,8 @@ pub struct App {
     main_ui: MainUi,
     config_ui: ConfigUi,
     config: Config,
-    kiss: Option<kiss::KissClient>,
+    kiss_client: Option<KissClient>,
+    kiss_session: KissSession,
 }
 
 impl App {
@@ -42,7 +43,8 @@ impl App {
         let events_sender = events.sender();
         let main_ui = MainUi::new(events_sender.clone());
         let config_ui = ConfigUi::new(events_sender.clone());
-        let too_small_ui = TooSmallUi::new(events_sender);
+        let too_small_ui = TooSmallUi::new(events_sender.clone());
+        let kiss_session = KissSession::new(events_sender.clone());
         Self {
             should_quit: false,
             events,
@@ -52,15 +54,16 @@ impl App {
             main_ui,
             config_ui,
             config: Config::default(),
-            kiss: None,
+            kiss_client: None,
+            kiss_session,
         }
     }
 
     fn start_kiss(&mut self) {
-        if self.kiss.is_some() {
+        if self.kiss_client.is_some() {
             return;
         }
-        self.kiss = Some(kiss::KissClient::new(
+        self.kiss_client = Some(KissClient::new(
             self.config.kiss_host.clone(),
             self.config.kiss_port,
             self.events.sender(),
@@ -68,7 +71,7 @@ impl App {
     }
 
     fn restart_kiss(&mut self) {
-        self.kiss = None;
+        self.kiss_client = None;
         self.start_kiss();
     }
 
@@ -146,15 +149,21 @@ impl App {
     }
 
     fn handle_message(&mut self, message: Message) {
-        if let Message::SendAprs(frame) = message {
-            match &self.kiss {
-                Some(kiss) => kiss.send(frame),
-                None => tracing::warn!("no kiss connection; dropping outgoing frame"),
-            }
-            return;
-        }
         if self.try_handle(&message) { return }
-        self.route(&message);
+
+        // TODO: move much of this to session.rs or kiss client
+        match message {
+            Message::SendAx25Frame(frame) => {
+                match &self.kiss_client {
+                    Some(kiss_client) => kiss_client.send(frame),
+                    None => tracing::warn!("no kiss connection; dropping outgoing frame"),
+                }
+            },
+            Message::Ax25FrameReceived(ax25_frame) => {
+                self.kiss_session.frame_received(ax25_frame);
+            },
+            _ => { self.route(&message); },
+        }
     }
 
     fn try_handle(&mut self, message: &Message) -> bool {

@@ -12,7 +12,7 @@ use ratatui::{
 use crate::{
     config::Config,
     kiss::{AprsData, AprsMessage, Ax25Addr, Ax25Frame},
-    ui::{LineInput,MultiLineOutput},
+    ui::{LineInput,MultiLineOutput,OutputUpdate},
     message::Message,
     slash::{SlashCommand, SLASH_COMMANDS},
 };
@@ -312,7 +312,12 @@ impl MainUi {
                     let _ = self.message_sender.send(message);
                     self.clear_input();
                 }
-                None => self.terminal_output.add_line(&format!("usage: {}", slash.usage())),
+                None => {
+                    let mut lines: Vec<String> = Vec::new();
+                    lines.push(format!("usage: {}", slash.usage()));
+                    let output_update = OutputUpdate::new(lines);
+                    let _ = self.message_sender.send(Message::Output(output_update));
+                }
             }
         }
         else {
@@ -329,14 +334,17 @@ impl MainUi {
     fn print_help(&mut self) {
         let usage_width = SlashCommand::max_usage_width();
 
-        self.terminal_output.add_line("Available commands:");
+        let mut lines: Vec<String> = Vec::new();
+        lines.push(String::from("Available commands:"));
         for cmd in SLASH_COMMANDS {
-            self.terminal_output.add_line(&format!(
+            lines.push(format!(
                 "  {:<usage_width$}  {}",
                 cmd.usage(),
                 cmd.friendly,
             ));
         }
+        let output_update = OutputUpdate::new(lines);
+        let _ = self.message_sender.send(Message::Output(output_update));
     }
 
     pub fn update_config(&mut self, config: &mut Config) {
@@ -365,8 +373,8 @@ impl MainUi {
         );
 
         // echo the outgoing frame to our own output, then transmit it
-        let _ = self.message_sender.send(Message::Aprs(ax25_frame.clone()));
-        let _ = self.message_sender.send(Message::SendAprs(ax25_frame));
+        let _ = self.message_sender.send(Message::Ax25FrameReceived(ax25_frame.clone()));
+        let _ = self.message_sender.send(Message::SendAx25Frame(ax25_frame));
 
     }
 

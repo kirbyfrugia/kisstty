@@ -1,16 +1,20 @@
 use ratatui::crossterm::event::KeyEvent;
 
-use crate::kiss::Ax25Frame;
+use crate::{
+    kiss::AprsMessage,
+    kiss::Ax25Frame,
+    ui::OutputUpdate,
+};
 
 #[derive(Debug)]
-// A mix of commands (do X) and events (X happened)
 pub enum Message {
     Tick,
     UserKey(KeyEvent),
     ConfigSaved,
     ConfigCanceled,
-    Aprs(Ax25Frame),
-    SendAprs(Ax25Frame),
+    AprsMessage(AprsMessage),
+    Ax25FrameReceived(Ax25Frame),
+    SendAx25Frame(Ax25Frame),
     Clear,
     Config,
     Exit,
@@ -19,5 +23,5 @@ pub enum Message {
     Net,
     Qso(String),
     Quit,
-    OutputToTerminal(String),
+    Output(OutputUpdate),
 }

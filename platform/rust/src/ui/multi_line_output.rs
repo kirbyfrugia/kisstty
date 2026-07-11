@@ -2,7 +2,6 @@ use std::{
     cell::Cell,
     collections::VecDeque,
     sync::mpsc,
-    time::{ SystemTime, UNIX_EPOCH },
 };
 
 use ratatui::{
@@ -17,15 +16,6 @@ use ratatui::{
 use crate::message::Message;
 
 const MAX_OUTPUT_LINES: usize = 10000;
-
-// APRS convention is to timestamp in UTC ("zulu" time).
-fn utc_timestamp() -> String {
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    format!("[{:02}:{:02}:{:02}Z]", (secs / 3600) % 24, (secs / 60) % 60, secs % 60)
-}
 
 #[derive(Debug)]
 enum ViewMode {
@@ -84,7 +74,7 @@ impl MultiLineOutput {
         }
     }
 
-    pub fn add_line(&mut self, line: &str) {
+    fn add_line(&mut self, line: &str) {
         if self.lines.len() == MAX_OUTPUT_LINES {
             self.lines.pop_front();
             if let ViewMode::Paused(top) = &mut self.view_mode {
@@ -146,20 +136,10 @@ impl MultiLineOutput {
                 self.clear();
                 true
             },
-            Message::OutputToTerminal(line) => {
-                self.add_line(line);
-                true
-            }
-            Message::Aprs(aprs_frame) => {
-                self.add_line(&format!("{} {}", utc_timestamp(), aprs_frame.header()));
-
-                let digipeaters = aprs_frame.digipeaters();
-                if digipeaters.len() > 0 {
-                    let line = format!("via {}", &digipeaters);
+            Message::Output(output_update) => {
+                for line in &output_update.lines {
                     self.add_line(&line);
                 }
-                self.add_line(&format!(": {}", aprs_frame.body()));
-                self.add_line("");
                 true
             }
             _ => false,

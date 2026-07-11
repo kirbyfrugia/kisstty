@@ -230,7 +230,7 @@ impl KissClient {
                     }
 
                     if let Some(frame) = Self::process_frame(&kiss_frame_state.current_frame) {
-                        let _ = message_sender.send(Message::Aprs(frame));
+                        let _ = message_sender.send(Message::Ax25FrameReceived(frame));
                     }
 
                     kiss_frame_state.current_frame = KissFrame::default();
