@@ -47,7 +47,7 @@ impl Default for KissFrameState {
 
 #[derive(Debug)]
 pub struct KissClient {
-    frame_sender: mpsc::Sender<Ax25Frame>,
+    frame_sender: mpsc::Sender<Vec<u8>>,
     #[allow(dead_code)]
     handle: thread::JoinHandle<()>,
     #[allow(dead_code)]
@@ -245,11 +245,11 @@ impl KissClient {
         }
     }
 
-    fn write_loop(frame_receiver: mpsc::Receiver<Ax25Frame>, kiss_connection: Arc<Mutex<Option<TcpStream>>>, running: Arc<AtomicBool>) {
+    fn write_loop(frame_receiver: mpsc::Receiver<Vec<u8>>, kiss_connection: Arc<Mutex<Option<TcpStream>>>, running: Arc<AtomicBool>) {
         while running.load(Ordering::Relaxed) {
             match frame_receiver.recv_timeout(Duration::from_millis(250)) {
                 Ok(frame) => {
-                    let bytes: &[u8] = &KISS::encode(&frame.encode());
+                    let bytes: &[u8] = &KISS::encode(&frame);
                     match kiss_connection.lock().expect("failed to acquire kiss connection lock").as_mut() {
                         Some(connection) => {
                             tracing::info!("writing bytes");
@@ -266,9 +266,9 @@ impl KissClient {
         }
     }
 
-    pub fn send(&self, frame: Ax25Frame) {
+    pub fn send(&self, bytes: Vec<u8>) {
         self.frame_sender
-            .send(frame)
+            .send(bytes)
             .expect("kiss writer thread has died");
     }
 }

@@ -63,7 +63,7 @@ impl KissSession {
                 None
             },
             Message::Ax25FrameReceived(frame) => {
-                self.frame_received(frame);
+                self.display_frame(&frame);
                 None
             },
             other => Some(other),
@@ -81,18 +81,18 @@ impl KissSession {
         let frame = Ax25Frame::new(dest, source.clone(), Vec::new(), data);
 
         // echo the outgoing frame to our own output, then transmit it
-        self.frame_received(frame.clone());
-        self.send_frame(frame);
+        self.display_frame(&frame);
+        self.send_frame(&frame);
     }
 
-    fn send_frame(&self, frame: Ax25Frame) {
+    fn send_frame(&self, frame: &Ax25Frame) {
         match &self.client {
-            Some(client) => client.send(frame),
+            Some(client) => client.send(frame.encode()),
             None => tracing::warn!("no kiss connection; dropping outgoing frame"),
         }
     }
 
-    fn frame_received(&self, ax25_frame: Ax25Frame) {
+    fn display_frame(&self, ax25_frame: &Ax25Frame) {
         let mut lines: Vec<String> = Vec::new();
 
         lines.push(format!("{} {}", utc_timestamp(), ax25_frame.header()));
