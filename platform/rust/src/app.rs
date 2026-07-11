@@ -58,10 +58,6 @@ impl App {
     }
 
     fn set_active_screen(&mut self, screen: Screen) {
-        match screen {
-            Screen::Main => self.main_ui.update_config(&mut self.config),
-            _ => {}
-        }
         self.active_screen = screen;
     }
 
@@ -157,7 +153,6 @@ impl App {
                 if let Err(e) = self.config.save() {
                     tracing::error!(?e, "failed to save config");
                 }
-                self.main_ui.update_config(&mut self.config);
                 self.kiss_session.restart(&self.config);
                 self.set_active_screen(Screen::Main);
                 true

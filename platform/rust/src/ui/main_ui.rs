@@ -10,8 +10,7 @@ use ratatui::{
 };
 
 use crate::{
-    config::Config,
-    kiss::{AprsData, AprsMessage, Ax25Addr, Ax25Frame},
+    kiss::AprsMessage,
     ui::{LineInput,MultiLineOutput,OutputUpdate},
     message::Message,
     slash::{SlashCommand, SLASH_COMMANDS},
@@ -38,8 +37,6 @@ pub struct MainUi {
     message_sender: mpsc::Sender<Message>,
     slash_popup_list_state: ListState,
     app_mode: AppMode,
-    source_addr: Option<Ax25Addr>,
-    dest_addr: Ax25Addr,
 }
 
 impl MainUi {
@@ -68,8 +65,6 @@ impl MainUi {
             message_sender,
             slash_popup_list_state: ListState::default()
                 .with_selected(Some(0)),
-            source_addr: None,
-            dest_addr: Ax25Addr::new(Ax25Addr::AX25DEST.to_string(), 0),
         }
     }
 
@@ -348,35 +343,13 @@ impl MainUi {
         let _ = self.message_sender.send(Message::Output(output_update));
     }
 
-    pub fn update_config(&mut self, config: &mut Config) {
-        tracing::info!("update_config");
-        self.source_addr = Some(Ax25Addr::new(config.callsign.to_string(), 0));
-    }
-
     fn send_message(&mut self, text: String) {
-        let addressee: String = match &self.app_mode {
+        let addressee = match &self.app_mode {
             AppMode::Qso(addressee) => addressee.to_string(),
             _ => AprsMessage::BROADCAST_ADDRESSEE.to_string(),
         };
 
-        let aprs_message = AprsMessage::new(addressee, text);
-        let aprs_data = AprsData::Message(aprs_message);
-        let digipeaters: Vec<Ax25Addr> = Vec::new();
-
-        let dest_addr = self.dest_addr.clone();
-        let source_addr = self.source_addr.clone().unwrap();
-
-        let ax25_frame: Ax25Frame = Ax25Frame::new(
-            dest_addr,
-            source_addr,
-            digipeaters,
-            aprs_data,
-        );
-
-        // echo the outgoing frame to our own output, then transmit it
-        let _ = self.message_sender.send(Message::Ax25FrameReceived(ax25_frame.clone()));
-        let _ = self.message_sender.send(Message::SendAx25Frame(ax25_frame));
-
+        let _ = self.message_sender.send(Message::SendAprsMessage { addressee, text });
     }
 
 }

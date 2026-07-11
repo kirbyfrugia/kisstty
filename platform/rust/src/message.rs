@@ -1,7 +1,6 @@
 use ratatui::crossterm::event::KeyEvent;
 
 use crate::{
-    kiss::AprsMessage,
     kiss::Ax25Frame,
     ui::OutputUpdate,
 };
@@ -12,9 +11,8 @@ pub enum Message {
     UserKey(KeyEvent),
     ConfigSaved,
     ConfigCanceled,
-    AprsMessage(AprsMessage),
     Ax25FrameReceived(Ax25Frame),
-    SendAx25Frame(Ax25Frame),
+    SendAprsMessage { addressee: String, text: String },
     Clear,
     Config,
     Exit,
