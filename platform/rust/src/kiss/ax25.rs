@@ -212,16 +212,19 @@ impl Ax25Frame {
     }
 
     pub fn header(&self) -> String {
-        match &self.data {
-            AprsData::Message(msg) => format!("{} ({}) → {}", self.source, self.dest, msg.addressee),
-            _ => format!("{} → {}", self.source, self.dest),
+        let mut header = format!("{} ({})", self.source, self.dest);
+        if let AprsData::Message(msg) = &self.data {
+            header.push_str(&format!(" → {}", msg.addressee));
         }
+        header
     }
 
     pub fn digipeaters(&self) -> String {
+        let last_repeated = self.digipeaters.iter().rposition(|d| d.repeated);
         self.digipeaters
             .iter()
-            .map(|d| if d.repeated { format!("{d}*") } else { d.to_string() })
+            .enumerate()
+            .map(|(i, d)| if Some(i) == last_repeated { format!("{d}*") } else { d.to_string() })
             .collect::<Vec<String>>()
             .join(",")
     }
@@ -244,3 +247,4 @@ impl Ax25Frame {
         }
     }
 }
+
