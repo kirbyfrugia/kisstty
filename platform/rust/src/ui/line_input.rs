@@ -52,6 +52,10 @@ impl LineInput {
         self.max_screen_len = max_screen_len;
     }
 
+    pub fn set_max_data_len(&mut self, max_data_len: usize) {
+        self.max_data_len = max_data_len;
+    }
+
     fn update_screen_vars(&mut self) {
         // if the data cursor is off the screen to the left,
         // bring it back on screen.
@@ -92,7 +96,7 @@ impl LineInput {
 
     pub fn insert_char(&mut self, c: char) {
         if !(c.is_ascii_graphic() || c == ' ') { return }
-        if self.data.len() == usize::from(self.max_data_len) { return }
+        if self.data.len() >= self.max_data_len { return }
 
         self.data.insert(self.data_cursor.into(), c);
         self.move_cursor_right();

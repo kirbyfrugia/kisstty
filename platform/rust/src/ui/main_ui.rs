@@ -16,7 +16,7 @@ use crate::{
     slash::{SlashCommand, SLASH_COMMANDS},
 };
 
-const MAX_INPUT_LEN: usize             = 80;
+const MAX_INPUT_LEN: usize             = 67;
 const TERMINAL_WIDTH: u16              = 80;
 const SIDEBAR_WIDTH: u16               = 26;
 const OUTPUT_AREA_WIDTH: u16           = TERMINAL_WIDTH + 4;
@@ -49,7 +49,7 @@ impl MainUi {
         let li_message_sender = message_sender.clone();
         let terminal_input = LineInput::new(
             MAX_INPUT_LEN,
-            TERMINAL_WIDTH.into(),
+            MAX_INPUT_LEN,
             li_message_sender,
         );
 
@@ -186,8 +186,9 @@ impl MainUi {
             .direction(Direction::Horizontal)
             .spacing(Spacing::Overlap(1))
             .constraints(vec![
-                Constraint::Length(3),              // prompt
-                Constraint::Length(TERMINAL_WIDTH),
+                Constraint::Length(3),                     // prompt
+                Constraint::Length(MAX_INPUT_LEN as u16 + 1), // input field (+1 spacer the divider overlaps)
+                Constraint::Fill(1),                       // divider + char counter
             ])
             .split(terminal_input_block_inner_area);
 
@@ -197,6 +198,16 @@ impl MainUi {
 
         frame.render_widget(terminal_input_prompt, terminal_input_layout[0]);
         frame.render_widget(&self.terminal_input, terminal_input_layout[1]);
+
+        let char_counter = Paragraph::new(format!(
+            "│ {}/{}",
+            self.terminal_input.data.len(),
+            MAX_INPUT_LEN,
+        ))
+            .style(Style::default().fg(Color::DarkGray))
+            .alignment(Alignment::Left);
+
+        frame.render_widget(char_counter, terminal_input_layout[2]);
 
         let terminal_input_area = terminal_input_layout[1];
         let cursor_pos = Position{
