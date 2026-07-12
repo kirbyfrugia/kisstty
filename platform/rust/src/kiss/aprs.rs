@@ -4,7 +4,6 @@ pub enum AprsData {
     Message(AprsMessage),
     #[allow(dead_code)]
     Status(AprsStatus),
-    Unknown { data_type_id: char, text: String },
 }
 
 #[derive(Debug,Clone)]
@@ -28,7 +27,6 @@ impl AprsData {
         match self {
             AprsData::Message(_) => ':',
             AprsData::Status(_) => '>',
-            AprsData::Unknown { data_type_id, .. } => *data_type_id,
         }
     }
 
@@ -36,23 +34,27 @@ impl AprsData {
         match self {
             AprsData::Message(msg) => msg.encode(),
             AprsData::Status(status) => status.encode(),
-            AprsData::Unknown { data_type_id, text } => {
-                format!("{data_type_id}{text}").into_bytes()
-            }
         }
     }
 
     pub fn decode(info: &[u8]) -> Option<Self> {
-        let (&data_type_id, rest) = info.split_first()?;
+        let Some((&data_type_id, rest)) = info.split_first() else {
+            tracing::warn!("ax25 frame has empty info field");
+            return None;
+        };
 
-        Some(match data_type_id {
-            b':' => AprsData::Message(AprsMessage::decode(rest)),
-            b'>' => AprsData::Status(AprsStatus::decode(rest)),
-            _ => AprsData::Unknown {
-                data_type_id: data_type_id as char,
-                text: String::from_utf8_lossy(rest).into_owned(),
-            },
-        })
+        match data_type_id {
+            b':' => Some(AprsData::Message(AprsMessage::decode(rest))),
+            b'>' => Some(AprsData::Status(AprsStatus::decode(rest))),
+            other => {
+                tracing::info!(
+                    data_type = %(other as char),
+                    text = %String::from_utf8_lossy(rest),
+                    "discarding frame with unsupported aprs data type",
+                );
+                None
+            }
+        }
     }
 }
 

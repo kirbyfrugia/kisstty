@@ -19,6 +19,7 @@ pub fn parse_digipeater_path(path: &[String]) -> Result<Vec<Ax25Addr>, String> {
 pub struct Ax25Addr {
     addr: String,
     ssid: u8,
+    repeated: bool,
 }
 
 impl Ax25Addr {
@@ -55,6 +56,7 @@ impl Ax25Addr {
         Self {
             addr,
             ssid,
+            repeated: false,
         }
     }
 
@@ -95,12 +97,14 @@ impl Ax25Addr {
         let addr = Self::process_addr(buf);
         let ssid = (buf[6] >> 1) & 0b0000_1111;
 
+        let repeated = buf[6] & 0b1000_0000 != 0;
+
         // this is the last address in the header if
         // the lsb on byte 6 is 0.
         let last_byte = buf[6];
         let last_addr = last_byte & 0b0000_0001 != 0;
 
-        (Self { addr, ssid, }, last_addr)
+        (Self { addr, ssid, repeated }, last_addr)
     }
 
 }
@@ -117,7 +121,6 @@ impl std::fmt::Display for Ax25Addr {
 
 #[derive(Debug,Clone)]
 pub struct Ax25Frame {
-    #[allow(dead_code)]
     dest: Ax25Addr,
     source: Ax25Addr,
     #[allow(dead_code)]
@@ -203,25 +206,22 @@ impl Ax25Frame {
 
         let info_field_start = control_field_start + 2;
         let info = bytes.get(info_field_start..).unwrap_or(&[]);
-        let Some(data) = AprsData::decode(info) else {
-            tracing::warn!("ax25 frame missing info field");
-            return None
-        };
+        let data = AprsData::decode(info)?;
 
         Some(Ax25Frame { dest, source, digipeaters, control, pid, data })
     }
 
     pub fn header(&self) -> String {
         match &self.data {
-            AprsData::Message(msg) => format!("{}>{}", self.source, msg.addressee),
-            _ => self.source.to_string(),
+            AprsData::Message(msg) => format!("{} ({}) → {}", self.source, self.dest, msg.addressee),
+            _ => format!("{} → {}", self.source, self.dest),
         }
     }
 
     pub fn digipeaters(&self) -> String {
         self.digipeaters
             .iter()
-            .map(|d| d.to_string())
+            .map(|d| if d.repeated { format!("{d}*") } else { d.to_string() })
             .collect::<Vec<String>>()
             .join(",")
     }
@@ -230,7 +230,6 @@ impl Ax25Frame {
         match &self.data {
             AprsData::Message(msg) => &msg.text,
             AprsData::Status(status) => &status.text,
-            AprsData::Unknown { text, .. } => text,
         }
     }
 

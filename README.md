@@ -5,6 +5,44 @@
 * KISS - Keep it Simple Stupid. A protocol used for APRS/Packet Radio. Also the design intent for this app.
 * TTY  - A text-only terminal. Not to be confused with teletype, but there's definitely some overlap here!
 
+## About
+
+kisstty is meant to be a live chat app. The goal is to be able to launch
+it and start having contacts with other hams. Actual text conversations.
+
+It's meant to be ephemeral. When you launch the app, it starts fresh.
+This is even more true with the 8-bit version, where you can't scroll
+backwards and see messages that have scrolled off screen.
+
+The point is to have real, in-the-moment contacts.
+
+This means a few things:
+* I'm intentionally not including a history beyond the active session. When you exit the app, nothing is retained except your settings.
+* kisstty is designed around the APRS `message` data type. Other message types are ignored, but logged to the logfile for the rust version.
+* Related to the previous bullet, the 8-bit version will ONLY be for message (and status) types.
+
+## Protocol / Usage notes
+
+kisstty has the concept of "net mode" (broadcast) and "qso mode" (conversations)
+for APRS `message` types.
+
+In net mode, it addresses all messages to a `BROADCAST` addressee. I considered
+different ways to indicate that a message was meant for everyone, such as APRS
+bulletins. However, I wanted to be sure I didn't cause any weird issues with
+other software where they built in special handling for things like bulletins.
+
+You switch modes by entering:
+```
+# for net mode:
+/net
+
+# for qso mode:
+/qso <callsign>
+
+```
+
+## Background
+
 This started as a project to build a terminal/aprs/rtty app for 8-bit computers.
 Also as a way for me to have conversations with my dad over packet radio because we're
 at a weird distance from each other for having voice conversations.
@@ -28,6 +66,9 @@ Target platforms in order:
 ## Status
 
 The Atari version is far enough along that you can use it as a standard terminal. KISS/APRS in progress.
+
+The rust version is fairly functional now. You can send and receive messages. It still has some
+ugly UI stuff that isn't functional yet like the sidebar.
 
 ## Docs
 
