@@ -168,7 +168,6 @@ impl KissClient {
                 Ok(0) => break,
                 Ok(num_read) => {
                     Self::process_bytes(&mut kiss_frame_state, &buf[..num_read], message_sender);
-                    tracing::info!(num_read, "processed bytes");
                 },
                 Err(e) => match e.kind() {
                     ErrorKind::Interrupted |

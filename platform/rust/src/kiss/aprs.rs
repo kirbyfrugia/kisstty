@@ -47,7 +47,7 @@ impl AprsData {
             b':' => Some(AprsData::Message(AprsMessage::decode(rest))),
             b'>' => Some(AprsData::Status(AprsStatus::decode(rest))),
             other => {
-                tracing::info!(
+                tracing::debug!(
                     data_type = %(other as char),
                     text = %String::from_utf8_lossy(rest),
                     "discarding frame with unsupported aprs data type",
