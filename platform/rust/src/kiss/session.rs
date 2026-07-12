@@ -147,7 +147,7 @@ impl KissSession {
         if digipeaters.len() > 0 {
             lines.push(format!("via {}", &digipeaters));
         }
-        lines.push(format!(": {}", ax25_frame.body()));
+        lines.push(format!("{} {}", ax25_frame.data_type_id(), ax25_frame.body()));
         lines.push(String::from(""));
 
         let output_update = OutputUpdate::new(lines);

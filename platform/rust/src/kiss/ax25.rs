@@ -1,6 +1,5 @@
 use super::aprs::AprsData;
 
-// AX.25 allows at most 8 digipeaters in the address field.
 pub const MAX_DIGIPEATERS: usize = 8;
 
 pub fn parse_digipeater_path(path: &[String]) -> Result<Vec<Ax25Addr>, String> {
@@ -47,10 +46,8 @@ impl Ax25Addr {
     }
 
     pub fn new(addr: String, ssid: u8) -> Self {
-        // AX.25 address subfields are upper-case alphanumeric ASCII.
         let mut addr = addr.to_uppercase();
 
-        // should never get >6 chars, but just in case...
         if addr.len() > 6 {
             addr.truncate(6);
         }
@@ -164,7 +161,7 @@ impl Ax25Frame {
     }
 
     pub fn decode(bytes: &[u8]) -> Option<Self> {
-        const MIN_AX25_FRAME_SIZE: usize = 16; // source + dest + ctrl + pid
+        const MIN_AX25_FRAME_SIZE: usize = 17; // dest + source + ctrl + pid + 1 info byte
         if bytes.len() < MIN_AX25_FRAME_SIZE {
             tracing::warn!(len = bytes.len(), "discarding invalid ax25 frame - too small");
             return None
@@ -206,7 +203,10 @@ impl Ax25Frame {
 
         let info_field_start = control_field_start + 2;
         let info = bytes.get(info_field_start..).unwrap_or(&[]);
-        let data = AprsData::decode(info);
+        let Some(data) = AprsData::decode(info) else {
+            tracing::warn!("ax25 frame missing info field");
+            return None
+        };
 
         Some(Ax25Frame { dest, source, digipeaters, control, pid, data })
     }
@@ -230,8 +230,12 @@ impl Ax25Frame {
         match &self.data {
             AprsData::Message(msg) => &msg.text,
             AprsData::Status(status) => &status.text,
-            AprsData::Unknown => "<unknown>",
+            AprsData::Unknown { text, .. } => text,
         }
+    }
+
+    pub fn data_type_id(&self) -> char {
+        self.data.data_type_id()
     }
 
     pub fn message_id(&self) -> Option<&str> {

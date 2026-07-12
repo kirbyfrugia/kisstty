@@ -4,7 +4,7 @@ pub enum AprsData {
     Message(AprsMessage),
     #[allow(dead_code)]
     Status(AprsStatus),
-    Unknown,
+    Unknown { data_type_id: char, text: String },
 }
 
 #[derive(Debug,Clone)]
@@ -24,24 +24,35 @@ pub struct AprsStatus {
 }
 
 impl AprsData {
+    pub fn data_type_id(&self) -> char {
+        match self {
+            AprsData::Message(_) => ':',
+            AprsData::Status(_) => '>',
+            AprsData::Unknown { data_type_id, .. } => *data_type_id,
+        }
+    }
+
     pub fn encode(&self) -> Vec<u8> {
         match self {
             AprsData::Message(msg) => msg.encode(),
             AprsData::Status(status) => status.encode(),
-            AprsData::Unknown => Vec::new(),
+            AprsData::Unknown { data_type_id, text } => {
+                format!("{data_type_id}{text}").into_bytes()
+            }
         }
     }
 
-    pub fn decode(info: &[u8]) -> Self {
-        let Some((&data_type_id, rest)) = info.split_first() else {
-            return AprsData::Unknown;
-        };
+    pub fn decode(info: &[u8]) -> Option<Self> {
+        let (&data_type_id, rest) = info.split_first()?;
 
-        match data_type_id {
+        Some(match data_type_id {
             b':' => AprsData::Message(AprsMessage::decode(rest)),
             b'>' => AprsData::Status(AprsStatus::decode(rest)),
-            _ => AprsData::Unknown,
-        }
+            _ => AprsData::Unknown {
+                data_type_id: data_type_id as char,
+                text: String::from_utf8_lossy(rest).into_owned(),
+            },
+        })
     }
 }
 
