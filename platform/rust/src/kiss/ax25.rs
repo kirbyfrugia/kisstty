@@ -1,5 +1,21 @@
 use super::aprs::AprsData;
 
+// AX.25 allows at most 8 digipeaters in the address field.
+pub const MAX_DIGIPEATERS: usize = 8;
+
+pub fn parse_digipeater_path(path: &[String]) -> Result<Vec<Ax25Addr>, String> {
+    let digis = path
+        .iter()
+        .map(|d| Ax25Addr::parse(d))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if digis.len() > MAX_DIGIPEATERS {
+        return Err(format!("at most {MAX_DIGIPEATERS} digipeaters are allowed"));
+    }
+
+    Ok(digis)
+}
+
 #[derive(Debug,Clone)]
 pub struct Ax25Addr {
     addr: String,
@@ -9,13 +25,35 @@ pub struct Ax25Addr {
 impl Ax25Addr {
     pub const AX25DEST: &str = "APKTY1";
 
-    pub fn new(addr: String, ssid: u8) -> Self {
-        // should never get >6 chars, but just in case...
-        let addr = if addr.len() > 6 {
-            addr[..6].to_string()
-        } else {
-            addr
+    pub fn parse(s: &str) -> Result<Self, String> {
+        let s = s.trim();
+        let (addr, ssid) = match s.split_once('-') {
+            Some((addr, ssid)) => {
+                let ssid = ssid
+                    .parse::<u8>()
+                    .ok()
+                    .filter(|&n| n <= 15)
+                    .ok_or_else(|| format!("'{s}' has an invalid SSID (must be 0-15)"))?;
+                (addr, ssid)
+            }
+            None => (s, 0),
         };
+
+        if addr.is_empty() || addr.len() > 6 || !addr.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return Err(format!("'{addr}' is not a valid callsign"));
+        }
+
+        Ok(Self::new(addr.to_string(), ssid))
+    }
+
+    pub fn new(addr: String, ssid: u8) -> Self {
+        // AX.25 address subfields are upper-case alphanumeric ASCII.
+        let mut addr = addr.to_uppercase();
+
+        // should never get >6 chars, but just in case...
+        if addr.len() > 6 {
+            addr.truncate(6);
+        }
 
         Self {
             addr,

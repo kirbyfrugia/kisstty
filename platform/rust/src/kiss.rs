@@ -5,6 +5,7 @@ mod session;
 
 pub use aprs::AprsData;
 pub use aprs::AprsMessage;
+pub use ax25::parse_digipeater_path;
 pub use ax25::Ax25Addr;
 pub use ax25::Ax25Frame;
 pub use client::KissClient;

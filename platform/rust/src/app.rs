@@ -66,14 +66,12 @@ impl App {
             execute!(io::stdout(), SetCursorStyle::BlinkingBar)?;
             self.config = Config::load()?;
 
-            // on first run, make sure they enter a callsign
-            // and valid kiss host
-            if self.config.callsign.trim().is_empty() {
-                self.config_ui.load_config(&self.config);
-                self.set_active_screen(Screen::Config);
-            } else {
+            if self.config.validate().is_ok() {
                 self.set_active_screen(Screen::Main);
                 self.kiss_session.start(&self.config);
+            } else {
+                self.config_ui.load_config(&self.config);
+                self.set_active_screen(Screen::Config);
             }
 
             while !self.should_quit {
@@ -158,7 +156,7 @@ impl App {
                 true
             },
             Message::ConfigCanceled => {
-                if self.config.callsign.trim().is_empty() {
+                if self.config.validate().is_err() {
                     self.quit();
                 } else {
                     self.set_active_screen(Screen::Main);

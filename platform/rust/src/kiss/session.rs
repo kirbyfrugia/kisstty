@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     config::Config,
-    kiss::{AprsData, AprsMessage, Ax25Addr, Ax25Frame, KissClient},
+    kiss::{parse_digipeater_path, AprsData, AprsMessage, Ax25Addr, Ax25Frame, KissClient},
     message::Message,
     ui::OutputUpdate,
 };
@@ -18,6 +18,7 @@ pub struct KissSession {
     message_sender: mpsc::Sender<Message>,
     client: Option<KissClient>,
     source: Option<Ax25Addr>,
+    digipeaters: Vec<Ax25Addr>,
     outgoing_ids: HashMap<String, u64>,
     messages: VecDeque<String>,
 }
@@ -51,6 +52,7 @@ impl KissSession {
             message_sender: message_sender,
             client: None,
             source: None,
+            digipeaters: Vec::new(),
             outgoing_ids: HashMap::new(),
             messages: VecDeque::with_capacity(MAX_MESSAGES),
         }
@@ -60,7 +62,17 @@ impl KissSession {
         if self.client.is_some() {
             return;
         }
-        self.source = Some(Ax25Addr::new(config.callsign.clone(), 0));
+        self.source = match Ax25Addr::parse(&config.callsign) {
+            Ok(addr) => Some(addr),
+            Err(err) => {
+                tracing::warn!(%err, "ignoring invalid source callsign from config");
+                None
+            }
+        };
+        self.digipeaters = parse_digipeater_path(&config.digipeaters).unwrap_or_else(|err| {
+            tracing::warn!(%err, "ignoring invalid digipeater path from config");
+            Vec::new()
+        });
         self.client = Some(KissClient::new(
             config.kiss_host.clone(),
             config.kiss_port,
@@ -101,7 +113,7 @@ impl KissSession {
 
         let dest = Ax25Addr::new(Ax25Addr::AX25DEST.to_string(), 0);
         let data = AprsData::Message(AprsMessage::new(addressee, text, id));
-        let frame = Ax25Frame::new(dest, source, Vec::new(), data);
+        let frame = Ax25Frame::new(dest, source, self.digipeaters.clone(), data);
 
         // echo the outgoing frame to our own output, then transmit it
         self.display_frame(&frame);

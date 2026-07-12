@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use color_eyre::eyre::eyre;
 
+use crate::kiss;
+
 // DNS limits from RFC 1035
 pub const MAX_HOST_LEN: usize = 253;
 const MAX_SEGMENT_LEN: usize = 63;
@@ -42,6 +44,34 @@ pub fn validate_host(host: &str) -> Result<(), String> {
     Ok(())
 }
 
+pub fn parse_digipeaters(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(|d| d.trim().to_string())
+        .filter(|d| !d.is_empty())
+        .collect()
+}
+
+pub fn validate_digipeaters(value: &str) -> Result<(), String> {
+    kiss::parse_digipeater_path(&parse_digipeaters(value))?;
+    Ok(())
+}
+
+pub fn validate_port(port: u16) -> Result<(), String> {
+    if port == 0 {
+        return Err("port must be a number from 1-65535".into());
+    }
+    Ok(())
+}
+
+pub fn validate_callsign(value: &str) -> Result<(), String> {
+    if value.trim().is_empty() {
+        return Err("callsign cannot be empty".into());
+    }
+    kiss::Ax25Addr::parse(value)?;
+    Ok(())
+}
+
 fn default_kiss_host() -> String {
     "127.0.0.1".into()
 }
@@ -57,6 +87,8 @@ pub struct Config {
     pub kiss_host: String,
     #[serde(default="default_kiss_port")]
     pub kiss_port: u16,
+    #[serde(default)]
+    pub digipeaters: Vec<String>,
 }
 
 impl Default for Config {
@@ -65,6 +97,7 @@ impl Default for Config {
             callsign: String::new(),
             kiss_host: default_kiss_host(),
             kiss_port: default_kiss_port(),
+            digipeaters: Vec::new(),
         }
     }
 }
@@ -72,6 +105,14 @@ impl Default for Config {
 impl Config {
     pub fn config_path() -> Option<PathBuf> {
         dirs::config_dir().map(|dir| dir.join("kisstty").join("config.toml"))
+    }
+
+    pub fn validate(&self) -> Result<(), String> {
+        validate_callsign(&self.callsign)?;
+        validate_host(&self.kiss_host)?;
+        validate_port(self.kiss_port)?;
+        kiss::parse_digipeater_path(&self.digipeaters)?;
+        Ok(())
     }
 
     pub fn load() -> color_eyre::Result<Config> {

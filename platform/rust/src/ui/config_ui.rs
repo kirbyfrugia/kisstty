@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 use crate::{
-    config::Config,
+    config::{self, Config},
     message::Message,
     ui::LineInput,
 };
@@ -35,20 +35,18 @@ enum FieldKey {
     Callsign,
     KissHost,
     KissPort,
+    Digipeaters,
 }
 
 fn validate_field(key: FieldKey, value: &str) -> Result<(), String> {
     let value = value.trim();
     match key {
-        FieldKey::Callsign => {
-            if value.is_empty() {
-                return Err("callsign cannot be empty".into());
-            }
-        }
-        FieldKey::KissHost => return crate::config::validate_host(value),
+        FieldKey::Callsign => return config::validate_callsign(value),
+        FieldKey::Digipeaters => return config::validate_digipeaters(value),
+        FieldKey::KissHost => return config::validate_host(value),
         FieldKey::KissPort => match value.parse::<u16>() {
-            Ok(0) | Err(_) => return Err("port must be a number from 1-65535".into()),
-            Ok(_) => {}
+            Ok(port) => return config::validate_port(port),
+            Err(_) => return Err("port must be a number from 1-65535".into()),
         },
     }
     Ok(())
@@ -86,12 +84,14 @@ impl ConfigUi {
 
     pub fn new(message_sender: mpsc::Sender<Message>) -> Self {
         let input_len: usize = 40;
-        let callsign_input = LineInput::new(6, input_len, message_sender.clone());
-        let kiss_host_input = LineInput::new(crate::config::MAX_HOST_LEN, input_len, message_sender.clone());
+        let callsign_input = LineInput::new(9, input_len, message_sender.clone());
+        let digipeaters_input = LineInput::new(80, input_len, message_sender.clone());
+        let kiss_host_input = LineInput::new(config::MAX_HOST_LEN, input_len, message_sender.clone());
         let kiss_port_input = LineInput::new(5, input_len, message_sender.clone());
 
         let config_fields = vec![
             ConfigField::new(FieldKey::Callsign, String::from("Callsign:"), callsign_input),
+            ConfigField::new(FieldKey::Digipeaters, String::from("Digipeaters:"), digipeaters_input),
             ConfigField::new(FieldKey::KissHost, String::from("KISS host:"), kiss_host_input),
             ConfigField::new(FieldKey::KissPort, String::from("KISS port:"), kiss_port_input),
         ];
@@ -115,6 +115,7 @@ impl ConfigUi {
         for field in &mut self.config_fields {
             let value = match field.key {
                 FieldKey::Callsign => config.callsign.clone(),
+                FieldKey::Digipeaters => config.digipeaters.join(", "),
                 FieldKey::KissHost => config.kiss_host.clone(),
                 FieldKey::KissPort => config.kiss_port.to_string(),
             };
@@ -129,11 +130,14 @@ impl ConfigUi {
             let value = field.input.data.trim();
             match field.key {
                 FieldKey::Callsign => config.callsign = value.to_string(),
+                FieldKey::Digipeaters => {
+                    config.digipeaters = config::parse_digipeaters(value);
+                },
                 FieldKey::KissHost => config.kiss_host = value.to_string(),
                 FieldKey::KissPort => {
                     config.kiss_port = value.parse::<u16>()
                         .expect("wtf");
-                }
+                },
             }
         }
     }
