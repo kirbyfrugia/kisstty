@@ -17,13 +17,13 @@ pub const SLASH_COMMANDS: &[SlashCommand] = &[
     SlashCommand {
         slash:      "/net",
         args:       "",
-        friendly:   "Switch to net mode (broadcast)",
+        friendly:   "Net mode (broadcast send, rcv only APRS msg data type)",
         to_message: |_| Some(Message::Net),
     },
     SlashCommand {
         slash:      "/qso",
         args:       "<callsign>",
-        friendly:   "Start a QSO (one to one convo)",
+        friendly:   "QSO mode (one-to-one convo)",
         to_message: |a| match a {
             [c] => Some(Message::Qso(c.to_string())),
             _   => None,
@@ -32,7 +32,7 @@ pub const SLASH_COMMANDS: &[SlashCommand] = &[
     SlashCommand {
         slash:      "/monitor",
         args:       "",
-        friendly:   "Switch to monitor mode (all APRS msgs)",
+        friendly:   "Monitor mode (broadcast send, rcv all APRS data types)",
         to_message: |_| Some(Message::Monitor),
     },
     SlashCommand {
@@ -52,12 +52,6 @@ pub const SLASH_COMMANDS: &[SlashCommand] = &[
         args:       "",
         friendly:   "Exit kisstty",
         to_message: |_| Some(Message::Exit),
-    },
-    SlashCommand {
-        slash:      "/quit",
-        args:       "",
-        friendly:   "Exit kisstty",
-        to_message: |_| Some(Message::Quit),
     },
 ];
 

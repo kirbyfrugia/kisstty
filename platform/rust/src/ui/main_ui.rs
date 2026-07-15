@@ -26,6 +26,7 @@ const INPUT_HEIGHT: u16                = 3;
 
 #[derive(Debug)]
 enum AppMode {
+    Monitor,
     Net,
     Qso(String),
 }
@@ -167,7 +168,8 @@ impl MainUi {
         frame.render_widget(&self.terminal_output, terminal_output_block_inner_area);
 
         let app_mode_text = match &self.app_mode {
-            AppMode::Net => String::from("NET"),
+            AppMode::Monitor => String::from("MONITOR/Broadcast mode"),
+            AppMode::Net => String::from("NET/Broadast mode"),
             AppMode::Qso(addressee) => format!("QSO with {}", addressee),
         };
 
@@ -254,6 +256,10 @@ impl MainUi {
                 self.print_help();
                 true
             },
+            Message::Monitor => {
+                self.app_mode = AppMode::Monitor;
+                true
+            }
             Message::Net => {
                 self.app_mode = AppMode::Net;
                 true
@@ -328,11 +334,7 @@ impl MainUi {
         }
         else {
             if name.starts_with("/") {
-                let mut lines: Vec<String> = Vec::new();
-                let err = format!("unknown slash cmd: {name}");
-                lines.push(err);
-                let output_update = OutputUpdate::new(lines);
-                let _ = self.message_sender.send(Message::Output(output_update));
+                self.print_help();
                 return
             }
             self.send_message(input);
