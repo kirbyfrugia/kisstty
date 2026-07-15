@@ -327,7 +327,14 @@ impl MainUi {
             }
         }
         else {
-            // no slash, assume message
+            if name.starts_with("/") {
+                let mut lines: Vec<String> = Vec::new();
+                let err = format!("unknown slash cmd: {name}");
+                lines.push(err);
+                let output_update = OutputUpdate::new(lines);
+                let _ = self.message_sender.send(Message::Output(output_update));
+                return
+            }
             self.send_message(input);
             self.clear_input();
         }
