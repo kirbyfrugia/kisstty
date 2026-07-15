@@ -123,7 +123,6 @@ impl std::fmt::Display for Ax25Addr {
 pub struct Ax25Frame {
     dest: Ax25Addr,
     source: Ax25Addr,
-    #[allow(dead_code)]
     digipeaters: Vec<Ax25Addr>,
     #[allow(dead_code)]
     control: u8,
@@ -243,6 +242,15 @@ impl Ax25Frame {
     pub fn message_id(&self) -> Option<&str> {
         match &self.data {
             AprsData::Message(msg) => msg.id.as_deref(),
+            _ => None,
+        }
+    }
+
+    pub fn ack_target(&self, addr: &Ax25Addr) -> Option<(&Ax25Addr, &str)> {
+        match &self.data {
+            AprsData::Message(msg) if msg.addressee == addr.to_string() => {
+                Some((&self.source, msg.id.as_deref()?))
+            }
             _ => None,
         }
     }

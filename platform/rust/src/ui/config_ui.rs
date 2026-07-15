@@ -49,7 +49,6 @@ fn validate_field(key: FieldKey, value: &str) -> Result<(), String> {
             Err(_) => return Err("port must be a number from 1-65535".into()),
         },
     }
-    Ok(())
 }
 
 #[derive(Debug)]

@@ -1,24 +1,18 @@
 #[derive(Debug,Clone)]
 pub enum AprsData {
-    #[allow(dead_code)]
     Message(AprsMessage),
-    #[allow(dead_code)]
     Status(AprsStatus),
 }
 
 #[derive(Debug,Clone)]
 pub struct AprsMessage {
-    #[allow(dead_code)]
     pub addressee: String,
-    #[allow(dead_code)]
     pub text: String,
-    #[allow(dead_code)]
     pub id: Option<String>,
 }
 
 #[derive(Debug,Clone)]
 pub struct AprsStatus {
-    #[allow(dead_code)]
     pub text: String,
 }
 

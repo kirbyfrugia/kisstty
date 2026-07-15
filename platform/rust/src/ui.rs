@@ -17,6 +17,7 @@ pub struct UiId(u64);
 
 #[derive(Debug, Clone)]
 pub struct OutputUpdate{
+    #[allow(dead_code)]
     ui_id: UiId,
     lines: Vec<String>,
 }

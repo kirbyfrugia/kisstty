@@ -251,7 +251,6 @@ impl KissClient {
                     let bytes: &[u8] = &KISS::encode(&frame);
                     match kiss_connection.lock().expect("failed to acquire kiss connection lock").as_mut() {
                         Some(connection) => {
-                            tracing::info!("writing bytes");
                             if let Err(e) = connection.write_all(&bytes) {
                                 tracing::error!(kind = ?e.kind(), "error writing frame to kiss server");
                             }
