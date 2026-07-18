@@ -2,6 +2,7 @@
 pub enum AprsData {
     Message(AprsMessage),
     Status(AprsStatus),
+    ToBeImplemented(AprsToBeImplemented),
 }
 
 #[derive(Debug,Clone)]
@@ -16,11 +17,18 @@ pub struct AprsStatus {
     pub text: String,
 }
 
+#[derive(Debug,Clone)]
+pub struct AprsToBeImplemented {
+    pub data_type_id: char,
+    pub text: String,
+}
+
 impl AprsData {
     pub fn data_type_id(&self) -> char {
         match self {
             AprsData::Message(_) => ':',
             AprsData::Status(_) => '>',
+            AprsData::ToBeImplemented(unimplemented) => unimplemented.data_type_id,
         }
     }
 
@@ -28,6 +36,7 @@ impl AprsData {
         match self {
             AprsData::Message(msg) => msg.encode(),
             AprsData::Status(status) => status.encode(),
+            AprsData::ToBeImplemented(unimplemented) => unimplemented.encode(),
         }
     }
 
@@ -40,14 +49,7 @@ impl AprsData {
         match data_type_id {
             b':' => Some(AprsData::Message(AprsMessage::decode(rest))),
             b'>' => Some(AprsData::Status(AprsStatus::decode(rest))),
-            other => {
-                tracing::debug!(
-                    data_type = %(other as char),
-                    text = %String::from_utf8_lossy(rest),
-                    "discarding frame with unsupported aprs data type",
-                );
-                None
-            }
+            other => Some(AprsData::ToBeImplemented(AprsToBeImplemented::decode(other, rest))),
         }
     }
 }
@@ -104,6 +106,20 @@ impl AprsStatus {
 
     fn decode(info: &[u8]) -> Self {
         Self {
+            text: String::from_utf8_lossy(info).into_owned(),
+        }
+    }
+}
+
+impl AprsToBeImplemented {
+    fn encode(&self) -> Vec<u8> {
+        format!(",{}", self.text).into_bytes()
+    }
+
+    fn decode(data_type_id: u8, info: &[u8]) -> Self {
+        let data_type_id = data_type_id as char;
+        Self {
+            data_type_id,
             text: String::from_utf8_lossy(info).into_owned(),
         }
     }

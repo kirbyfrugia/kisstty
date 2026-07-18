@@ -232,6 +232,7 @@ impl Ax25Frame {
         match &self.data {
             AprsData::Message(msg) => &msg.text,
             AprsData::Status(status) => &status.text,
+            AprsData::ToBeImplemented(unimplemented) => &unimplemented.text,
         }
     }
 

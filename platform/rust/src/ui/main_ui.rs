@@ -169,7 +169,7 @@ impl MainUi {
 
         let app_mode_text = match &self.app_mode {
             AppMode::Monitor => String::from("MONITOR/Broadcast mode"),
-            AppMode::Net => String::from("NET/Broadast mode"),
+            AppMode::Net => String::from("NET/Broadcast mode"),
             AppMode::Qso(addressee) => format!("QSO with {}", addressee),
         };
 

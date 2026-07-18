@@ -11,7 +11,7 @@ use crate::{
     ui::OutputUpdate,
 };
 
-const MAX_MESSAGES: usize = 10000;
+const MAX_FRAMES: usize = 10000;
 
 const ACK_THROTTLE: Duration = Duration::from_secs(30);
 
@@ -23,7 +23,7 @@ pub struct KissSession {
     digipeaters: Vec<Ax25Addr>,
     outgoing_ids: HashMap<String, u64>,
     last_acked: HashMap<(String, String), Instant>,
-    _messages: VecDeque<String>,
+    frames: VecDeque<Ax25Frame>,
 }
 
 fn to_base36(mut value: u64) -> String {
@@ -58,7 +58,7 @@ impl KissSession {
             digipeaters: Vec::new(),
             outgoing_ids: HashMap::new(),
             last_acked: HashMap::new(),
-            _messages: VecDeque::with_capacity(MAX_MESSAGES),
+            frames: VecDeque::with_capacity(MAX_FRAMES),
         }
     }
 
@@ -99,12 +99,12 @@ impl KissSession {
                 };
                 if let Some(frame) = self.send_aprs_message(AprsMessage::new(addressee, text, id)) {
                     self.display_frame(&frame);
+                    self.frames.push_back(frame);
                 }
                 None
             },
             Message::Ax25FrameReceived(frame) => {
-                self.display_frame(&frame);
-                self.maybe_send_ack(&frame);
+                self.handle_received_frame(frame);
                 None
             },
             other => Some(other),
@@ -121,20 +121,6 @@ impl KissSession {
         Some(frame)
     }
 
-    fn maybe_send_ack(&mut self, rcvd_frame: &Ax25Frame) {
-        let Some(me) = self.source.clone() else { return };
-        let Some((ack_addressee, msg_id)) = rcvd_frame.ack_target(&me) else { return };
-
-        let now = Instant::now();
-        self.last_acked.retain(|_, &mut t| now.duration_since(t) < ACK_THROTTLE);
-
-        let key = (ack_addressee.to_string(), msg_id.to_string());
-        if self.last_acked.contains_key(&key) { return; }
-
-        tracing::debug!(to = %key.0, id = %key.1, "acking received message");
-        self.send_aprs_message(AprsMessage::new(key.0.clone(), format!("ack{}", key.1), None));
-        self.last_acked.insert(key, now);
-    }
 
     fn next_message_id(&mut self, addressee: &str) -> String {
         let next = self.outgoing_ids.entry(addressee.to_string()).or_insert(1);
@@ -148,6 +134,27 @@ impl KissSession {
             Some(client) => client.send(frame.encode()),
             None => tracing::warn!("no kiss connection; dropping outgoing frame"),
         }
+    }
+
+    fn handle_received_frame(&mut self, frame: Ax25Frame) {
+        self.display_frame(&frame);
+        self.maybe_send_ack(&frame);
+        self.frames.push_back(frame);
+    }
+
+    fn maybe_send_ack(&mut self, rcvd_frame: &Ax25Frame) {
+        let Some(me) = self.source.clone() else { return };
+        let Some((ack_addressee, msg_id)) = rcvd_frame.ack_target(&me) else { return };
+
+        let now = Instant::now();
+        self.last_acked.retain(|_, &mut t| now.duration_since(t) < ACK_THROTTLE);
+
+        let key = (ack_addressee.to_string(), msg_id.to_string());
+        if self.last_acked.contains_key(&key) { return; }
+
+        tracing::debug!(to = %key.0, id = %key.1, "acking received message");
+        self.send_aprs_message(AprsMessage::new(key.0.clone(), format!("ack{}", key.1), None));
+        self.last_acked.insert(key, now);
     }
 
     fn display_frame(&self, ax25_frame: &Ax25Frame) {
