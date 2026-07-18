@@ -141,7 +141,8 @@ impl MainUi {
 
         let terminal_output_block = Block::bordered()
             .style(Style::default())
-            .title("kisstty")
+            .title(" kisstty ")
+            .title_style(Style::default().add_modifier(Modifier::REVERSED))
             .title_alignment(Alignment::Left)
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
@@ -154,11 +155,13 @@ impl MainUi {
 
         frame.render_widget(&self.terminal_output, terminal_output_block_inner_area);
 
-        let app_mode_text = match &self.app_mode {
-            AppMode::Monitor => String::from("MONITOR/Broadcast mode"),
-            AppMode::Net => String::from("NET/Broadcast mode"),
-            AppMode::Qso(addressee) => format!("QSO with {}", addressee),
+        let (mode, rx, tx) = match &self.app_mode {
+            AppMode::Monitor => ("MONITOR", "all traffic", "broadcast"),
+            AppMode::Net => ("NET", "messages", "broadcast"),
+            AppMode::Qso(addressee) => ("QSO", addressee.as_str(), addressee.as_str()),
         };
+
+        let app_mode_text = format!("{:<7} | RX: {:<11} | TX: {:<9}", mode, rx, tx);
 
         let terminal_input_block = Block::bordered()
             .title(format!(" {} ", app_mode_text))
