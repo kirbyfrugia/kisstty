@@ -4,7 +4,7 @@ use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::{ Alignment, Constraint, Direction, Layout, Position, Rect, Size, Spacing, },
     style::{ Color, Modifier, Style, },
-    widgets::{ Block, Borders, Clear, List, ListItem, ListState, Paragraph, },
+    widgets::{ Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph, },
     symbols::merge::MergeStrategy,
     Frame,
 };
@@ -18,9 +18,7 @@ use crate::{
 
 const MAX_INPUT_LEN: usize             = 67;
 const TERMINAL_WIDTH: u16              = 80;
-const SIDEBAR_WIDTH: u16               = 26;
 const OUTPUT_AREA_WIDTH: u16           = TERMINAL_WIDTH + 4;
-const SIDEBAR_AREA_WIDTH: u16          = SIDEBAR_WIDTH + 2;
 const MAX_SLASH_POPUP_HEIGHT: u16      = 8;
 const INPUT_HEIGHT: u16                = 3;
 
@@ -42,7 +40,7 @@ pub struct MainUi {
 
 impl MainUi {
     pub const MIN_SIZE: Size = Size {
-        width: OUTPUT_AREA_WIDTH + SIDEBAR_AREA_WIDTH,
+        width: OUTPUT_AREA_WIDTH,
         height: INPUT_HEIGHT + MAX_SLASH_POPUP_HEIGHT + 3,
     };
 
@@ -131,18 +129,6 @@ impl MainUi {
             ])
             .split(frame.area());
 
-        // app layout has the area for the main output terminal
-        // and a sidebar to show the user information.
-        let app_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(vec![
-                Constraint::Length(OUTPUT_AREA_WIDTH), // left side with room
-                                                        // for borders, caret,
-                                                        // space, etc.
-                Constraint::Length(SIDEBAR_WIDTH+2),    // right sidebar
-            ])
-            .split(window_layout[1]);
-
         // layout for  the output and input area of the main app
         let terminal_layout = Layout::default()
             .direction(Direction::Vertical)
@@ -151,14 +137,15 @@ impl MainUi {
                 Constraint::Fill(1),   // output
                 Constraint::Length(3), // input plus top/bottom border
             ])
-            .split(app_layout[0]);
+            .split(window_layout[1]);
 
         let terminal_output_block = Block::bordered()
             .style(Style::default())
             .title("kisstty")
             .title_alignment(Alignment::Left)
             .borders(Borders::ALL)
-            .merge_borders(MergeStrategy::Exact);
+            .border_type(BorderType::Rounded)
+            .merge_borders(MergeStrategy::Fuzzy);
 
         frame.render_widget(&terminal_output_block, terminal_layout[0]);
 
@@ -177,7 +164,8 @@ impl MainUi {
             .title(app_mode_text)
             .title_alignment(Alignment::Left)
             .style(Style::default())
-            .merge_borders(MergeStrategy::Exact);
+            .border_type(BorderType::Rounded)
+            .merge_borders(MergeStrategy::Fuzzy);
 
         frame.render_widget(&terminal_input_block, terminal_layout[1]);
 
@@ -217,19 +205,6 @@ impl MainUi {
             y: terminal_input_area.y,
         };
         frame.set_cursor_position(cursor_pos);
-
-        let sidebar = Paragraph::new("Callsign:\n\nActive QSOs:\nABC123\nXYZ456")
-            .block(
-                Block::default()
-                    .title("blah")
-                    .title_alignment(Alignment::Left)
-                    .borders(Borders::ALL)
-                    .merge_borders(MergeStrategy::Exact),
-            )
-            .style(Style::default())
-            .alignment(Alignment::Left);
-
-        frame.render_widget(sidebar, app_layout[1]);
 
         let in_slash = self.terminal_input.is_typing_slash_command();
 
