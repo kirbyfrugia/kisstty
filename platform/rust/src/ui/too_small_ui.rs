@@ -3,8 +3,8 @@ use std::sync::mpsc;
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Alignment,
-    style::Style,
-    widgets::{Block, Borders, Paragraph, Wrap},
+    style::{Modifier, Style},
+    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
     Frame,
 };
 
@@ -24,9 +24,11 @@ impl TooSmallUi {
         let warning = Paragraph::new("Make the terminal window bigger.")
             .block(
                 Block::default()
-                    .title("kisstty")
+                    .title(" kisstty ")
+                    .title_style(Style::default().add_modifier(Modifier::REVERSED))
                     .title_alignment(Alignment::Center)
                     .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
             )
             .style(Style::default())
             .alignment(Alignment::Center)

@@ -4,7 +4,7 @@ use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Alignment, Constraint, Direction, Layout, Position, Rect, Size},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
 
@@ -188,9 +188,11 @@ impl ConfigUi {
             .split(frame.area());
 
         let outer_block = Block::default()
-            .title("Config")
+            .title(" Config ")
+            .title_style(Style::default().add_modifier(Modifier::REVERSED))
             .title_alignment(Alignment::Center)
-            .borders(Borders::ALL);
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded);
 
         frame.render_widget(&outer_block, outer_layout[1]);
 

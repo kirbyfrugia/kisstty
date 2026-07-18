@@ -143,7 +143,7 @@ impl MainUi {
             .style(Style::default())
             .title(" kisstty ")
             .title_style(Style::default().add_modifier(Modifier::REVERSED))
-            .title_alignment(Alignment::Left)
+            .title_alignment(Alignment::Center)
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .merge_borders(MergeStrategy::Fuzzy);
