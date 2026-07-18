@@ -313,14 +313,20 @@ pkpf_done:
   rts
 
 int_fend:
+  lda pk_state
+  and #KISS_STATE_INFO
+  beq @reset ; frame ended before the info field
   lda buf_counter
-  beq @done ; no data, was an empty frame
+  beq @reset ; no data, was an empty frame
   sta g_rx_buf_num_chars
 
   ; indicate a frame is ready for handling
   lda pk_state
   ora #KISS_FRAME_READY
   sta pk_state
+  jmp @done
+@reset:
+  jsr pk_next_frame
 @done:
   rts
 
