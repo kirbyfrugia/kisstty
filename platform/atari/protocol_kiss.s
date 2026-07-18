@@ -266,17 +266,15 @@ int_process_byte:
   sta pk_state
   jmp @done
 @in_btwn:
-  ldy buf_counter
   lda CMDDATA0
-  sta pk_frame_header,y
-  iny
-  sty buf_counter
   ldy btwn_counter
   cpy #1
   beq @last_btwn
+  sta pk_frame_header+KissFrameHeader::control
   inc btwn_counter
   jmp @done
 @last_btwn:
+  sta pk_frame_header+KissFrameHeader::protocol_id
   lda pk_state
   eor #KISS_STATE_BTWN
   ora #KISS_STATE_INFO
