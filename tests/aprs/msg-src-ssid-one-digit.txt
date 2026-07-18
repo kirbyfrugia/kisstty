@@ -1,0 +1,2 @@
+# Message from a station with a single-digit SSID.
+NOCALL-9>APZ001,WIDE1-1,WIDE2-1::NOCALL   :Test

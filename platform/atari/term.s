@@ -593,6 +593,9 @@ int_handle_byte_read:
 int_handle_kiss_frame:
   jsr pk_process_frame
 
+  lda g_disp_buf_num_lines
+  beq @done
+
   lda #<g_disp_buf
   sta CMDDATA0
   lda #>g_disp_buf
@@ -639,7 +642,8 @@ int_handle_kiss_frame:
 ;  lda #4
 ;  sta CMDDATA2
 ;  jsr to_append_lines
-;  
+;
+@done:
   rts
 
 int_print_status:

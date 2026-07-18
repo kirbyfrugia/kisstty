@@ -1,0 +1,2 @@
+# simple message with no digipeaters
+NOCALL-7>APZ001::NOCALL   :Test

@@ -181,7 +181,7 @@ on the host machine and over a cable to the direwolf box.
 # Bridge TCP 9000 to the physical serial port wired to the other box.
 # Replace /dev/COM2 with your serial port:
 # Note: my secondary port is configured as /dev/COM2
-socat -d -d TCP:127.0.0.1:9000 /dev/COM2,raw,echo=0,b9600
+socat -d -d TCP:127.0.0.1:9000 /dev/COM2,raw,echo=0,b9600,cs8,parenb=0,cstopb=0,crtscts=0,clocal=1
 
 # --- on the direwolf box ---
 

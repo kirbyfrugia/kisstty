@@ -298,8 +298,6 @@ pk_process_frame:
   lda #>g_disp_buf
   sta g_temp_data_ptr_hi
 
-  ;jsr int_process_addresses
-
   inc buf_counter
   lda g_rx_buf+0
   cmp #':'
@@ -583,60 +581,6 @@ int_read_until_end:
 int_ack_message:
   rts
 
-; may use later, not used now
-int_process_addresses:
-  ldx #0
-  lda g_disp_buf_line_ptrs_lo,x
-  sta g_temp_data_ptr_lo
-  lda g_disp_buf_line_ptrs_hi,x
-  sta g_temp_data_ptr_hi
-
-  ldy #0
-  ldx #KissFrameHeader::source
-  stx x_index_var
-  jsr int_addr_to_buf
-
-  lda #'>'
-  sta (g_temp_data_ptr_lo),y
-
-  iny
-  ldx #KissFrameHeader::dest
-  stx x_index_var
-  jsr int_addr_to_buf
-
-  lda #1
-  sta g_disp_buf_num_lines
-
-  lda pk_frame_header+KissFrameHeader::num_digi
-  bne ipa_digi
-
-  lda #'x'
-  ut_fill_to_end_ptr g_temp_data_ptr_lo, #TERMINAL_WIDTH
-  jmp ipa_done
-ipa_digi:
-  lda #'v'
-  sta (g_temp_data_ptr_lo),y
-  ldx #KissFrameHeader::digipeater
-  stx x_index_var
-  ldx #0 
-ipa_loop:
-  stx current_digi
-  ldx x_index_var
-  iny
-  jsr int_addr_to_buf
-  ldx current_digi
-  inx
-  cpx pk_frame_header+KissFrameHeader::num_digi
-  beq ipa_done
-  lda #','
-  iny
-  sta (g_temp_data_ptr_lo),y
-  jmp ipa_loop
-  
-  ; TODO
-ipa_done:
-  rts
-
 ; inputs:
 ;   g_temp_data_ptr_lo/hi - address of line
 ;   x_index_var        - offset in KissFrameHeader to start of address
@@ -684,6 +628,7 @@ int_addr_to_buf:
   tax
   lda ut_hex_table_atascii,x
   sta (g_temp_data_ptr_lo),y
+  iny
 @done:
   ; update our x to one past end of this address
   inc x_index_var
@@ -691,7 +636,6 @@ int_addr_to_buf:
 
 zulu:            .res 1
 terminator:      .res 1
-current_digi:    .res 1
 x_index_var:     .res 1
 x_index_var_end: .res 1
 y_index_var:     .res 1
