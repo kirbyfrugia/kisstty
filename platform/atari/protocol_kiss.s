@@ -199,6 +199,7 @@ pk_new_byte:
 @in_fesc_tfend:
   lda #KISS_FEND
 @data:
+  sta CMDDATA0
   jsr int_process_byte
 @done:
   rts
