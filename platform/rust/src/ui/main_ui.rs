@@ -161,7 +161,8 @@ impl MainUi {
         };
 
         let terminal_input_block = Block::bordered()
-            .title(app_mode_text)
+            .title(format!(" {} ", app_mode_text))
+            .title_style(Style::default().add_modifier(Modifier::REVERSED))
             .title_alignment(Alignment::Left)
             .style(Style::default())
             .border_type(BorderType::Rounded)
