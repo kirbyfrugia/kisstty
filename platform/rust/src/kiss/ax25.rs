@@ -1,9 +1,5 @@
 use super::aprs::AprsData;
 
-use crate::{
-    kiss::{next_kiss_id, KissId},
-};
-
 pub const MAX_DIGIPEATERS: usize = 8;
 
 pub fn parse_digipeater_path(path: &[String]) -> Result<Vec<Ax25Addr>, String> {
@@ -128,7 +124,6 @@ impl std::fmt::Display for Ax25Addr {
 
 #[derive(Debug,Clone)]
 pub struct Ax25Frame {
-    kiss_id: KissId,
     dest: Ax25Addr,
     source: Ax25Addr,
     digipeaters: Vec<Ax25Addr>,
@@ -141,9 +136,7 @@ pub struct Ax25Frame {
 
 impl Ax25Frame {
     pub fn new(dest: Ax25Addr, source: Ax25Addr, digipeaters: Vec<Ax25Addr>, data: AprsData) -> Self {
-        let kiss_id = next_kiss_id();
         Self {
-            kiss_id,
             dest,
             source,
             digipeaters,
@@ -217,9 +210,7 @@ impl Ax25Frame {
         let info = bytes.get(info_field_start..).unwrap_or(&[]);
         let data = AprsData::decode(info)?;
 
-
-        let kiss_id = next_kiss_id();
-        Some(Ax25Frame { kiss_id, dest, source, digipeaters, control, pid, data })
+        Some(Ax25Frame { dest, source, digipeaters, control, pid, data })
     }
 
     pub fn digipeaters(&self) -> &[Ax25Addr] {

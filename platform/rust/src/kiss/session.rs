@@ -9,7 +9,7 @@ use crate::{
     kiss::{
         parse_digipeater_path,
         AprsData, AprsMessage, Ax25Addr, Ax25Frame,
-        KissClient, KissId
+        KissClient,
     },
     message::Message,
     ui::{UiId,UiLine,OutputUpdate},
@@ -21,15 +21,20 @@ const ACK_THROTTLE: Duration = Duration::from_secs(30);
 
 #[derive(Debug)]
 struct SessionFrame {
-    header_ui_id: UiId,
+    id: u64,
+    received_at: SystemTime,
+    #[allow(dead_code)]
+    header_ui_id: Option<UiId>,
     frame: Ax25Frame,
     acks: Vec<Ax25Frame>,
 }
 
 impl SessionFrame {
-    pub fn new(header_ui_id: UiId, frame: Ax25Frame) -> Self {
+    pub fn new(id: u64, frame: Ax25Frame) -> Self {
         Self {
-            header_ui_id,
+            id,
+            received_at: SystemTime::now(),
+            header_ui_id: None,
             frame,
             acks: Vec::new(),
         }
@@ -45,6 +50,7 @@ pub struct KissSession {
     outgoing_ids: HashMap<String, u64>,
     last_acked: HashMap<(String, String), Instant>,
     frames: VecDeque<SessionFrame>,
+    next_frame_id: u64,
 }
 
 fn to_base36(mut value: u64) -> String {
@@ -72,8 +78,8 @@ fn format_digipeaters(digipeaters: &[Ax25Addr]) -> String {
         .join(",")
 }
 
-fn utc_timestamp() -> String {
-    let secs = SystemTime::now()
+fn utc_timestamp(at: SystemTime) -> String {
+    let secs = at
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
@@ -90,6 +96,7 @@ impl KissSession {
             outgoing_ids: HashMap::new(),
             last_acked: HashMap::new(),
             frames: VecDeque::with_capacity(MAX_FRAMES),
+            next_frame_id: 0,
         }
     }
 
@@ -129,9 +136,7 @@ impl KissSession {
                     Some(self.next_message_id(&addressee))
                 };
                 if let Some(frame) = self.send_aprs_message(AprsMessage::new(addressee, text, id)) {
-                    let ui_id = self.display_frame(&frame);
-                    let session_frame = SessionFrame::new(ui_id, frame);
-                    self.frames.push_back(session_frame);
+                    self.record_frame(frame);
                 }
                 None
             },
@@ -170,9 +175,7 @@ impl KissSession {
 
     fn handle_received_ack(&mut self, frame: Ax25Frame) {
         // TODO: actually handle ack's differently.
-        let ui_id = self.display_frame(&frame);
-        let session_frame = SessionFrame::new(ui_id, frame);
-        self.frames.push_back(session_frame);
+        self.record_frame(frame);
     }
 
     fn handle_received_frame(&mut self, frame: Ax25Frame) {
@@ -181,9 +184,20 @@ impl KissSession {
             return;
         }
 
-        let ui_id = self.display_frame(&frame);
         self.maybe_send_ack(&frame);
-        let session_frame = SessionFrame::new(ui_id, frame);
+        self.record_frame(frame);
+    }
+
+    fn record_frame(&mut self, frame: Ax25Frame) {
+        let id = self.next_frame_id;
+        self.next_frame_id = (self.next_frame_id + 1) % MAX_FRAMES as u64;
+
+        let mut session_frame = SessionFrame::new(id, frame);
+        session_frame.header_ui_id = Some(self.display_frame(&session_frame));
+
+        if self.frames.len() == MAX_FRAMES {
+            self.frames.pop_front();
+        }
         self.frames.push_back(session_frame);
     }
 
@@ -205,30 +219,39 @@ impl KissSession {
         self.last_acked.insert(key, now);
     }
 
-    fn display_frame(&self, ax25_frame: &Ax25Frame) -> UiId {
-        let mut ui_lines: Vec<UiLine> = Vec::new();
-
+    fn format_display_header(&self, session_frame: &SessionFrame) -> String {
+        let frame = &session_frame.frame;
         let mut header = format!(
-            "{} {} ({})",
-            utc_timestamp(),
-            ax25_frame.source(),
-            ax25_frame.dest(),
+            "{:04}: {} {} ({})",
+            session_frame.id,
+            utc_timestamp(session_frame.received_at),
+            frame.source(),
+            frame.dest(),
         );
-        if let AprsData::Message(msg) = ax25_frame.data() {
+
+        if let AprsData::Message(msg) = frame.data() {
             header.push_str(&format!(" → {}", msg.addressee));
             if let Some(id) = &msg.id {
                 header.push_str(&format!(" {{{id}"));
             }
         }
+        header
+    }
+
+    fn display_frame(&self, session_frame: &SessionFrame) -> UiId {
+        let frame = &session_frame.frame;
+        let mut ui_lines: Vec<UiLine> = Vec::new();
+
+        let header = self.format_display_header(session_frame);
         let header_line = UiLine::new(header);
         let header_ui_id = header_line.ui_id.clone();
         ui_lines.push(header_line);
 
-        let digipeaters = format_digipeaters(ax25_frame.digipeaters());
+        let digipeaters = format_digipeaters(frame.digipeaters());
         if digipeaters.len() > 0 {
             ui_lines.push(UiLine::new(format!("via {}", &digipeaters)));
         }
-        let data = ax25_frame.data();
+        let data = frame.data();
         ui_lines.push(UiLine::new(format!("{} {}", data.data_type_id(), data.body())));
         ui_lines.push(UiLine::new(String::from("")));
 

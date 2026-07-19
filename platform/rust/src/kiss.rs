@@ -11,17 +11,6 @@ pub use ax25::Ax25Frame;
 pub use client::KissClient;
 pub use session::KissSession;
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct KissId(u64);
-
-static NEXT_KISS_ID: AtomicU64 = AtomicU64::new(1);
-
-pub fn next_kiss_id() -> KissId {
-    KissId(NEXT_KISS_ID.fetch_add(1, Ordering::Relaxed))
-}
-
 #[allow(non_camel_case_types)]
 pub struct KISS;
 
