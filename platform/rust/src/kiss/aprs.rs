@@ -32,12 +32,22 @@ impl AprsData {
         }
     }
 
-    pub fn encode(&self) -> Vec<u8> {
+    pub fn body(&self) -> &str {
         match self {
-            AprsData::Message(msg) => msg.encode(),
-            AprsData::Status(status) => status.encode(),
-            AprsData::ToBeImplemented(unimplemented) => unimplemented.encode(),
+            AprsData::Message(msg) => &msg.text,
+            AprsData::Status(status) => &status.text,
+            AprsData::ToBeImplemented(unimplemented) => &unimplemented.text,
         }
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut bytes = vec![self.data_type_id() as u8];
+        match self {
+            AprsData::Message(msg) => bytes.extend(msg.encode()),
+            AprsData::Status(status) => bytes.extend(status.encode()),
+            AprsData::ToBeImplemented(unimplemented) => bytes.extend(unimplemented.encode()),
+        }
+        bytes
     }
 
     pub fn decode(info: &[u8]) -> Option<Self> {
@@ -75,7 +85,7 @@ impl AprsMessage {
     }
 
     fn encode(&self) -> Vec<u8> {
-        let mut encoded = format!(":{:<9}:{}", self.addressee, self.text);
+        let mut encoded = format!("{:<9}:{}", self.addressee, self.text);
         if let Some(id) = &self.id {
             encoded.push('{');
             encoded.push_str(id);
@@ -110,7 +120,7 @@ impl std::fmt::Display for AprsMessage {
 
 impl AprsStatus {
     fn encode(&self) -> Vec<u8> {
-        format!(">{}", self.text).into_bytes()
+        self.text.as_bytes().to_vec()
     }
 
     fn decode(info: &[u8]) -> Self {
@@ -122,7 +132,7 @@ impl AprsStatus {
 
 impl AprsToBeImplemented {
     fn encode(&self) -> Vec<u8> {
-        format!(",{}", self.text).into_bytes()
+        self.text.as_bytes().to_vec()
     }
 
     fn decode(data_type_id: u8, info: &[u8]) -> Self {

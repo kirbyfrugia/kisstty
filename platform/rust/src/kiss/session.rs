@@ -6,11 +6,13 @@ use std::{
 
 use crate::{
     config::Config,
-    kiss::{parse_digipeater_path, AprsData, AprsMessage, Ax25Addr, Ax25Frame, KissClient},
+    kiss::{
+        parse_digipeater_path,
+        AprsData, AprsMessage, Ax25Addr, Ax25Frame,
+        KissClient, KissId
+    },
     message::Message,
-    ui::UiId,
-    ui::UiLine,
-    ui::OutputUpdate,
+    ui::{UiId,UiLine,OutputUpdate},
 };
 
 const MAX_FRAMES: usize = 10000;
@@ -58,6 +60,16 @@ fn to_base36(mut value: u64) -> String {
     }
     buf.reverse();
     String::from_utf8(buf).expect("base36 digits are ascii")
+}
+
+fn format_digipeaters(digipeaters: &[Ax25Addr]) -> String {
+    let last_repeated = digipeaters.iter().rposition(|d| d.repeated());
+    digipeaters
+        .iter()
+        .enumerate()
+        .map(|(i, d)| if Some(i) == last_repeated { format!("{d}*") } else { d.to_string() })
+        .collect::<Vec<String>>()
+        .join(",")
 }
 
 fn utc_timestamp() -> String {
@@ -196,8 +208,14 @@ impl KissSession {
     fn display_frame(&self, ax25_frame: &Ax25Frame) -> UiId {
         let mut ui_lines: Vec<UiLine> = Vec::new();
 
-        let mut header = format!("{} {}", utc_timestamp(), ax25_frame.header());
+        let mut header = format!(
+            "{} {} ({})",
+            utc_timestamp(),
+            ax25_frame.source(),
+            ax25_frame.dest(),
+        );
         if let AprsData::Message(msg) = ax25_frame.data() {
+            header.push_str(&format!(" → {}", msg.addressee));
             if let Some(id) = &msg.id {
                 header.push_str(&format!(" {{{id}"));
             }
@@ -206,11 +224,12 @@ impl KissSession {
         let header_ui_id = header_line.ui_id.clone();
         ui_lines.push(header_line);
 
-        let digipeaters = ax25_frame.digipeaters();
+        let digipeaters = format_digipeaters(ax25_frame.digipeaters());
         if digipeaters.len() > 0 {
             ui_lines.push(UiLine::new(format!("via {}", &digipeaters)));
         }
-        ui_lines.push(UiLine::new(format!("{} {}", ax25_frame.data_type_id(), ax25_frame.body())));
+        let data = ax25_frame.data();
+        ui_lines.push(UiLine::new(format!("{} {}", data.data_type_id(), data.body())));
         ui_lines.push(UiLine::new(String::from("")));
 
         let output_update = OutputUpdate::new(ui_lines);

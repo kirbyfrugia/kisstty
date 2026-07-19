@@ -156,12 +156,12 @@ impl MainUi {
         frame.render_widget(&self.terminal_output, terminal_output_block_inner_area);
 
         let (mode, rx, tx) = match &self.app_mode {
-            AppMode::Monitor => ("MONITOR", "all traffic", "broadcast"),
-            AppMode::Net => ("NET", "messages", "broadcast"),
+            AppMode::Monitor => ("MONITOR", "all", "broadcast"),
+            AppMode::Net => ("NET", "messages only", "broadcast"),
             AppMode::Qso(addressee) => ("QSO", addressee.as_str(), addressee.as_str()),
         };
 
-        let app_mode_text = format!("{:<7} | RX: {:<11} | TX: {:<9}", mode, rx, tx);
+        let app_mode_text = format!("{} | RX: {} | TX: {}", mode, rx, tx);
 
         let terminal_input_block = Block::bordered()
             .title(format!(" {} ", app_mode_text))

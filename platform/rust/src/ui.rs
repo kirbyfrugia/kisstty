@@ -24,7 +24,7 @@ pub struct OutputUpdate {
 impl OutputUpdate {
     pub fn new(ui_lines: Vec<UiLine>) -> Self {
         Self {
-            ui_id: next_id(),
+            ui_id: next_ui_id(),
             ui_lines,
         }
     }
@@ -39,7 +39,7 @@ pub struct UiLine {
 impl UiLine {
     pub fn new(line: String) -> Self {
         Self {
-            ui_id: next_id(),
+            ui_id: next_ui_id(),
             line
         }
     }
@@ -47,7 +47,7 @@ impl UiLine {
 
 static NEXT_UI_ID: AtomicU64 = AtomicU64::new(1);
 
-fn next_id() -> UiId{
+fn next_ui_id() -> UiId {
     UiId(NEXT_UI_ID.fetch_add(1, Ordering::Relaxed))
 }
 

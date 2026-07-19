@@ -1,5 +1,9 @@
 use super::aprs::AprsData;
 
+use crate::{
+    kiss::{next_kiss_id, KissId},
+};
+
 pub const MAX_DIGIPEATERS: usize = 8;
 
 pub fn parse_digipeater_path(path: &[String]) -> Result<Vec<Ax25Addr>, String> {
@@ -107,6 +111,9 @@ impl Ax25Addr {
         (Self { addr, ssid, repeated }, last_addr)
     }
 
+    pub fn repeated(&self) -> bool {
+        self.repeated
+    }
 }
 
 impl std::fmt::Display for Ax25Addr {
@@ -121,6 +128,7 @@ impl std::fmt::Display for Ax25Addr {
 
 #[derive(Debug,Clone)]
 pub struct Ax25Frame {
+    kiss_id: KissId,
     dest: Ax25Addr,
     source: Ax25Addr,
     digipeaters: Vec<Ax25Addr>,
@@ -133,7 +141,9 @@ pub struct Ax25Frame {
 
 impl Ax25Frame {
     pub fn new(dest: Ax25Addr, source: Ax25Addr, digipeaters: Vec<Ax25Addr>, data: AprsData) -> Self {
+        let kiss_id = next_kiss_id();
         Self {
+            kiss_id,
             dest,
             source,
             digipeaters,
@@ -207,41 +217,21 @@ impl Ax25Frame {
         let info = bytes.get(info_field_start..).unwrap_or(&[]);
         let data = AprsData::decode(info)?;
 
-        Some(Ax25Frame { dest, source, digipeaters, control, pid, data })
+
+        let kiss_id = next_kiss_id();
+        Some(Ax25Frame { kiss_id, dest, source, digipeaters, control, pid, data })
     }
 
-    pub fn header(&self) -> String {
-        let mut header = format!("{} ({})", self.source, self.dest);
-        if let AprsData::Message(msg) = &self.data {
-            header.push_str(&format!(" → {}", msg.addressee));
-        }
-        header
-    }
-
-    pub fn digipeaters(&self) -> String {
-        let last_repeated = self.digipeaters.iter().rposition(|d| d.repeated);
-        self.digipeaters
-            .iter()
-            .enumerate()
-            .map(|(i, d)| if Some(i) == last_repeated { format!("{d}*") } else { d.to_string() })
-            .collect::<Vec<String>>()
-            .join(",")
-    }
-
-    pub fn body(&self) -> &str {
-        match &self.data {
-            AprsData::Message(msg) => &msg.text,
-            AprsData::Status(status) => &status.text,
-            AprsData::ToBeImplemented(unimplemented) => &unimplemented.text,
-        }
-    }
-
-    pub fn data_type_id(&self) -> char {
-        self.data.data_type_id()
+    pub fn digipeaters(&self) -> &[Ax25Addr] {
+        &self.digipeaters
     }
 
     pub fn source(&self) -> &Ax25Addr {
         &self.source
+    }
+
+    pub fn dest(&self) -> &Ax25Addr {
+        &self.dest
     }
 
     pub fn data(&self) -> &AprsData {
