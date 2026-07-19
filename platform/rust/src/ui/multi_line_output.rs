@@ -13,7 +13,10 @@ use ratatui::{
     },
 };
 
-use crate::message::Message;
+use crate::{
+    message::Message,
+    ui::UiLine,
+};
 
 const MAX_OUTPUT_LINES: usize = 10000;
 
@@ -26,7 +29,7 @@ enum ViewMode {
 #[derive(Debug)]
 pub struct MultiLineOutput {
     _message_sender: mpsc::Sender<Message>,
-    lines: VecDeque<String>,
+    ui_lines: VecDeque<UiLine>,
     view_mode: ViewMode,
     max_scroll: Cell<usize>,
 }
@@ -34,7 +37,7 @@ pub struct MultiLineOutput {
 impl Widget for &MultiLineOutput {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let max_lines = area.height as usize;
-        let total_lines = self.lines.len();
+        let total_lines = self.ui_lines.len();
 
         let text_area = Rect { width: area.width.saturating_sub(1), ..area };
 
@@ -46,9 +49,9 @@ impl Widget for &MultiLineOutput {
             ViewMode::Paused(top) => top.min(max_scroll),
         };
 
-        for (i, line) in self.lines.iter().skip(top).take(max_lines).enumerate() {
+        for (i, ui_line) in self.ui_lines.iter().skip(top).take(max_lines).enumerate() {
             let y = text_area.y + i as u16;
-            buf.set_line(text_area.x, y, &Line::from(line.as_str()), text_area.width);
+            buf.set_line(text_area.x, y, &Line::from(ui_line.line.as_str()), text_area.width);
         }
 
         if total_lines > max_lines {
@@ -68,22 +71,22 @@ impl MultiLineOutput {
     pub fn new(message_sender: mpsc::Sender<Message>) -> Self {
         Self {
             _message_sender: message_sender,
-            lines: VecDeque::with_capacity(MAX_OUTPUT_LINES),
+            ui_lines: VecDeque::with_capacity(MAX_OUTPUT_LINES),
             view_mode: ViewMode::Follow,
             max_scroll: Cell::new(0),
         }
     }
 
-    fn add_line(&mut self, line: &str) {
-        if self.lines.len() == MAX_OUTPUT_LINES {
-            self.lines.pop_front();
+    fn add_line(&mut self, ui_line: UiLine) {
+        if self.ui_lines.len() == MAX_OUTPUT_LINES {
+            self.ui_lines.pop_front();
             if let ViewMode::Paused(top) = &mut self.view_mode {
                 // keep paused view scrolled to correct line
                 // when we've wrapped the ring buffer
                 *top = top.saturating_sub(1);
             }
         }
-        self.lines.push_back(line.to_string());
+        self.ui_lines.push_back(ui_line);
     }
 
     pub fn is_following(&self) -> bool {
@@ -126,23 +129,23 @@ impl MultiLineOutput {
     }
 
     pub fn clear(&mut self) {
-        self.lines.clear();
+        self.ui_lines.clear();
         self.view_mode = ViewMode::Follow;
     }
 
-    pub fn try_handle(&mut self, message: &Message) -> bool {
+    pub fn try_claim(&mut self, message: Message) -> Option<Message> {
         match message {
             Message::Clear => {
                 self.clear();
-                true
+                None
             },
             Message::Output(output_update) => {
-                for line in &output_update.lines {
-                    self.add_line(&line);
+                for ui_line in output_update.ui_lines {
+                    self.add_line(ui_line);
                 }
-                true
+                None
             }
-            _ => false,
+            other => Some(other),
         }
     }
 }

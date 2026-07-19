@@ -267,25 +267,25 @@ impl ConfigUi {
     pub fn tick(&mut self) {
     }
 
-    pub fn try_handle(&mut self, message: &Message) -> bool {
+    pub fn try_claim(&mut self, message: Message) -> Option<Message> {
         match message {
             Message::UserKey(key_event) => self.handle_key(key_event),
-            _ => false,
+            other => Some(other),
         }
     }
 
-    fn handle_key(&mut self, key_event: &KeyEvent) -> bool {
+    fn handle_key(&mut self, key_event: KeyEvent) -> Option<Message> {
         match self.focus {
             Focus::Field(i) => match key_event.code {
                 KeyCode::Tab | KeyCode::Down | KeyCode::Enter => self.focus_next(),
                 KeyCode::BackTab | KeyCode::Up => self.focus_prev(),
                 KeyCode::Esc => self.select(Button::Cancel),
                 _ => {
-                    let handled = self.config_fields[i].input.handle_key(key_event);
-                    if handled {
+                    let unclaimed = self.config_fields[i].input.handle_key(key_event);
+                    if unclaimed.is_none() {
                         self.config_fields[i].error = None;
                     }
-                    return handled;
+                    return unclaimed;
                 }
             },
             Focus::Button(button) => match key_event.code {
@@ -295,10 +295,10 @@ impl ConfigUi {
                 KeyCode::BackTab | KeyCode::Up => self.focus_prev(),
                 KeyCode::Enter | KeyCode::Char(' ') => self.select(button),
                 KeyCode::Esc => self.select(Button::Cancel),
-                _ => return false,
+                _ => return Some(Message::UserKey(key_event)),
             },
         }
-        true
+        None
     }
 
     fn focus_index(&self) -> usize {

@@ -37,21 +37,21 @@ impl TooSmallUi {
         frame.render_widget(warning, frame.area());
     }
 
-    pub fn try_handle(&mut self, message: &Message) -> bool {
+    pub fn try_claim(&mut self, message: Message) -> Option<Message> {
         match message {
             Message::UserKey(key_event) => self.handle_key(key_event),
-            _ => false,
+            other => Some(other),
         }
     }
 
-    fn handle_key(&mut self, key_event: &KeyEvent) -> bool {
+    fn handle_key(&mut self, key_event: KeyEvent) -> Option<Message> {
         match key_event.code {
             KeyCode::Esc => self.quit(),
             KeyCode::Char('c') | KeyCode::Char('C')
                 if key_event.modifiers == KeyModifiers::CONTROL => self.quit(),
-            _ => return false,
+            _ => return Some(Message::UserKey(key_event)),
         }
-        true
+        None
     }
 
     fn quit(&mut self) {

@@ -144,20 +144,20 @@ impl LineInput {
 
     }
 
-    pub fn handle_key(&mut self, key: &KeyEvent) -> bool {
+    pub fn handle_key(&mut self, key: KeyEvent) -> Option<Message> {
         match key.code {
             KeyCode::Left      => self.move_cursor_left(),
             KeyCode::Right     => self.move_cursor_right(),
             KeyCode::Backspace => self.backspace(),
             KeyCode::Delete    => self.delete_char(),
             KeyCode::Char(c)   => self.insert_char(c),
-            _ => return false,
+            _ => return Some(Message::UserKey(key)),
         }
-        true
+        None
     }
 
-    pub fn try_handle(&mut self, _message: &Message) -> bool {
-        false
+    pub fn try_claim(&mut self, message: Message) -> Option<Message> {
+        Some(message)
     }
 
 }

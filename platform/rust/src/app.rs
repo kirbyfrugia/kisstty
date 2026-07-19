@@ -125,26 +125,24 @@ impl App {
     }
 
     fn handle_message(&mut self, message: Message) {
-        if self.try_handle(&message) { return }
+        let Some(message) = self.try_claim(message) else { return };
+        let Some(message) = self.kiss_session.try_claim(message) else { return };
 
-        let message = match self.kiss_session.try_claim(message) {
-            Some(message) => message,
-            None => return,
-        };
-
-        self.route(&message);
+        if let Some(message) = self.route(message) {
+            tracing::debug!(?message, "unclaimed message");
+        }
     }
 
-    fn try_handle(&mut self, message: &Message) -> bool {
+    fn try_claim(&mut self, message: Message) -> Option<Message> {
         match message {
             Message::Exit | Message::Quit => {
                 self.quit();
-                true
+                None
             },
             Message::Config => {
                 self.config_ui.load_config(&self.config);
                 self.set_active_screen(Screen::Config);
-                true
+                None
             },
             Message::ConfigSaved => {
                 self.config_ui.apply_to(&mut self.config);
@@ -153,7 +151,7 @@ impl App {
                 }
                 self.kiss_session.restart(&self.config);
                 self.set_active_screen(Screen::Main);
-                true
+                None
             },
             Message::ConfigCanceled => {
                 if self.config.validate().is_err() {
@@ -161,20 +159,20 @@ impl App {
                 } else {
                     self.set_active_screen(Screen::Main);
                 }
-                true
+                None
             },
-            _ => false,
+            other => Some(other),
         }
     }
 
-    fn route(&mut self, message: &Message) -> bool {
+    fn route(&mut self, message: Message) -> Option<Message> {
         if self.too_small {
-            return self.too_small_ui.try_handle(message);
+            return self.too_small_ui.try_claim(message);
         }
 
         match self.active_screen {
-            Screen::Main => self.main_ui.try_handle(message),
-            Screen::Config => self.config_ui.try_handle(message),
+            Screen::Main => self.main_ui.try_claim(message),
+            Screen::Config => self.config_ui.try_claim(message),
         }
     }
 

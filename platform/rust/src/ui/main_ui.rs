@@ -11,7 +11,7 @@ use ratatui::{
 
 use crate::{
     kiss::AprsMessage,
-    ui::{LineInput,MultiLineOutput,OutputUpdate},
+    ui::{LineInput,MultiLineOutput,OutputUpdate,UiLine},
     message::Message,
     slash::{SlashCommand, SLASH_COMMANDS},
 };
@@ -228,33 +228,33 @@ impl MainUi {
 //        self.counter += 1;
     }
 
-    pub fn try_handle(&mut self, message: &Message) -> bool {
+    pub fn try_claim(&mut self, message: Message) -> Option<Message> {
         match message {
             Message::UserKey(key_event) => self.handle_key(key_event),
             Message::Help => {
                 self.print_help();
-                true
+                None
             },
             Message::Monitor => {
                 self.app_mode = AppMode::Monitor;
-                true
+                None
             }
             Message::Net => {
                 self.app_mode = AppMode::Net;
-                true
+                None
             }
             Message::Qso(addressee) => {
-                self.app_mode = AppMode::Qso(addressee.to_string());
-                true
+                self.app_mode = AppMode::Qso(addressee);
+                None
             }
-            _ => {
-                self.terminal_input.try_handle(message) ||
-                    self.terminal_output.try_handle(message)
+            other => {
+                let other = self.terminal_input.try_claim(other)?;
+                self.terminal_output.try_claim(other)
             }
         }
     }
 
-    pub fn handle_key(&mut self, key_event: &KeyEvent) -> bool {
+    pub fn handle_key(&mut self, key_event: KeyEvent) -> Option<Message> {
         match key_event.code {
             KeyCode::Up => self.terminal_output.scroll_up(),
             KeyCode::Down => self.terminal_output.scroll_down(),
@@ -268,7 +268,7 @@ impl MainUi {
             }
             _ => return self.terminal_input.handle_key(key_event),
         }
-        true
+        None
     }
 
     fn tab_complete(&mut self) {
@@ -304,9 +304,9 @@ impl MainUi {
                     self.clear_input();
                 }
                 None => {
-                    let mut lines: Vec<String> = Vec::new();
-                    lines.push(format!("usage: {}", slash.usage()));
-                    let output_update = OutputUpdate::new(lines);
+                    let mut ui_lines: Vec<UiLine> = Vec::new();
+                    ui_lines.push(UiLine::new(format!("usage: {}", slash.usage())));
+                    let output_update = OutputUpdate::new(ui_lines);
                     let _ = self.message_sender.send(Message::Output(output_update));
                 }
             }
@@ -328,17 +328,17 @@ impl MainUi {
     fn print_help(&mut self) {
         let usage_width = SlashCommand::max_usage_width();
 
-        let mut lines: Vec<String> = Vec::new();
-        lines.push(String::from("Available commands:"));
+        let mut ui_lines: Vec<UiLine> = Vec::new();
+        ui_lines.push(UiLine::new(String::from("Available commands:")));
         for cmd in SLASH_COMMANDS {
-            lines.push(format!(
+            ui_lines.push(UiLine::new(format!(
                 "  {:<usage_width$}  {}",
                 cmd.usage(),
                 cmd.friendly,
-            ));
+            )));
         }
-        lines.push(String::from(""));
-        let output_update = OutputUpdate::new(lines);
+        ui_lines.push(UiLine::new(String::from("")));
+        let output_update = OutputUpdate::new(ui_lines);
         let _ = self.message_sender.send(Message::Output(output_update));
     }
 

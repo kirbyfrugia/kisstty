@@ -16,17 +16,31 @@ use std::sync::atomic::{AtomicU64, Ordering};
 pub struct UiId(u64);
 
 #[derive(Debug, Clone)]
-pub struct OutputUpdate{
-    #[allow(dead_code)]
-    ui_id: UiId,
-    lines: Vec<String>,
+pub struct OutputUpdate {
+    pub ui_id: UiId,
+    ui_lines: Vec<UiLine>,
 }
 
 impl OutputUpdate {
-    pub fn new(lines: Vec<String>) -> Self {
+    pub fn new(ui_lines: Vec<UiLine>) -> Self {
         Self {
             ui_id: next_id(),
-            lines,
+            ui_lines,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct UiLine {
+    pub ui_id: UiId,
+    pub line: String,
+}
+
+impl UiLine {
+    pub fn new(line: String) -> Self {
+        Self {
+            ui_id: next_id(),
+            line
         }
     }
 }

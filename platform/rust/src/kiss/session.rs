@@ -8,12 +8,31 @@ use crate::{
     config::Config,
     kiss::{parse_digipeater_path, AprsData, AprsMessage, Ax25Addr, Ax25Frame, KissClient},
     message::Message,
+    ui::UiId,
+    ui::UiLine,
     ui::OutputUpdate,
 };
 
 const MAX_FRAMES: usize = 10000;
 
 const ACK_THROTTLE: Duration = Duration::from_secs(30);
+
+#[derive(Debug)]
+struct SessionFrame {
+    ui_id: UiId,
+    frame: Ax25Frame,
+    acks: Vec<Ax25Frame>,
+}
+
+impl SessionFrame {
+    pub fn new(ui_id: UiId, frame: Ax25Frame) -> Self {
+        Self {
+            ui_id,
+            frame,
+            acks: Vec::new(),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct KissSession {
@@ -23,7 +42,7 @@ pub struct KissSession {
     digipeaters: Vec<Ax25Addr>,
     outgoing_ids: HashMap<String, u64>,
     last_acked: HashMap<(String, String), Instant>,
-    frames: VecDeque<Ax25Frame>,
+    frames: VecDeque<SessionFrame>,
 }
 
 fn to_base36(mut value: u64) -> String {
@@ -98,8 +117,9 @@ impl KissSession {
                     Some(self.next_message_id(&addressee))
                 };
                 if let Some(frame) = self.send_aprs_message(AprsMessage::new(addressee, text, id)) {
-                    self.display_frame(&frame);
-                    self.frames.push_back(frame);
+                    let ui_id = self.display_frame(&frame);
+                    let session_frame = SessionFrame::new(ui_id, frame);
+                    self.frames.push_back(session_frame);
                 }
                 None
             },
@@ -137,9 +157,10 @@ impl KissSession {
     }
 
     fn handle_received_frame(&mut self, frame: Ax25Frame) {
-        self.display_frame(&frame);
+        let ui_id = self.display_frame(&frame);
         self.maybe_send_ack(&frame);
-        self.frames.push_back(frame);
+        let session_frame = SessionFrame::new(ui_id, frame);
+        self.frames.push_back(session_frame);
     }
 
     fn maybe_send_ack(&mut self, rcvd_frame: &Ax25Frame) {
@@ -157,24 +178,26 @@ impl KissSession {
         self.last_acked.insert(key, now);
     }
 
-    fn display_frame(&self, ax25_frame: &Ax25Frame) {
-        let mut lines: Vec<String> = Vec::new();
+    fn display_frame(&self, ax25_frame: &Ax25Frame) -> UiId {
+        let mut ui_lines: Vec<UiLine> = Vec::new();
 
         let mut header = format!("{} {}", utc_timestamp(), ax25_frame.header());
         if let Some(id) = ax25_frame.message_id() {
             header.push_str(&format!(" {{{id}"));
         }
-        lines.push(header);
+        ui_lines.push(UiLine::new(header));
 
         let digipeaters = ax25_frame.digipeaters();
         if digipeaters.len() > 0 {
-            lines.push(format!("via {}", &digipeaters));
+            ui_lines.push(UiLine::new(format!("via {}", &digipeaters)));
         }
-        lines.push(format!("{} {}", ax25_frame.data_type_id(), ax25_frame.body()));
-        lines.push(String::from(""));
+        ui_lines.push(UiLine::new(format!("{} {}", ax25_frame.data_type_id(), ax25_frame.body())));
+        ui_lines.push(UiLine::new(String::from("")));
 
-        let output_update = OutputUpdate::new(lines);
+        let output_update = OutputUpdate::new(ui_lines);
+        let ui_id = output_update.ui_id.clone();
         let _ = self.message_sender.send(Message::Output(output_update));
+        ui_id
     }
 
 }
