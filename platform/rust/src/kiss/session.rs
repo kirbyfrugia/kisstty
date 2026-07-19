@@ -19,15 +19,15 @@ const ACK_THROTTLE: Duration = Duration::from_secs(30);
 
 #[derive(Debug)]
 struct SessionFrame {
-    ui_id: UiId,
+    header_ui_id: UiId,
     frame: Ax25Frame,
     acks: Vec<Ax25Frame>,
 }
 
 impl SessionFrame {
-    pub fn new(ui_id: UiId, frame: Ax25Frame) -> Self {
+    pub fn new(header_ui_id: UiId, frame: Ax25Frame) -> Self {
         Self {
-            ui_id,
+            header_ui_id,
             frame,
             acks: Vec::new(),
         }
@@ -185,7 +185,9 @@ impl KissSession {
         if let Some(id) = ax25_frame.message_id() {
             header.push_str(&format!(" {{{id}"));
         }
-        ui_lines.push(UiLine::new(header));
+        let header_line = UiLine::new(header);
+        let header_ui_id = header_line.ui_id.clone();
+        ui_lines.push(header_line);
 
         let digipeaters = ax25_frame.digipeaters();
         if digipeaters.len() > 0 {
@@ -195,9 +197,8 @@ impl KissSession {
         ui_lines.push(UiLine::new(String::from("")));
 
         let output_update = OutputUpdate::new(ui_lines);
-        let ui_id = output_update.ui_id.clone();
         let _ = self.message_sender.send(Message::Output(output_update));
-        ui_id
+        header_ui_id
     }
 
 }

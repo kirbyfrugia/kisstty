@@ -249,7 +249,7 @@ impl Ax25Frame {
 
     pub fn ack_target(&self, addr: &Ax25Addr) -> Option<(&Ax25Addr, &str)> {
         match &self.data {
-            AprsData::Message(msg) if msg.addressee == addr.to_string() => {
+            AprsData::Message(msg) if msg.addressee == addr.to_string() && !msg.is_ack() => {
                 Some((&self.source, msg.id.as_deref()?))
             }
             _ => None,

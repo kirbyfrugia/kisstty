@@ -65,6 +65,15 @@ impl AprsMessage {
         }
     }
 
+    pub fn is_ack(&self) -> bool {
+        self.ack_id().is_some()
+    }
+
+    pub fn ack_id(&self) -> Option<&str> {
+        let id = self.text.strip_prefix("ack")?;
+        (1..=5).contains(&id.chars().count()).then_some(id)
+    }
+
     fn encode(&self) -> Vec<u8> {
         let mut encoded = format!(":{:<9}:{}", self.addressee, self.text);
         if let Some(id) = &self.id {
