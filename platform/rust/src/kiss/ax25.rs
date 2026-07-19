@@ -240,20 +240,12 @@ impl Ax25Frame {
         self.data.data_type_id()
     }
 
-    pub fn message_id(&self) -> Option<&str> {
-        match &self.data {
-            AprsData::Message(msg) => msg.id.as_deref(),
-            _ => None,
-        }
+    pub fn source(&self) -> &Ax25Addr {
+        &self.source
     }
 
-    pub fn ack_target(&self, addr: &Ax25Addr) -> Option<(&Ax25Addr, &str)> {
-        match &self.data {
-            AprsData::Message(msg) if msg.addressee == addr.to_string() && !msg.is_ack() => {
-                Some((&self.source, msg.id.as_deref()?))
-            }
-            _ => None,
-        }
+    pub fn data(&self) -> &AprsData {
+        &self.data
     }
 }
 

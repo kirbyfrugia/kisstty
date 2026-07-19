@@ -156,7 +156,19 @@ impl KissSession {
         }
     }
 
+    fn handle_received_ack(&mut self, frame: Ax25Frame) {
+        // TODO: actually handle ack's differently.
+        let ui_id = self.display_frame(&frame);
+        let session_frame = SessionFrame::new(ui_id, frame);
+        self.frames.push_back(session_frame);
+    }
+
     fn handle_received_frame(&mut self, frame: Ax25Frame) {
+        if matches!(frame.data(), AprsData::Message(msg) if msg.is_ack()) {
+            self.handle_received_ack(frame);
+            return;
+        }
+
         let ui_id = self.display_frame(&frame);
         self.maybe_send_ack(&frame);
         let session_frame = SessionFrame::new(ui_id, frame);
@@ -165,7 +177,10 @@ impl KissSession {
 
     fn maybe_send_ack(&mut self, rcvd_frame: &Ax25Frame) {
         let Some(me) = self.source.clone() else { return };
-        let Some((ack_addressee, msg_id)) = rcvd_frame.ack_target(&me) else { return };
+        let AprsData::Message(msg) = rcvd_frame.data() else { return };
+        if msg.addressee != me.to_string() || msg.is_ack() { return }
+        let Some(msg_id) = msg.id.as_deref() else { return };
+        let ack_addressee = rcvd_frame.source();
 
         let now = Instant::now();
         self.last_acked.retain(|_, &mut t| now.duration_since(t) < ACK_THROTTLE);
@@ -182,8 +197,10 @@ impl KissSession {
         let mut ui_lines: Vec<UiLine> = Vec::new();
 
         let mut header = format!("{} {}", utc_timestamp(), ax25_frame.header());
-        if let Some(id) = ax25_frame.message_id() {
-            header.push_str(&format!(" {{{id}"));
+        if let AprsData::Message(msg) = ax25_frame.data() {
+            if let Some(id) = &msg.id {
+                header.push_str(&format!(" {{{id}"));
+            }
         }
         let header_line = UiLine::new(header);
         let header_ui_id = header_line.ui_id.clone();
