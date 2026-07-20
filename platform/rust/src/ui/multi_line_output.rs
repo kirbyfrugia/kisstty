@@ -89,6 +89,13 @@ impl MultiLineOutput {
         self.ui_lines.push_back(ui_line);
     }
 
+    fn update_line(&mut self, updated: UiLine) {
+        let existing = self.ui_lines.iter_mut().rev().find(|l| l.ui_id == updated.ui_id);
+        if let Some(ui_line) = existing {
+            ui_line.line = updated.line;
+        }
+    }
+
     pub fn is_following(&self) -> bool {
         matches!(self.view_mode, ViewMode::Follow)
     }
@@ -143,6 +150,10 @@ impl MultiLineOutput {
                 for ui_line in output_update.ui_lines {
                     self.add_line(ui_line);
                 }
+                None
+            }
+            Message::UpdateOutputLine(ui_line) => {
+                self.update_line(ui_line);
                 None
             }
             other => Some(other),

@@ -2,7 +2,7 @@ use ratatui::crossterm::event::KeyEvent;
 
 use crate::{
     kiss::Ax25Frame,
-    ui::OutputUpdate,
+    ui::{OutputUpdate, UiLine},
 };
 
 #[derive(Debug)]
@@ -22,4 +22,5 @@ pub enum Message {
     Qso(String),
     Quit,
     Output(OutputUpdate),
+    UpdateOutputLine(UiLine),
 }

@@ -193,7 +193,7 @@ impl KissClient {
             return None
         }
 
-        tracing::debug!(raw = ?kiss_frame.raw_bytes, "raw bytes");
+        //tracing::debug!(raw = ?kiss_frame.raw_bytes, "raw bytes");
 
         Ax25Frame::decode(&kiss_frame.raw_bytes[1..])
     }
