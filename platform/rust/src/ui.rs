@@ -7,47 +7,6 @@ mod too_small_ui;
 pub use config_ui::ConfigUi;
 pub use line_input::LineInput;
 pub use main_ui::MainUi;
-pub use multi_line_output::MultiLineOutput;
+pub use multi_line_output::{LogView, MultiLineOutput};
 pub use too_small_ui::TooSmallUi;
-
-use std::sync::atomic::{AtomicU64, Ordering};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UiId(u64);
-
-#[derive(Debug, Clone)]
-pub struct OutputUpdate {
-    pub ui_id: UiId,
-    ui_lines: Vec<UiLine>,
-}
-
-impl OutputUpdate {
-    pub fn new(ui_lines: Vec<UiLine>) -> Self {
-        Self {
-            ui_id: next_ui_id(),
-            ui_lines,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct UiLine {
-    pub ui_id: UiId,
-    pub line: String,
-}
-
-impl UiLine {
-    pub fn new(line: String) -> Self {
-        Self {
-            ui_id: next_ui_id(),
-            line
-        }
-    }
-}
-
-static NEXT_UI_ID: AtomicU64 = AtomicU64::new(1);
-
-fn next_ui_id() -> UiId {
-    UiId(NEXT_UI_ID.fetch_add(1, Ordering::Relaxed))
-}
 

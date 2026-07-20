@@ -1,8 +1,7 @@
-use std::{
-    cell::Cell,
-    collections::VecDeque,
-    sync::mpsc,
-};
+//! The main output pane for the terminal.
+//!
+
+use std::cell::Cell;
 
 use ratatui::{
     buffer::Buffer,
@@ -13,12 +12,7 @@ use ratatui::{
     },
 };
 
-use crate::{
-    message::Message,
-    ui::UiLine,
-};
-
-const MAX_OUTPUT_LINES: usize = 20000;
+use crate::log::Log;
 
 #[derive(Debug)]
 enum ViewMode {
@@ -28,30 +22,65 @@ enum ViewMode {
 
 #[derive(Debug)]
 pub struct MultiLineOutput {
-    _message_sender: mpsc::Sender<Message>,
-    ui_lines: VecDeque<UiLine>,
     view_mode: ViewMode,
     max_scroll: Cell<usize>,
 }
 
-impl Widget for &MultiLineOutput {
+/// The log and the viewport used for a render
+pub struct LogView<'a> {
+    log: &'a Log,
+    output: &'a MultiLineOutput,
+}
+
+impl<'a> LogView<'a> {
+    pub fn new(log: &'a Log, output: &'a MultiLineOutput) -> Self {
+        Self { log, output }
+    }
+}
+
+impl Widget for LogView<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let max_lines = area.height as usize;
-        let total_lines = self.ui_lines.len();
+        let total_lines = self.log.total_lines();
 
         let text_area = Rect { width: area.width.saturating_sub(1), ..area };
 
         let max_scroll = total_lines.saturating_sub(max_lines);
-        self.max_scroll.set(max_scroll);
+        self.output.max_scroll.set(max_scroll);
 
-        let top = match self.view_mode {
+        let top = match self.output.view_mode {
             ViewMode::Follow => max_scroll,
             ViewMode::Paused(top) => top.min(max_scroll),
         };
 
-        for (i, ui_line) in self.ui_lines.iter().skip(top).take(max_lines).enumerate() {
-            let y = text_area.y + i as u16;
-            buf.set_line(text_area.x, y, &Line::from(ui_line.line.as_str()), text_area.width);
+        // count past everything above the window and only render
+        // what lands inside it
+        let mut consumed = 0 as usize;
+        let mut y = 0 as usize;
+
+        'items: for item in self.log.iter() {
+            let count = item.line_count();
+
+            if consumed + count <= top {
+                consumed += count;
+                continue;
+            }
+
+            let skip = top.saturating_sub(consumed);
+            for line in item.lines().into_iter().skip(skip) {
+                if y == max_lines {
+                    break 'items;
+                }
+                buf.set_line(
+                    text_area.x,
+                    text_area.y + y as u16,
+                    &Line::from(line.as_str()),
+                    text_area.width,
+                );
+                y += 1;
+            }
+
+            consumed += count;
         }
 
         if total_lines > max_lines {
@@ -68,31 +97,10 @@ impl Widget for &MultiLineOutput {
 }
 
 impl MultiLineOutput {
-    pub fn new(message_sender: mpsc::Sender<Message>) -> Self {
+    pub fn new() -> Self {
         Self {
-            _message_sender: message_sender,
-            ui_lines: VecDeque::with_capacity(MAX_OUTPUT_LINES),
             view_mode: ViewMode::Follow,
             max_scroll: Cell::new(0),
-        }
-    }
-
-    fn add_line(&mut self, ui_line: UiLine) {
-        if self.ui_lines.len() == MAX_OUTPUT_LINES {
-            self.ui_lines.pop_front();
-            if let ViewMode::Paused(top) = &mut self.view_mode {
-                // keep paused view scrolled to correct line
-                // when we've wrapped the ring buffer
-                *top = top.saturating_sub(1);
-            }
-        }
-        self.ui_lines.push_back(ui_line);
-    }
-
-    fn update_line(&mut self, updated: UiLine) {
-        let existing = self.ui_lines.iter_mut().rev().find(|l| l.ui_id == updated.ui_id);
-        if let Some(ui_line) = existing {
-            ui_line.line = updated.line;
         }
     }
 
@@ -133,30 +141,5 @@ impl MultiLineOutput {
 
     pub fn scroll_to_bottom(&mut self) {
         self.view_mode = ViewMode::Follow;
-    }
-
-    pub fn clear(&mut self) {
-        self.ui_lines.clear();
-        self.view_mode = ViewMode::Follow;
-    }
-
-    pub fn try_claim(&mut self, message: Message) -> Option<Message> {
-        match message {
-            Message::Clear => {
-                self.clear();
-                None
-            },
-            Message::Output(output_update) => {
-                for ui_line in output_update.ui_lines {
-                    self.add_line(ui_line);
-                }
-                None
-            }
-            Message::UpdateOutputLine(ui_line) => {
-                self.update_line(ui_line);
-                None
-            }
-            other => Some(other),
-        }
     }
 }

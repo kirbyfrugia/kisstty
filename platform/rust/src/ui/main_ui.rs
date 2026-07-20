@@ -11,7 +11,8 @@ use ratatui::{
 
 use crate::{
     kiss::AprsMessage,
-    ui::{LineInput,MultiLineOutput,OutputUpdate,UiLine},
+    log::{Log, LogItem},
+    ui::{LineInput,LogView,MultiLineOutput},
     message::Message,
     slash::{SlashCommand, SLASH_COMMANDS},
 };
@@ -33,6 +34,7 @@ enum AppMode {
 pub struct MainUi {
     terminal_input: LineInput,
     terminal_output: MultiLineOutput,
+    log: Log,
     message_sender: mpsc::Sender<Message>,
     slash_popup_list_state: ListState,
     app_mode: AppMode,
@@ -52,15 +54,11 @@ impl MainUi {
             li_message_sender,
         );
 
-        let mlo_message_sender = message_sender.clone();
-        let terminal_output = MultiLineOutput::new(
-            mlo_message_sender,
-        );
-
         Self {
             app_mode: AppMode::Net,
             terminal_input,
-            terminal_output,
+            terminal_output: MultiLineOutput::new(),
+            log: Log::new(),
             message_sender,
             slash_popup_list_state: ListState::default()
                 .with_selected(Some(0)),
@@ -153,7 +151,10 @@ impl MainUi {
         let terminal_output_block_inner_area = terminal_output_block
             .inner(terminal_layout[0]);
 
-        frame.render_widget(&self.terminal_output, terminal_output_block_inner_area);
+        frame.render_widget(
+            LogView::new(&self.log, &self.terminal_output),
+            terminal_output_block_inner_area,
+        );
 
         let (mode, rx, tx) = match &self.app_mode {
             AppMode::Monitor => ("MONITOR", "all", "broadcast"),
@@ -247,10 +248,20 @@ impl MainUi {
                 self.app_mode = AppMode::Qso(addressee);
                 None
             }
-            other => {
-                let other = self.terminal_input.try_claim(other)?;
-                self.terminal_output.try_claim(other)
+            Message::LogPublish(item) => {
+                self.log.push(item);
+                None
             }
+            Message::LogUpdate(item) => {
+                self.log.replace(item);
+                None
+            }
+            Message::Clear => {
+                self.log.clear();
+                self.terminal_output.scroll_to_bottom();
+                None
+            }
+            other => self.terminal_input.try_claim(other),
         }
     }
 
@@ -304,10 +315,10 @@ impl MainUi {
                     self.clear_input();
                 }
                 None => {
-                    let mut ui_lines: Vec<UiLine> = Vec::new();
-                    ui_lines.push(UiLine::new(format!("usage: {}", slash.usage())));
-                    let output_update = OutputUpdate::new(ui_lines);
-                    let _ = self.message_sender.send(Message::Output(output_update));
+                    self.log.push(LogItem::notice(vec![
+                        format!("usage: {}", slash.usage()),
+                        String::new(),
+                    ]));
                 }
             }
         }
@@ -328,18 +339,16 @@ impl MainUi {
     fn print_help(&mut self) {
         let usage_width = SlashCommand::max_usage_width();
 
-        let mut ui_lines: Vec<UiLine> = Vec::new();
-        ui_lines.push(UiLine::new(String::from("Available commands:")));
+        let mut lines = vec![String::from("Available commands:")];
         for cmd in SLASH_COMMANDS {
-            ui_lines.push(UiLine::new(format!(
+            lines.push(format!(
                 "  {:<usage_width$}  {}",
                 cmd.usage(),
                 cmd.friendly,
-            )));
+            ));
         }
-        ui_lines.push(UiLine::new(String::from("")));
-        let output_update = OutputUpdate::new(ui_lines);
-        let _ = self.message_sender.send(Message::Output(output_update));
+        lines.push(String::new());
+        self.log.push(LogItem::notice(lines));
     }
 
     fn send_message(&mut self, text: String) {

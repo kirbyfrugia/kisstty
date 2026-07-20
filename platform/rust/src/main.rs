@@ -2,6 +2,7 @@ mod app;
 mod config;
 mod event;
 mod kiss;
+mod log;
 mod logging;
 mod message;
 mod single_instance;

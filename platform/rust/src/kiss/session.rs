@@ -1,15 +1,13 @@
 //! Keeps track of what we hear on the air and what we send for the entire
 //! duration of a kisstty session.
 //!
-//! Every distinct packet gets one `SessionFrame`, which writes a short block
-//! of lines on screen: a header, the digipeater path if it had one, the packet
-//! body, and a blank line before the next block. Of those, only the header
-//! can be changed after written.
+//! Every distinct packet gets one `SessionFrame`, which publishes a single
+//! item to the log under its own `LogId`.
 //!
 //! The "same" packet arriving again by a different digipeater path does not
-//! get a visual block of its own. Instead, it gets attached to the packet
-//! that's already stored and rendered. The visual block from the first frame
-//! gets updated to reflect repeats.
+//! get an item of its own. Instead it gets attached to the packet already
+//! stored, and that frame publishes a fresh item under the same `LogId` so
+//! the log replaces what it was showing.
 //!
 //! Acks behave the same way. An ack gets attached to the message it
 //! acknowledges instead of being displayed to the user as a message.
@@ -32,7 +30,7 @@ use std::{
     collections::{ hash_map::DefaultHasher, HashMap, VecDeque },
     hash::{ Hash, Hasher },
     sync::mpsc,
-    time::{ Duration, Instant, SystemTime, UNIX_EPOCH },
+    time::{ Duration, Instant, SystemTime },
 };
 
 use crate::{
@@ -42,8 +40,8 @@ use crate::{
         AprsData, AprsMessage, Ax25Addr, Ax25Frame,
         KissClient,
     },
+    log::{format_digipeaters, next_log_id, utc_timestamp, FrameLogItem, LogId, LogItem},
     message::Message,
-    ui::{UiId,UiLine,OutputUpdate},
 };
 
 const MAX_SESSION_FRAMES: usize = 5000;
@@ -120,20 +118,19 @@ impl FrameGroup {
     }
 }
 
-/// One entry in the session, represented by a block of lines on screen.
+/// One entry in the session.
 ///
-/// `id` is the number shown in the display header and the one the user uses 
-/// to refer back to this frame. `header_ui_id` points at the header line so it
-/// can be rewritten when a repeat or an ack arrives. the other lines in the
-/// block are written once and never touched again.
+/// `id` is the number shown in the display header and the one the user uses
+/// to refer back to this frame. `log_id` is the id of the item this frame
+/// references in the log, so a repeat or an ack can update (replace) it.
 ///
 /// `acked_by` collects the acks, keyed on the same content hash used for
 /// repeats, so digipeated copies of one ack collapse together rather than
-/// looking like separate acknowledgements.
+/// looking like separate acks.
 #[derive(Debug)]
 struct SessionFrame {
     id: u64,
-    header_ui_id: Option<UiId>,
+    log_id: LogId,
     instances: FrameGroup,
     acked_by: Vec<FrameGroup>,
 }
@@ -142,7 +139,7 @@ impl SessionFrame {
     pub fn new(id: u64, frame: Ax25Frame) -> Self {
         Self {
             id,
-            header_ui_id: None,
+            log_id: next_log_id(),
             instances: FrameGroup::new(frame),
             acked_by: Vec::new(),
         }
@@ -161,44 +158,42 @@ impl SessionFrame {
     }
 
     /// Whether an ack is possible at all. Only messages carrying an id can be
-    /// acked. This is really only the message type.
+    /// acked. i.e., APRS info type 'message'.
     pub fn is_ackable(&self) -> bool {
         matches!(self.first_frame().data(), AprsData::Message(msg) if msg.id.is_some())
     }
 
-    pub fn render_header(&self) -> String {
+    /// This frame converted into a format for the log.
+    ///
+    /// The FrameLogItem is recreated when there's a repeat or an ack that
+    /// changed what might get displayed to the user.
+    pub fn to_frame_log_item(&self) -> FrameLogItem {
         let frame = self.first_frame();
-        let mut header = format!(
-            "{:04}: {} {} ({})",
-            self.id,
-            utc_timestamp(self.first_at()),
-            frame.source(),
-            frame.dest(),
-        );
+        let data = frame.data();
 
-        if let AprsData::Message(msg) = frame.data() {
-            header.push_str(&format!(" → {}", msg.addressee));
-            if let Some(id) = &msg.id {
-                header.push_str(&format!(" {{{id}"));
-            }
+        let (addressee, msg_id) = match data {
+            AprsData::Message(msg) => (Some(msg.addressee.clone()), msg.id.clone()),
+            _ => (None, None),
+        };
+
+        FrameLogItem {
+            seq: self.id,
+            at: self.first_at(),
+            source: frame.source().to_string(),
+            dest: frame.dest().to_string(),
+            addressee,
+            msg_id,
+            data_type_id: data.data_type_id(),
+            body: data.body().to_string(),
+            digipeaters: format_digipeaters(frame.digipeaters()),
+            ackable: self.is_ackable(),
+            acked: self.is_acked(),
+            repeats: self.instances.repeat_count(),
         }
+    }
 
-        let mut markers: Vec<String> = Vec::new();
-
-        if self.is_ackable() {
-            markers.push(format!("ack:{}", if self.is_acked() { "✓" } else { "_" }));
-        }
-
-        if self.instances.repeat_count() > 0 {
-            markers.push(format!("rpt:{}", self.instances.repeat_count()));
-        }
-
-        if !markers.is_empty() {
-            header.push_str("  ");
-            header.push_str(&markers.join(" "));
-        }
-
-        header
+    pub fn to_log_item(&self) -> LogItem {
+        LogItem::frame(self.log_id, self.to_frame_log_item())
     }
 
     /// The header and body, then one line per instance and ack.
@@ -208,7 +203,7 @@ impl SessionFrame {
         let data = self.first_frame().data();
         let mut lines = vec![
             format!("dump of frame {:04}:", self.id),
-            self.render_header(),
+            self.to_frame_log_item().header(),
             format!("  {} {}", data.data_type_id(), data.body()),
             format!("  first {}", self.instances.first.describe()),
         ];
@@ -226,14 +221,6 @@ impl SessionFrame {
 
         lines.push(String::new());
         lines
-    }
-
-    /// The header re-rendered against the id of the line already on screen, so
-    /// the display replaces that line rather than adding one. `None` before
-    /// the frame has been displayed.
-    pub fn header_line(&self) -> Option<UiLine> {
-        let ui_id = self.header_ui_id.clone()?;
-        Some(UiLine { ui_id, line: self.render_header() })
     }
 }
 
@@ -263,24 +250,6 @@ fn to_base36(mut value: u64) -> String {
     }
     buf.reverse();
     String::from_utf8(buf).expect("base36 digits are ascii")
-}
-
-fn format_digipeaters(digipeaters: &[Ax25Addr]) -> String {
-    let last_repeated = digipeaters.iter().rposition(|d| d.repeated());
-    digipeaters
-        .iter()
-        .enumerate()
-        .map(|(i, d)| if Some(i) == last_repeated { format!("{d}*") } else { d.to_string() })
-        .collect::<Vec<String>>()
-        .join(",")
-}
-
-fn utc_timestamp(at: SystemTime) -> String {
-    let secs = at
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    format!("[{:02}:{:02}:{:02}Z]", (secs / 3600) % 24, (secs / 60) % 60, secs % 60)
 }
 
 impl KissSession {
@@ -470,8 +439,8 @@ impl KissSession {
             "attached repeat",
         );
 
-        let update = session_frame.header_line();
-        self.send_header_update(update);
+        let update = session_frame.to_log_item();
+        let _ = self.message_sender.send(Message::LogUpdate(update));
         None
     }
 
@@ -517,8 +486,8 @@ impl KissSession {
             "attached ack",
         );
 
-        let update = session_frame.header_line();
-        self.send_header_update(update);
+        let update = session_frame.to_log_item();
+        let _ = self.message_sender.send(Message::LogUpdate(update));
         None
     }
 
@@ -530,14 +499,7 @@ impl KissSession {
     }
 
     fn send_lines(&self, lines: Vec<String>) {
-        let ui_lines = lines.into_iter().map(UiLine::new).collect();
-        let output_update = OutputUpdate::new(ui_lines);
-        let _ = self.message_sender.send(Message::Output(output_update));
-    }
-
-    fn send_header_update(&self, update: Option<UiLine>) {
-        let Some(ui_line) = update else { return };
-        let _ = self.message_sender.send(Message::UpdateOutputLine(ui_line));
+        let _ = self.message_sender.send(Message::LogPublish(LogItem::notice(lines)));
     }
 
     /// Stores a frame we have not seen before and puts it on screen.
@@ -554,8 +516,8 @@ impl KissSession {
         let id = self.next_frame_id;
         self.next_frame_id = (self.next_frame_id + 1) % self.max_frames as u64;
 
-        let mut session_frame = SessionFrame::new(id, frame);
-        session_frame.header_ui_id = Some(self.display_frame(&session_frame));
+        let session_frame = SessionFrame::new(id, frame);
+        let _ = self.message_sender.send(Message::LogPublish(session_frame.to_log_item()));
 
         if self.frames.len() == self.max_frames {
             self.frames.pop_front();
@@ -581,31 +543,6 @@ impl KissSession {
         tracing::debug!(to = %key.0, id = %key.1, "acking received message");
         self.send_aprs_message(AprsMessage::new(key.0.clone(), format!("ack{}", key.1), None));
         self.last_ack_sent.insert(key, now);
-    }
-
-    /// Writes the block of lines for a frame we have just recorded: header,
-    /// the digipeater path if there was one, the body, and a blank separator.
-    ///
-    /// Returns the id of the header line, the only one we can rewrite later.
-    fn display_frame(&self, session_frame: &SessionFrame) -> UiId {
-        let frame = session_frame.first_frame();
-        let mut ui_lines: Vec<UiLine> = Vec::new();
-
-        let header_line = UiLine::new(session_frame.render_header());
-        let header_ui_id = header_line.ui_id.clone();
-        ui_lines.push(header_line);
-
-        let digipeaters = format_digipeaters(frame.digipeaters());
-        if digipeaters.len() > 0 {
-            ui_lines.push(UiLine::new(format!("via {}", &digipeaters)));
-        }
-        let data = frame.data();
-        ui_lines.push(UiLine::new(format!("{} {}", data.data_type_id(), data.body())));
-        ui_lines.push(UiLine::new(String::from("")));
-
-        let output_update = OutputUpdate::new(ui_lines);
-        let _ = self.message_sender.send(Message::Output(output_update));
-        header_ui_id
     }
 
 }
@@ -684,20 +621,20 @@ mod tests {
         });
     }
 
-    fn last_header_update(receiver: &mpsc::Receiver<Message>) -> Option<UiLine> {
+    fn last_log_update(receiver: &mpsc::Receiver<Message>) -> Option<LogItem> {
         let mut last = None;
         while let Ok(message) = receiver.try_recv() {
-            if let Message::UpdateOutputLine(ui_line) = message {
-                last = Some(ui_line);
+            if let Message::LogUpdate(item) = message {
+                last = Some(item);
             }
         }
         last
     }
 
-    fn output_count(receiver: &mpsc::Receiver<Message>) -> usize {
+    fn publish_count(receiver: &mpsc::Receiver<Message>) -> usize {
         let mut count = 0;
         while let Ok(message) = receiver.try_recv() {
-            if matches!(message, Message::Output(_)) {
+            if matches!(message, Message::LogPublish(_)) {
                 count += 1;
             }
         }
@@ -734,59 +671,69 @@ mod tests {
     }
 
     #[test]
-    fn render_header_message_includes_addressee_and_id() {
-        let frame = message(MYCALL, "NOCALL-1", "hello", Some("5"));
-        let header = SessionFrame::new(3, frame).render_header();
+    fn to_frame_log_item_carries_the_fields_the_display_filters_on() {
+        let frame = message_with_digis(MYCALL, "NOCALL-1", "hello", Some("5"), &["WIDE1-1"]);
+        let item = SessionFrame::new(3, frame).to_frame_log_item();
 
-        assert!(header.starts_with("0003: "), "got {header}");
-        assert!(header.contains("NOCALL (APKTY1)"), "got {header}");
-        assert!(header.contains("→ NOCALL-1 {5"), "got {header}");
+        assert_eq!(item.seq, 3);
+        assert_eq!(item.source, MYCALL);
+        assert_eq!(item.dest, Ax25Addr::AX25DEST);
+        assert_eq!(item.addressee.as_deref(), Some("NOCALL-1"));
+        assert_eq!(item.msg_id.as_deref(), Some("5"));
+        assert_eq!(item.data_type_id, ':');
+        assert_eq!(item.body, "hello");
+        assert_eq!(item.digipeaters, "WIDE1-1");
     }
 
     #[test]
-    fn render_header_unacked_message_shows_pending_marker() {
+    fn to_frame_log_item_message_with_an_id_is_ackable() {
         let frame = message(MYCALL, "NOCALL-1", "hello", Some("1"));
-        let header = SessionFrame::new(0, frame).render_header();
+        let item = SessionFrame::new(0, frame).to_frame_log_item();
 
-        assert!(header.contains("ack:_"), "got {header}");
-        assert!(!header.contains("rpt:"), "got {header}");
+        assert!(item.ackable);
+        assert!(!item.acked);
     }
 
     #[test]
-    fn render_header_message_with_no_id_omits_ack_marker() {
+    fn to_frame_log_item_message_with_no_id_is_not_ackable() {
         let frame = message(MYCALL, "NOCALL-1", "hello", None);
-        let header = SessionFrame::new(0, frame).render_header();
 
-        assert!(!header.contains("ack:"), "got {header}");
+        assert!(!SessionFrame::new(0, frame).to_frame_log_item().ackable);
     }
 
     #[test]
-    fn render_header_non_ackable_frame_omits_ack_marker() {
+    fn to_frame_log_item_non_message_has_no_addressee_and_is_not_ackable() {
         let frame = raw_info_frame("NOCALL-1", b">status text");
-        let header = SessionFrame::new(0, frame).render_header();
+        let item = SessionFrame::new(0, frame).to_frame_log_item();
 
-        assert!(!header.contains("ack:"), "got {header}");
+        assert_eq!(item.addressee, None);
+        assert_eq!(item.data_type_id, '>');
+        assert!(!item.ackable);
     }
 
     #[test]
-    fn render_header_shows_ack_marker_and_repeat_count() {
+    fn to_frame_log_item_counts_repeats_and_acks() {
         let frame = message(MYCALL, "NOCALL-1", "hello", Some("1"));
         let mut session_frame = SessionFrame::new(0, frame.clone());
         session_frame.instances.record_repeat(frame.clone());
         session_frame.instances.record_repeat(frame.clone());
         session_frame.acked_by.push(FrameGroup::new(frame));
 
-        let header = session_frame.render_header();
+        let item = session_frame.to_frame_log_item();
 
-        assert!(header.ends_with("  ack:✓ rpt:2"), "got {header}");
+        assert_eq!(item.repeats, 2);
+        assert!(item.acked);
     }
 
     #[test]
-    fn render_header_non_message_omits_addressee() {
-        let frame = raw_info_frame("NOCALL-1", b">status text");
-        let header = SessionFrame::new(0, frame).render_header();
+    fn to_log_item_keeps_the_same_log_id_across_updates() {
+        let frame = message(MYCALL, "NOCALL-1", "hello", Some("1"));
+        let mut session_frame = SessionFrame::new(0, frame.clone());
+        let before = session_frame.to_log_item().id();
 
-        assert!(!header.contains("→"), "got {header}");
+        session_frame.instances.record_repeat(frame);
+
+        assert_eq!(session_frame.to_log_item().id(), before);
     }
 
     #[test]
@@ -838,7 +785,7 @@ mod tests {
 
         session.try_claim(Message::Dump(77));
 
-        assert_eq!(output_count(&receiver), 1);
+        assert_eq!(publish_count(&receiver), 1);
     }
 
     #[test]
@@ -848,7 +795,7 @@ mod tests {
         receive(&mut session, message("NOCALL-1", "NOCALL-2", "hello", Some("1")));
 
         assert_eq!(session.frames.len(), 1);
-        assert_eq!(output_count(&receiver), 1);
+        assert_eq!(publish_count(&receiver), 1);
     }
 
     #[test]
@@ -885,19 +832,19 @@ mod tests {
     }
 
     #[test]
-    fn receive_repeat_updates_the_displayed_header_line() {
+    fn receive_repeat_updates_the_item_already_published() {
         let (mut session, receiver) = session();
         let frame = message("NOCALL-1", "NOCALL-2", "hello", Some("1"));
 
         receive(&mut session, frame.clone());
         receive(&mut session, frame);
 
-        let update = last_header_update(&receiver).expect("repeat should emit a header update");
-        assert!(update.line.contains("rpt:1"), "got {}", update.line);
+        let update = last_log_update(&receiver).expect("repeat should emit a log update");
+        assert!(update.lines()[0].contains("rpt:1"), "got {:?}", update.lines()[0]);
         assert_eq!(
-            Some(update.ui_id),
-            session.frames[0].header_ui_id,
-            "update must target the line that was originally displayed",
+            update.id(),
+            session.frames[0].log_id,
+            "update must target the item that was originally published",
         );
     }
 
@@ -911,9 +858,9 @@ mod tests {
         assert_eq!(session.frames.len(), 1);
         assert_eq!(session.frames[0].acked_by.len(), 1);
 
-        let update = last_header_update(&receiver).expect("ack should emit a header update");
-        assert!(update.line.contains("ack:✓"), "got {}", update.line);
-        assert_eq!(Some(update.ui_id), session.frames[0].header_ui_id);
+        let update = last_log_update(&receiver).expect("ack should emit a log update");
+        assert!(update.lines()[0].contains("ack:✓"), "got {:?}", update.lines()[0]);
+        assert_eq!(update.id(), session.frames[0].log_id);
     }
 
     #[test]
@@ -936,7 +883,7 @@ mod tests {
         receive(&mut session, message("NOCALL-1", MYCALL, "ack9", None));
 
         assert_eq!(session.frames.len(), 0);
-        assert_eq!(output_count(&receiver), 0);
+        assert_eq!(publish_count(&receiver), 0);
     }
 
     #[test]
@@ -1022,7 +969,7 @@ mod tests {
         receive(&mut session, digipeated(&ours));
 
         assert_eq!(session.frames.len(), 1);
-        assert_eq!(output_count(&receiver), 1);
+        assert_eq!(publish_count(&receiver), 1);
     }
 
     #[test]
@@ -1032,7 +979,7 @@ mod tests {
         receive(&mut session, message_with_digis(MYCALL, "NOCALL-1", "unmatched", None, &["WIDE1-1"]));
 
         assert_eq!(session.frames.len(), 0);
-        assert_eq!(output_count(&receiver), 0);
+        assert_eq!(publish_count(&receiver), 0);
     }
 
     #[test]
