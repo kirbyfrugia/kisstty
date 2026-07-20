@@ -231,6 +231,20 @@ impl MainUi {
 
     pub fn try_claim(&mut self, message: Message) -> Option<Message> {
         match message {
+            Message::LogPublish(item) => {
+                self.log.push(item);
+                None
+            }
+            Message::LogUpdate(item) => {
+                self.log.replace(item);
+                None
+            }
+            other => Some(other),
+        }
+    }
+
+    pub fn try_claim_while_active(&mut self, message: Message) -> Option<Message> {
+        match message {
             Message::UserKey(key_event) => self.handle_key(key_event),
             Message::Help => {
                 self.print_help();
@@ -248,14 +262,6 @@ impl MainUi {
                 self.app_mode = AppMode::Qso(addressee);
                 None
             }
-            Message::LogPublish(item) => {
-                self.log.push(item);
-                None
-            }
-            Message::LogUpdate(item) => {
-                self.log.replace(item);
-                None
-            }
             Message::Clear => {
                 self.log.clear();
                 self.terminal_output.scroll_to_bottom();
@@ -264,6 +270,7 @@ impl MainUi {
             other => self.terminal_input.try_claim(other),
         }
     }
+
 
     pub fn handle_key(&mut self, key_event: KeyEvent) -> Option<Message> {
         match key_event.code {

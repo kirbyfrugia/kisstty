@@ -267,7 +267,7 @@ impl ConfigUi {
     pub fn tick(&mut self) {
     }
 
-    pub fn try_claim(&mut self, message: Message) -> Option<Message> {
+    pub fn try_claim_while_active(&mut self, message: Message) -> Option<Message> {
         match message {
             Message::UserKey(key_event) => self.handle_key(key_event),
             other => Some(other),

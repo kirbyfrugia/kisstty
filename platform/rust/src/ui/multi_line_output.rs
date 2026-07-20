@@ -26,7 +26,8 @@ pub struct MultiLineOutput {
     max_scroll: Cell<usize>,
 }
 
-/// The log and the viewport used for a render
+/// The log and the viewport used for a render.
+/// Recreated each render.
 pub struct LogView<'a> {
     log: &'a Log,
     output: &'a MultiLineOutput,

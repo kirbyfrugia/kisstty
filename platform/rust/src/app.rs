@@ -127,6 +127,7 @@ impl App {
     fn handle_message(&mut self, message: Message) {
         let Some(message) = self.try_claim(message) else { return };
         let Some(message) = self.kiss_session.try_claim(message) else { return };
+        let Some(message) = self.main_ui.try_claim(message) else { return };
 
         if let Some(message) = self.route(message) {
             tracing::debug!(?message, "unclaimed message");
@@ -171,8 +172,8 @@ impl App {
         }
 
         match self.active_screen {
-            Screen::Main => self.main_ui.try_claim(message),
-            Screen::Config => self.config_ui.try_claim(message),
+            Screen::Main => self.main_ui.try_claim_while_active(message),
+            Screen::Config => self.config_ui.try_claim_while_active(message),
         }
     }
 
