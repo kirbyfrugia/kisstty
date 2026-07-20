@@ -18,7 +18,7 @@ use crate::{
     ui::UiLine,
 };
 
-const MAX_OUTPUT_LINES: usize = 10000;
+const MAX_OUTPUT_LINES: usize = 20000;
 
 #[derive(Debug)]
 enum ViewMode {

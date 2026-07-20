@@ -15,6 +15,7 @@ pub enum Message {
     SendAprsMessage { addressee: String, text: String },
     Clear,
     Config,
+    Dump(u64),
     Exit,
     Help,
     Monitor,

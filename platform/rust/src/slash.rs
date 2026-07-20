@@ -36,6 +36,15 @@ pub const SLASH_COMMANDS: &[SlashCommand] = &[
         to_message: |_| Some(Message::Monitor),
     },
     SlashCommand {
+        slash:      "/dump",
+        args:       "<id>",
+        friendly:   "Show every instance and ack seen for a packet",
+        to_message: |a| match a {
+            [id] => id.parse().ok().map(Message::Dump),
+            _    => None,
+        },
+    },
+    SlashCommand {
         slash:      "/clear",
         args:       "",
         friendly:   "Clear all the output",

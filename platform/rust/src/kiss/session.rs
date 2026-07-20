@@ -46,7 +46,7 @@ use crate::{
     ui::{UiId,UiLine,OutputUpdate},
 };
 
-const MAX_SESSION_FRAMES: usize = 10000;
+const MAX_SESSION_FRAMES: usize = 5000;
 const ACK_THROTTLE: Duration    = Duration::from_secs(30);
 const REPEAT_WINDOW: Duration   = Duration::from_secs(30);
 
@@ -72,6 +72,13 @@ struct FrameInstance {
 impl FrameInstance {
     pub fn new(frame: Ax25Frame) -> Self {
         Self { at: SystemTime::now(), frame }
+    }
+
+    /// Outputs the unique part of a FrameInstance (digis, timestamp)
+    pub fn describe(&self) -> String {
+        let path = format_digipeaters(self.frame.digipeaters());
+        let path = if path.is_empty() { String::from("direct") } else { path };
+        format!("{} {}", utc_timestamp(self.at), path)
     }
 }
 
@@ -106,6 +113,10 @@ impl FrameGroup {
 
     pub fn repeat_count(&self) -> usize {
         self.repeats.len()
+    }
+
+    pub fn source(&self) -> &Ax25Addr {
+        self.first.frame.source()
     }
 }
 
@@ -188,6 +199,33 @@ impl SessionFrame {
         }
 
         header
+    }
+
+    /// The header and body, then one line per instance and ack.
+    ///
+    /// Instances only differ by the digi path and the timestamp.
+    pub fn render_dump(&self) -> Vec<String> {
+        let data = self.first_frame().data();
+        let mut lines = vec![
+            format!("dump of frame {:04}:", self.id),
+            self.render_header(),
+            format!("  {} {}", data.data_type_id(), data.body()),
+            format!("  first {}", self.instances.first.describe()),
+        ];
+
+        for repeat in &self.instances.repeats {
+            lines.push(format!("  rpt   {}", repeat.describe()));
+        }
+
+        for ack in &self.acked_by {
+            lines.push(format!("  ack   {} {}", ack.source(), ack.first.describe()));
+            for repeat in &ack.repeats {
+                lines.push(format!("    rpt {}", repeat.describe()));
+            }
+        }
+
+        lines.push(String::new());
+        lines
     }
 
     /// The header re-rendered against the id of the line already on screen, so
@@ -306,6 +344,10 @@ impl KissSession {
             },
             Message::Ax25FrameReceived(frame) => {
                 self.handle_received_frame(frame);
+                None
+            },
+            Message::Dump(id) => {
+                self.dump_frame(id);
                 None
             },
             other => Some(other),
@@ -478,6 +520,19 @@ impl KissSession {
         let update = session_frame.header_line();
         self.send_header_update(update);
         None
+    }
+
+    fn dump_frame(&self, id: u64) {
+        match self.frames.iter().rev().find(|f| f.id == id) {
+            Some(session_frame) => self.send_lines(session_frame.render_dump()),
+            None => self.send_lines(vec![format!("{id:04}: frame not found"), String::new()]),
+        }
+    }
+
+    fn send_lines(&self, lines: Vec<String>) {
+        let ui_lines = lines.into_iter().map(UiLine::new).collect();
+        let output_update = OutputUpdate::new(ui_lines);
+        let _ = self.message_sender.send(Message::Output(output_update));
     }
 
     fn send_header_update(&self, update: Option<UiLine>) {
@@ -732,6 +787,58 @@ mod tests {
         let header = SessionFrame::new(0, frame).render_header();
 
         assert!(!header.contains("→"), "got {header}");
+    }
+
+    #[test]
+    fn render_dump_lists_every_copy_and_ack() {
+        let frame = message_with_digis(MYCALL, "NOCALL-1", "hello", Some("1"), &["WIDE1-1"]);
+        let mut session_frame = SessionFrame::new(3, frame.clone());
+        session_frame.instances.record_repeat(digipeated(&frame));
+
+        let ack = message_with_digis("NOCALL-1", MYCALL, "ack1", None, &["WIDE2-1"]);
+        let mut ack_group = FrameGroup::new(ack.clone());
+        ack_group.record_repeat(digipeated(&ack));
+        session_frame.acked_by.push(ack_group);
+
+        let dump = session_frame.render_dump();
+
+        assert_eq!(dump[0], "dump of frame 0003:");
+        assert!(dump[1].starts_with("0003: "), "got {:?}", dump[1]);
+        assert_eq!(dump[2], "  : hello");
+        assert!(dump[3].starts_with("  first "), "got {:?}", dump[3]);
+        assert!(dump[3].ends_with(" WIDE1-1"), "got {:?}", dump[3]);
+        assert!(dump[4].starts_with("  rpt   "), "got {:?}", dump[4]);
+        assert!(dump[4].ends_with(" WIDE1-1*"), "got {:?}", dump[4]);
+        assert!(dump[5].starts_with("  ack   NOCALL-1 "), "got {:?}", dump[5]);
+        assert!(dump[6].starts_with("    rpt "), "got {:?}", dump[6]);
+        assert_eq!(dump[7], "");
+    }
+
+    #[test]
+    fn render_dump_with_no_digipeaters_reads_as_direct() {
+        let frame = message(MYCALL, "NOCALL-1", "hello", Some("1"));
+        let dump = SessionFrame::new(0, frame).render_dump();
+
+        assert!(dump[3].ends_with(" direct"), "got {:?}", dump[3]);
+    }
+
+    #[test]
+    fn render_dump_omits_ack_section_when_unacked() {
+        let frame = message(MYCALL, "NOCALL-1", "hello", Some("1"));
+        let dump = SessionFrame::new(0, frame).render_dump();
+
+        assert!(!dump.iter().any(|l| l.contains("ack   ")), "got {dump:?}");
+    }
+
+    #[test]
+    fn dump_frame_with_unknown_id_reports_not_found() {
+        let (mut session, receiver) = session();
+        receive(&mut session, message("NOCALL-1", "NOCALL-2", "hello", None));
+        while receiver.try_recv().is_ok() {}
+
+        session.try_claim(Message::Dump(77));
+
+        assert_eq!(output_count(&receiver), 1);
     }
 
     #[test]
