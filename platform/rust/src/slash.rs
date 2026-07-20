@@ -25,7 +25,7 @@ pub const SLASH_COMMANDS: &[SlashCommand] = &[
         args:       "<callsign>",
         friendly:   "QSO mode (one-to-one convo)",
         to_message: |a| match a {
-            [c] => Some(Message::Qso(c.to_string())),
+            [c] => Some(Message::Qso(c.to_uppercase())),
             _   => None,
         },
     },

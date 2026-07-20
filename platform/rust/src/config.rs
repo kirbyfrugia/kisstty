@@ -47,7 +47,7 @@ pub fn validate_host(host: &str) -> Result<(), String> {
 pub fn parse_digipeaters(value: &str) -> Vec<String> {
     value
         .split(',')
-        .map(|d| d.trim().to_string())
+        .map(|d| d.trim().to_uppercase())
         .filter(|d| !d.is_empty())
         .collect()
 }

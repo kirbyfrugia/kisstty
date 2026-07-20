@@ -128,7 +128,7 @@ impl ConfigUi {
         for field in &self.config_fields {
             let value = field.input.data.trim();
             match field.key {
-                FieldKey::Callsign => config.callsign = value.to_string(),
+                FieldKey::Callsign => config.callsign = value.to_uppercase(),
                 FieldKey::Digipeaters => {
                     config.digipeaters = config::parse_digipeaters(value);
                 },
