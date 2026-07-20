@@ -118,10 +118,6 @@ impl MultiLineOutput {
         }
     }
 
-    pub fn is_following(&self) -> bool {
-        matches!(self.view_mode, ViewMode::Follow)
-    }
-
     pub fn toggle_view_mode(&mut self) {
         self.view_mode = match self.view_mode {
             ViewMode::Follow => {
