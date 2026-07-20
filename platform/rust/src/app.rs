@@ -68,6 +68,7 @@ impl App {
 
             if self.config.validate().is_ok() {
                 self.set_active_screen(Screen::Main);
+                self.main_ui.configure(&self.config);
                 self.kiss_session.start(&self.config);
             } else {
                 self.config_ui.load_config(&self.config);
@@ -150,6 +151,7 @@ impl App {
                 if let Err(e) = self.config.save() {
                     tracing::error!(?e, "failed to save config");
                 }
+                self.main_ui.configure(&self.config);
                 self.kiss_session.restart(&self.config);
                 self.set_active_screen(Screen::Main);
                 None

@@ -10,8 +10,9 @@ use ratatui::{
 };
 
 use crate::{
+    config::Config,
     kiss::AprsMessage,
-    log::{Log, LogItem},
+    log::{FrameLogItem, Log, LogItem},
     ui::{LineInput,LogView,MultiLineOutput},
     message::Message,
     slash::{SlashCommand, SLASH_COMMANDS},
@@ -23,11 +24,33 @@ const OUTPUT_AREA_WIDTH: u16           = TERMINAL_WIDTH + 4;
 const MAX_SLASH_POPUP_HEIGHT: u16      = 8;
 const INPUT_HEIGHT: u16                = 3;
 
+/// APRS data type ids that count as conversations
+const CONVERSATIONAL_DATA_TYPES: &[char] = &[':'];
+
 #[derive(Debug)]
-enum AppMode {
+pub enum AppMode {
     Monitor,
     Net,
-    Qso(String),
+    Qso { mycall: String, addressee: String },
+}
+
+impl AppMode {
+    /// Notices are always shown no matter the app mode.
+    pub fn shows(&self, item: &LogItem) -> bool {
+        match item {
+            LogItem::Notice { .. } => true,
+            LogItem::Frame { item, .. } => self.shows_frame(item),
+        }
+    }
+
+    fn shows_frame(&self, frame: &FrameLogItem) -> bool {
+        let conversational = CONVERSATIONAL_DATA_TYPES.contains(&frame.data_type_id);
+        match self {
+            Self::Monitor => true,
+            Self::Net => conversational,
+            Self::Qso { mycall, addressee } => conversational && frame.between(mycall, addressee),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -35,6 +58,7 @@ pub struct MainUi {
     terminal_input: LineInput,
     terminal_output: MultiLineOutput,
     log: Log,
+    mycall: String,
     message_sender: mpsc::Sender<Message>,
     slash_popup_list_state: ListState,
     app_mode: AppMode,
@@ -59,6 +83,7 @@ impl MainUi {
             terminal_input,
             terminal_output: MultiLineOutput::new(),
             log: Log::new(),
+            mycall: String::new(),
             message_sender,
             slash_popup_list_state: ListState::default()
                 .with_selected(Some(0)),
@@ -152,14 +177,21 @@ impl MainUi {
             .inner(terminal_layout[0]);
 
         frame.render_widget(
-            LogView::new(&self.log, &self.terminal_output),
+            LogView::new(&self.log, &self.terminal_output, &self.app_mode),
             terminal_output_block_inner_area,
         );
 
+        let addressee_rx;
+        let addressee_tx;
+
         let (mode, rx, tx) = match &self.app_mode {
-            AppMode::Monitor => ("MONITOR", "all", "broadcast"),
-            AppMode::Net => ("NET", "messages only", "broadcast"),
-            AppMode::Qso(addressee) => ("QSO", addressee.as_str(), addressee.as_str()),
+            AppMode::Monitor => ("MODE: monitor", "all data types", "broadcast"),
+            AppMode::Net => ("MODE: net", "all messages", "broadcast"),
+            AppMode::Qso { addressee, .. } => {
+                addressee_rx = format!("from {}", addressee);
+                addressee_tx = format!("to {}", addressee);
+                ("MODE: qso", addressee_rx.as_str(), addressee_tx.as_str())
+            }
         };
 
         let app_mode_text = format!("{} | RX: {} | TX: {}", mode, rx, tx);
@@ -229,6 +261,16 @@ impl MainUi {
 //        self.counter += 1;
     }
 
+    pub fn configure(&mut self, config: &Config) {
+        self.mycall = config.callsign.clone();
+    }
+
+    /// Switches modes and jumps to the newest traffic.
+    fn set_app_mode(&mut self, app_mode: AppMode) {
+        self.app_mode = app_mode;
+        self.terminal_output.scroll_to_bottom();
+    }
+
     pub fn try_claim(&mut self, message: Message) -> Option<Message> {
         match message {
             Message::LogPublish(item) => {
@@ -251,15 +293,16 @@ impl MainUi {
                 None
             },
             Message::Monitor => {
-                self.app_mode = AppMode::Monitor;
+                self.set_app_mode(AppMode::Monitor);
                 None
             }
             Message::Net => {
-                self.app_mode = AppMode::Net;
+                self.set_app_mode(AppMode::Net);
                 None
             }
             Message::Qso(addressee) => {
-                self.app_mode = AppMode::Qso(addressee);
+                let mycall = self.mycall.clone();
+                self.set_app_mode(AppMode::Qso { mycall, addressee });
                 None
             }
             Message::Clear => {
@@ -360,11 +403,120 @@ impl MainUi {
 
     fn send_message(&mut self, text: String) {
         let addressee = match &self.app_mode {
-            AppMode::Qso(addressee) => addressee.to_string(),
+            AppMode::Qso { addressee, .. } => addressee.to_string(),
             _ => AprsMessage::BROADCAST_ADDRESSEE.to_string(),
         };
 
         let _ = self.message_sender.send(Message::SendAprsMessage { addressee, text });
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::time::UNIX_EPOCH;
+
+    use crate::log::{next_log_id, FrameLogItem};
+
+    const MYCALL: &str = "NOCALL";
+
+    fn frame(source: &str, addressee: Option<&str>, data_type_id: char) -> LogItem {
+        LogItem::frame(next_log_id(), FrameLogItem {
+            seq: 0,
+            at: UNIX_EPOCH,
+            source: source.to_string(),
+            dest: String::from("APKTY1"),
+            addressee: addressee.map(|a| a.to_string()),
+            msg_id: None,
+            data_type_id,
+            body: String::from("hello"),
+            digipeaters: String::new(),
+            ackable: false,
+            acked: false,
+            repeats: 0,
+        })
+    }
+
+    fn message(source: &str, addressee: &str) -> LogItem {
+        frame(source, Some(addressee), ':')
+    }
+
+    fn status(source: &str) -> LogItem {
+        frame(source, None, '>')
+    }
+
+    #[test]
+    fn monitor_shows_every_data_type() {
+        let mode = AppMode::Monitor;
+
+        assert!(mode.shows(&message("NOCALL-1", "NOCALL-2")));
+        assert!(mode.shows(&status("NOCALL-1")));
+    }
+
+    #[test]
+    fn net_shows_messages_between_any_addressees() {
+        let mode = AppMode::Net;
+
+        assert!(mode.shows(&message("NOCALL-1", "NOCALL-2")));
+        assert!(!mode.shows(&status("NOCALL-1")));
+    }
+
+    fn qso(addressee: &str) -> AppMode {
+        AppMode::Qso {
+            mycall: String::from(MYCALL),
+            addressee: String::from(addressee),
+        }
+    }
+
+    #[test]
+    fn qso_shows_messages_in_both_directions_between_the_pair() {
+        let mode = qso("NOCALL-1");
+
+        assert!(mode.shows(&message(MYCALL, "NOCALL-1")));
+        assert!(mode.shows(&message("NOCALL-1", MYCALL)));
+    }
+
+    #[test]
+    fn qso_hides_the_other_addressees_messages_with_anyone_else() {
+        let mode = qso("NOCALL-1");
+
+        assert!(!mode.shows(&message("NOCALL-1", "NOCALL-2")));
+        assert!(!mode.shows(&message("NOCALL-2", "NOCALL-1")));
+    }
+
+    #[test]
+    fn qso_hides_our_messages_with_anyone_else() {
+        let mode = qso("NOCALL-1");
+
+        assert!(!mode.shows(&message(MYCALL, "NOCALL-2")));
+        assert!(!mode.shows(&message("NOCALL-2", MYCALL)));
+    }
+
+    #[test]
+    fn qso_hides_traffic_between_two_other_addressees() {
+        assert!(!qso("NOCALL-1").shows(&message("NOCALL-2", "NOCALL-3")));
+    }
+
+    #[test]
+    fn qso_matches_an_addressee_typed_in_lower_case() {
+        let mode = qso("nocall-1");
+
+        assert!(mode.shows(&message("NOCALL-1", MYCALL)));
+    }
+
+    #[test]
+    fn qso_hides_non_message_traffic_from_the_other_addressee() {
+        assert!(!qso("NOCALL-1").shows(&status("NOCALL-1")));
+    }
+
+    #[test]
+    fn every_mode_shows_notices() {
+        let notice = LogItem::notice(vec![String::from("usage: /qso CALLSIGN")]);
+
+        assert!(AppMode::Monitor.shows(&notice));
+        assert!(AppMode::Net.shows(&notice));
+        assert!(qso("NOCALL-1").shows(&notice));
+    }
 }

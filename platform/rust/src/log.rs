@@ -61,6 +61,19 @@ pub struct FrameLogItem {
 }
 
 impl FrameLogItem {
+    /// Whether this packet is traffic between two callsigns, in either
+    /// direction.
+    pub fn between(&self, one: &str, other: &str) -> bool {
+        let Some(addressee) = self.addressee.as_deref() else { return false };
+
+        let from_one = self.source.eq_ignore_ascii_case(one)
+            && addressee.eq_ignore_ascii_case(other);
+        let from_other = self.source.eq_ignore_ascii_case(other)
+            && addressee.eq_ignore_ascii_case(one);
+
+        from_one || from_other
+    }
+
     pub fn header(&self) -> String {
         let mut header = format!(
             "{:04}: {} {} ({})",
@@ -189,13 +202,10 @@ impl Log {
         self.items.clear();
     }
 
-    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &LogItem> {
+    pub fn iter(&self) -> impl Iterator<Item = &LogItem> {
         self.items.iter()
     }
 
-    pub fn total_lines(&self) -> usize {
-        self.items.iter().map(|i| i.line_count()).sum()
-    }
 }
 
 #[cfg(test)]
@@ -240,7 +250,7 @@ mod tests {
         let mut log = Log::new();
         log.replace(LogItem::frame(next_log_id(), frame_log_item(1)));
 
-        assert_eq!(log.total_lines(), 0);
+        assert_eq!(log.iter().count(), 0);
     }
 
     #[test]
@@ -257,15 +267,13 @@ mod tests {
     }
 
     #[test]
-    fn total_lines_counts_the_via_line_only_when_there_is_a_path() {
-        let mut log = Log::new();
-        log.push(LogItem::frame(next_log_id(), frame_log_item(1)));
-        assert_eq!(log.total_lines(), 3);
+    fn line_count_includes_the_via_line_only_when_there_is_a_path() {
+        let direct = LogItem::frame(next_log_id(), frame_log_item(1));
+        assert_eq!(direct.line_count(), 3);
 
-        let mut digipeated = frame_log_item(2);
-        digipeated.digipeaters = String::from("WIDE1-1*");
-        log.push(LogItem::frame(next_log_id(), digipeated));
-        assert_eq!(log.total_lines(), 7);
+        let mut item = frame_log_item(2);
+        item.digipeaters = String::from("WIDE1-1*");
+        assert_eq!(LogItem::frame(next_log_id(), item).line_count(), 4);
     }
 
     #[test]

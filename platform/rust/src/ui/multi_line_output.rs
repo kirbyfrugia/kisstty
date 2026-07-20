@@ -12,7 +12,10 @@ use ratatui::{
     },
 };
 
-use crate::log::Log;
+use crate::{
+    log::{Log, LogItem},
+    ui::AppMode,
+};
 
 #[derive(Debug)]
 enum ViewMode {
@@ -31,18 +34,28 @@ pub struct MultiLineOutput {
 pub struct LogView<'a> {
     log: &'a Log,
     output: &'a MultiLineOutput,
+    app_mode: &'a AppMode,
 }
 
 impl<'a> LogView<'a> {
-    pub fn new(log: &'a Log, output: &'a MultiLineOutput) -> Self {
-        Self { log, output }
+    pub fn new(log: &'a Log, output: &'a MultiLineOutput, app_mode: &'a AppMode) -> Self {
+        Self { log, output, app_mode }
+    }
+
+    /// The items shown based on the current mode admits, oldest first.
+    fn visible(&self) -> impl Iterator<Item = &LogItem> {
+        self.log.iter().filter(|item| self.app_mode.shows(item))
+    }
+
+    fn total_lines(&self) -> usize {
+        self.visible().map(|item| item.line_count()).sum()
     }
 }
 
 impl Widget for LogView<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let max_lines = area.height as usize;
-        let total_lines = self.log.total_lines();
+        let total_lines = self.total_lines();
 
         let text_area = Rect { width: area.width.saturating_sub(1), ..area };
 
@@ -59,7 +72,7 @@ impl Widget for LogView<'_> {
         let mut consumed = 0 as usize;
         let mut y = 0 as usize;
 
-        'items: for item in self.log.iter() {
+        'items: for item in self.visible() {
             let count = item.line_count();
 
             if consumed + count <= top {
