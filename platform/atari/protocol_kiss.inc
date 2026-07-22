@@ -54,6 +54,9 @@ KISS_TFESC               = $dd
 KISS_DUPLEX_HALF         = %00000000
 KISS_DUPLEX_FULL         = %11111111
 
+KISS_MAX_SEEN_FRAMES = 32
+KISS_MAX_ACKS        = 16
+
 ; >092345zNet Control center
 KISS_TYPE_STATUS_TIMESTAMP_ZULU_IDX = 7
 
@@ -61,6 +64,10 @@ KISS_TYPE_STATUS_TIMESTAMP_ZULU_IDX = 7
 KISS_TYPE_MSG_START_COLON_IDX  = 0
 KISS_TYPE_MSG_ADDRESSEE_IDX    = 1
 KISS_TYPE_MSG_END_COLON_IDX    = 10
+; :NOCALL   :ackXXXXX
+KISS_TYPE_MSG_ACK_IDX          = 11
+KISS_TYPE_MSG_ACK_MIN_LEN      = 15
+KISS_TYPE_MSG_ACK_MAX_LEN      = 18
 
 KISS_SEND_FLAG_TRIM_END = %10000000
 
@@ -80,16 +87,16 @@ KISS_SEND_FLAG_TRIM_END = %10000000
 
 ; these are sent shifted left by one bit
 ; but they are unshifted in this struct
-.struct KissFrameAddr
+.struct Ax25Addr
   callsign .res 6
   ssid     .res 1
 .endstruct
 
-.struct KissFrameHeader
+.struct Ax25FrameHeader
   cmd_type    .res 1
-  dest        .tag KissFrameAddr
-  source      .tag KissFrameAddr
-  digipeater  .res 8 * .sizeof(KissFrameAddr)
+  dest        .tag Ax25Addr
+  source      .tag Ax25Addr
+  digipeater  .res 8 * .sizeof(Ax25Addr)
   control     .res 1
   protocol_id .res 1
   num_digi    .res 1 ; number of digipeater addresses

@@ -1,0 +1,2 @@
+# APRS ack message
+NOCALL>APZ001,WIDE1-1,WIDE2-1::NOCALL   :ack123

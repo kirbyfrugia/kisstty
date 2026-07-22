@@ -9,6 +9,8 @@
 .segment "ZEROPAGE"
 buf_counter:  .res 1
 addr_counter: .res 1
+crc_lo:       .res 1
+crc_hi:       .res 1
 
 .segment "CODE"
 
@@ -141,7 +143,9 @@ pk_next_frame:
   sta addr_counter
   sta btwn_counter
   sta g_disp_buf_num_lines
-  sta pk_frame_header+KissFrameHeader::num_digi
+  sta pk_frame_header+Ax25FrameHeader::num_digi
+  sta crc_lo
+  sta crc_hi
 
   lda pk_state
   and #%10000000  ; leave FEND alone, clear rest
@@ -223,7 +227,7 @@ int_process_byte:
 @in_first_byte:
   ; just the type field, first byte
   lda CMDDATA0
-  sta pk_frame_header+KissFrameHeader::cmd_type
+  sta pk_frame_header+Ax25FrameHeader::cmd_type
   lda pk_state
   ora #KISS_STATE_ADDR
   sta pk_state
@@ -242,9 +246,9 @@ int_process_byte:
   inc addr_counter
   jmp @in_addr_done
 @ssid:
-  cpy #KissFrameHeader::digipeater
+  cpy #Ax25FrameHeader::digipeater
   bcc @not_digi ; not yet to digipeater section
-  inc pk_frame_header+KissFrameHeader::num_digi
+  inc pk_frame_header+Ax25FrameHeader::num_digi
 @not_digi:
   lda CMDDATA0
   lsr            ; address extension bit -> carry
@@ -270,11 +274,11 @@ int_process_byte:
   ldy btwn_counter
   cpy #1
   beq @last_btwn
-  sta pk_frame_header+KissFrameHeader::control
+  sta pk_frame_header+Ax25FrameHeader::control
   inc btwn_counter
   jmp @done
 @last_btwn:
-  sta pk_frame_header+KissFrameHeader::protocol_id
+  sta pk_frame_header+Ax25FrameHeader::protocol_id
   lda pk_state
   eor #KISS_STATE_BTWN
   ora #KISS_STATE_INFO
@@ -330,20 +334,132 @@ int_fend:
 @done:
   rts
 
-; inputs:
-;   
+;; checks if the processed frame is an ack message and
+;; handles it if so (i.e. preps frame for display)
+;; outputs:
+;;   C - set if it was an ack, clear if not
+;; modifies:
+;;   A,X,Y
+;int_maybe_handle_received_ack:
+;  ; todo: make sure the message was actually for us,
+;  ;       otherwise ignore it
+;  ; todo: read the message until we see if it
+;  ;       is an ack or not. Store as we go just in case.
+;  ; todo: print ack if it's one we care about
+;  ;       keep a string where we just replace the callsign
+;  lda g_rx_buf_num_chars
+;  cmp #KISS_TYPE_MSG_ACK_MIN_LEN
+;  bcc @not_ack
+;  cmp #(KISS_TYPE_MSG_ACK_MAX_LEN+1)
+;  bcs @not_ack
+;
+;  ldy #KISS_TYPE_MSG_ACK_IDX
+;  lda g_rx_buf,y
+;  cmp #'a'
+;  beq @test_c
+;  cmp #'A'
+;  beq @test_c
+;  bne @not_ack
+;@test_c:
+;  iny
+;  lda g_rx_buf,y
+;  cmp  #'c'
+;  beq @test_k
+;  cmp #'C'
+;  beq @test_k
+;  bne @not_ack
+;@test_k:
+;  iny
+;  lda g_rx_buf,y
+;  cmp #'k'
+;  beq @is_ack
+;  cmp #'K'
+;  beq @is_ack
+;  bne @not_ack
+;@is_ack:
+;  lda #<g_disp_buf
+;  sta g_temp_data_ptr_lo
+;  lda #>g_disp_buf
+;  sta g_temp_data_ptr_hi
+;
+;  ldx #6
+;  iny
+;@id_loop:
+;  lda g_rx_buf,y
+;  sta g_disp_buf,x
+;  inx
+;  iny
+;  cpy g_rx_buf_num_chars
+;  bne @id_loop
+;  lda #' '
+;@remainder_loop:
+;  cpy #KISS_TYPE_MSG_ACK_MAX_LEN
+;  beq @id_loop_done
+;  sta g_disp_buf,x
+;  inx
+;  iny
+;  bne @remainder_loop
+;@id_loop_done:
+;  sty y_index_var
+;  sec
+;  rts
+;@not_ack:
+;  clc
+;  rts
+
+int_calc_crc:
+  ; todo: add in the message source, too.
+  ; todo: this is just a simple check for dev.
+  ;       calculate an actual crc instead of just summing the bytes
+  lda #0
+  sta crc_lo
+  sta crc_hi
+  ldy #KISS_TYPE_MSG_ADDRESSEE
+@loop:
+  lda g_rx_buf,y
+  clc
+  adc crc_lo
+  sta crc_lo
+  bcc @nowrap
+  inc crc_hi
+@nowrap:
+  iny
+  cpy g_rx_buf_num_chars
+  bne @loop
+@done:
+  rts
+
+
+; checks if the received frame is a repeat
+; outputs:
+;   C - set if ack, clear if not
+int_is_repeat:
+  ; todo: need some way to expire frames after 30 seconds
+  jsr int_calc_crc
+  clc
+  rts
+
 int_process_message:
   lda g_rx_buf_num_chars
   cmp #KISS_TYPE_MSG_END_COLON_IDX
   bcc @done ; not a valid message
 
+;  jsr int_maybe_handle_received_ack
+;  bcc @not_ack
+;  jsr @done
+;@not_ack:
   lda #<g_disp_buf
   sta g_temp_data_ptr_lo
   lda #>g_disp_buf
   sta g_temp_data_ptr_hi
 
+  jsr int_is_repeat
+  bcc @not_repeat
+  jmp @done
+@not_repeat:
+
   ldy #0
-  ldx #KissFrameHeader::source
+  ldx #Ax25FrameHeader::source
   stx x_index_var
   jsr int_addr_to_buf
 
@@ -368,6 +484,11 @@ int_process_message:
   sta terminator
   jsr int_read_until_terminator
   sty y_index_var
+
+;  jsr is_repeat
+;  bcc @not_repeat
+;  jmp @done
+;@not_repeat:
   jsr int_finalize_disp
 @done:
   rts
@@ -383,7 +504,7 @@ int_process_status:
   sta g_disp_buf,y
 
   iny
-  ldx #KissFrameHeader::source
+  ldx #Ax25FrameHeader::source
   stx x_index_var
   jsr int_addr_to_buf
 
@@ -588,7 +709,7 @@ int_ack_message:
 
 ; inputs:
 ;   g_temp_data_ptr_lo/hi - address of line
-;   x_index_var        - offset in KissFrameHeader to start of address
+;   x_index_var        - offset in Ax25FrameHeader to start of address
 ;   y                  - offset in disp buffer to store address
 ; modifies:
 ;   x_index_var        - will be one past end of this address
@@ -654,7 +775,10 @@ hardcoded_src:  ; NOCALL
   .byte $9C,$9E,$86,$82,$98,$98,$61
 
 pk_state:        .res 1
-pk_frame_header: .tag KissFrameHeader
+pk_frame_header: .tag Ax25FrameHeader
 pk_error:        .res 1
 pk_broadcast_addressee: .byte "BROADCAST"
 
+; CRCs for incoming frames
+seen_frames_lo: .res KISS_MAX_SEEN_FRAMES
+seen_frames_hi: .res KISS_MAX_SEEN_FRAMES

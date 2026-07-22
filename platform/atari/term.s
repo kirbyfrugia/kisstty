@@ -620,7 +620,7 @@ int_handle_kiss_frame:
 ;  bne @clear_loop
 ;
 ;  ldy #0
-;  lda #KissFrameHeader::source
+;  lda #Ax25FrameHeader::source
 ;  jsr int_addr_to_disp_buf
 ;  
 ;  iny
@@ -628,7 +628,7 @@ int_handle_kiss_frame:
 ;  sta g_disp_buf,y
 ;
 ;  iny
-;  lda #KissFrameHeader::dest
+;  lda #Ax25FrameHeader::dest
 ;  jsr int_addr_to_disp_buf
 ;
 ;  iny
